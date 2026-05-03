@@ -12,6 +12,12 @@ const SIDE_INLAY_FRETS = new Set([3, 5, 7])
 /** Standard tuning: index 0 = low E (6th) … 5 = high E (1st) */
 const OPEN_STRING_NAMES = ['E', 'A', 'D', 'G', 'B', 'E'] as const
 
+export type FretboardScalePattern = {
+  name: string
+  /** 0 = low E … 5 = high E */
+  positions: readonly { stringIndex: number; fret: number }[]
+}
+
 type FretboardProps = {
   fretCount?: number
   /** First column is this fret number (default 1 = nut + open position). */
@@ -20,6 +26,10 @@ type FretboardProps = {
   displayNotes?: boolean
   /** When `null`, only the blank fretboard is shown (no fingering dots or O/X). */
   chord: ChordFingering | ChordPresetId | null
+  /**
+   * When set, draws scale dots and skips chord dots / O / X (use mutually exclusive with `chord`).
+   */
+  scalePattern?: FretboardScalePattern | null
   className?: string
 }
 
@@ -28,6 +38,7 @@ function layoutGeometry(
   startFret: number,
   fingering: ChordFingering | null,
   displayNotes: boolean,
+  scalePattern: FretboardScalePattern | null,
 ) {
   /** Far left: O / X; next: open-string names (E A D G B E) */
   const openMarkerColW = 22
@@ -37,7 +48,7 @@ function layoutGeometry(
   const noteLabelX = openMarkerColW + noteColW - 2
   /** Start after O/X column so indicators stay clear; still run under open-string names. */
   const stringStartX = openMarkerColW
-  const leadIn = startFret === 1 ? 8 : 12
+  const leadIn = 12
   const gridLeft = markerW + leadIn
   const cellW = 40
   const rightPad = 12
@@ -83,7 +94,21 @@ function layoutGeometry(
     key: string
   }[] = []
 
-  if (fingering) {
+  if (scalePattern != null && scalePattern.positions.length > 0) {
+    scalePattern.positions.forEach((p) => {
+      const { stringIndex, fret } = p
+      if (stringIndex < 0 || stringIndex >= STRINGS || fret < 1) {
+        return
+      }
+      const col = fret - startFret
+      if (col < 0 || col >= fretCount) {
+        return
+      }
+      const cx = gridLeft + (col + 0.5) * cellW
+      const cy = yForString(stringIndex)
+      dots.push({ cx, cy, key: `scale-s${stringIndex}-f${fret}` })
+    })
+  } else if (fingering) {
     fingering.strings.forEach((state, stringIndex) => {
       if (typeof state !== 'number' || state < 1) {
         return
@@ -190,22 +215,38 @@ export function Fretboard({
   startFret: startFretProp,
   displayNotes = false,
   chord,
+  scalePattern = null,
   className,
 }: FretboardProps) {
-  const resolved = chord == null ? null : resolveChord(chord)
+  const resolved =
+    scalePattern != null && scalePattern.positions.length > 0
+      ? null
+      : chord == null
+        ? null
+        : resolveChord(chord)
   const startFret = Math.max(1, startFretProp ?? 1)
 
   const geo = useMemo(
     () =>
-      layoutGeometry(fretCount, startFret, resolved, displayNotes),
-    [fretCount, startFret, resolved, displayNotes],
+      layoutGeometry(
+        fretCount,
+        startFret,
+        resolved,
+        displayNotes,
+        scalePattern != null && scalePattern.positions.length > 0
+          ? scalePattern
+          : null,
+      ),
+    [fretCount, startFret, resolved, displayNotes, scalePattern],
   )
 
   const label =
-    resolved == null
-      ? 'No chord'
-      : (resolved.name ??
-        (typeof chord === 'string' ? chord : 'Custom chord'))
+    scalePattern != null && scalePattern.positions.length > 0
+      ? scalePattern.name
+      : resolved == null
+        ? 'No chord'
+        : (resolved.name ??
+          (typeof chord === 'string' ? chord : 'Custom chord'))
 
   const ariaLabel = `Fretboard diagram, ${label}`
 
@@ -238,22 +279,13 @@ export function Fretboard({
             className={styles.nut}
           />
         ) : (
-          <>
-            <line
-              x1={geo.gridLeft}
-              y1={geo.topPad - 4}
-              x2={geo.gridLeft}
-              y2={geo.topPad + geo.innerH + 4}
-              className={styles.positionBar}
-            />
-            <text
-              x={geo.gridLeft + 8}
-              y={geo.topPad + geo.innerH * 0.55}
-              className={styles.positionLabel}
-            >
-              {geo.startFret}
-            </text>
-          </>
+          <line
+            x1={geo.gridLeft}
+            y1={geo.topPad - 4}
+            x2={geo.gridLeft}
+            y2={geo.topPad + geo.innerH + 4}
+            className={styles.positionBar}
+          />
         )}
 
         {geo.fretWireXs.map((x, i) => (

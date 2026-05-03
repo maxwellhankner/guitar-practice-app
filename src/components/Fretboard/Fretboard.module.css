@@ -8,7 +8,7 @@
   --fb-fret: #c5baa8;
   --fb-string: #6a6a6a;
   --fb-dot: #f4efe6;
-  --fb-dot-stroke: rgba(20, 18, 15, 0.35);
+  --fb-dot-stroke: var(--fb-nut);
   --fb-marker: var(--heading, #14120f);
   --fb-fret-label: var(--muted, #5c574f);
   --fb-cell-note: rgb(212, 169, 74);
@@ -42,7 +42,7 @@
 
 .positionBar {
   stroke: var(--fb-position-bar);
-  stroke-width: 4;
+  stroke-width: 5;
   stroke-linecap: square;
 }
 
@@ -112,14 +112,6 @@
   text-anchor: middle;
 }
 
-.positionLabel {
-  fill: var(--fb-marker);
-  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
-  font-size: 11px;
-  font-weight: 700;
-  text-anchor: start;
-}
-
 @media (prefers-color-scheme: dark) {
   .wrap {
     --fb-board: #1a1410;
@@ -127,7 +119,6 @@
     --fb-fret: #8a7f72;
     --fb-string: #565656;
     --fb-dot: #2c2824;
-    --fb-dot-stroke: rgba(242, 239, 233, 0.35);
     --fb-cell-note: rgb(212, 169, 74);
     --fb-position-bar: #e8e0d4;
     --fb-inlay: rgba(255, 245, 228, 0.42);

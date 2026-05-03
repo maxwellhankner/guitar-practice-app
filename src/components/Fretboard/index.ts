@@ -1,4 +1,11 @@
-export { Fretboard } from './Fretboard'
+export { Fretboard, type FretboardScalePattern } from './Fretboard'
+export {
+  PENTATONIC_SHAPES,
+  PENTATONIC_SHAPE_IDS,
+  type PentatonicShapeId,
+  type PentatonicShapeDef,
+  type PentatonicPosition,
+} from './pentatonicShapes'
 export type {
   ChordFingering,
   FingerNumber,
