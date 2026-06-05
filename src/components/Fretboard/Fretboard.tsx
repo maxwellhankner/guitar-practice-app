@@ -6,15 +6,84 @@ import styles from './Fretboard.module.css'
 
 const STRINGS = 6
 
-/** Single dot inlays at these fret numbers (when visible in the window). */
-const SIDE_INLAY_FRETS = new Set([3, 5, 7])
+type BarreSegment = {
+  fret: number
+  stringMin: number
+  stringMax: number
+  key: string
+}
+
+/** Index finger (1) on multiple strings at one fret → barre shape for the diagram. */
+function barreSegments(fingering: ChordFingering): BarreSegment[] {
+  const fingerOneByFret = new Map<number, number[]>()
+
+  fingering.strings.forEach((state, stringIndex) => {
+    if (typeof state !== 'number' || state < 1) {
+      return
+    }
+    if (fingering.fingers?.[stringIndex] !== 1) {
+      return
+    }
+    const list = fingerOneByFret.get(state) ?? []
+    list.push(stringIndex)
+    fingerOneByFret.set(state, list)
+  })
+
+  const segments: BarreSegment[] = []
+  for (const [fret, fingerOneStrings] of fingerOneByFret) {
+    if (fingerOneStrings.length < 2) {
+      continue
+    }
+    const atFret: number[] = []
+    fingering.strings.forEach((state, stringIndex) => {
+      if (state === fret) {
+        atFret.push(stringIndex)
+      }
+    })
+    const stringMin = Math.min(...atFret)
+    const stringMax = Math.max(...atFret)
+    segments.push({
+      fret,
+      stringMin,
+      stringMax,
+      key: `bar-f${fret}-s${stringMin}-${stringMax}`,
+    })
+  }
+
+  return segments.sort((a, b) => a.fret - b.fret)
+}
+
+function isOnBarre(
+  stringIndex: number,
+  fret: number,
+  barres: readonly BarreSegment[],
+): boolean {
+  return barres.some(
+    (b) =>
+      b.fret === fret &&
+      stringIndex >= b.stringMin &&
+      stringIndex <= b.stringMax,
+  )
+}
+
+/** Standard side dots: 3, 5, 7, 9; double dots at 12, 24, … (repeats every octave). */
+function fretInlayKind(absoluteFret: number): 'single' | 'double' | null {
+  const pos = absoluteFret % 12
+  if (pos === 0) {
+    return 'double'
+  }
+  if (pos === 3 || pos === 5 || pos === 7 || pos === 9) {
+    return 'single'
+  }
+  return null
+}
 
 /** Standard tuning: index 0 = low E (6th) … 5 = high E (1st) */
 const OPEN_STRING_NAMES = ['E', 'A', 'D', 'G', 'B', 'E'] as const
 
 export type FretboardScalePattern = {
   name: string
-  /** 0 = low E … 5 = high E */
+  /** 0 = low E … 5 = high E; fret 0 = open string */
   positions: readonly { stringIndex: number; fret: number }[]
 }
 
@@ -86,6 +155,16 @@ function layoutGeometry(
   const dots: { cx: number; cy: number; key: string }[] = []
   const fingerLabels: { cx: number; cy: number; text: string; key: string }[] =
     []
+  const barres: {
+    x: number
+    y: number
+    width: number
+    height: number
+    rx: number
+    key: string
+  }[] = []
+
+  const dotR = Math.min(cellW, innerH / (STRINGS - 1)) * 0.34
 
   const markers: {
     x: number
@@ -97,24 +176,37 @@ function layoutGeometry(
   if (scalePattern != null && scalePattern.positions.length > 0) {
     scalePattern.positions.forEach((p) => {
       const { stringIndex, fret } = p
-      if (stringIndex < 0 || stringIndex >= STRINGS || fret < 1) {
+      if (stringIndex < 0 || stringIndex >= STRINGS || fret < 0) {
         return
       }
-      const col = fret - startFret
-      if (col < 0 || col >= fretCount) {
-        return
+      let cx: number
+      if (fret === 0) {
+        if (startFret > 1) {
+          return
+        }
+        cx = openMarkerX
+      } else {
+        const col = fret - startFret
+        if (col < 0 || col >= fretCount) {
+          return
+        }
+        cx = gridLeft + (col + 0.5) * cellW
       }
-      const cx = gridLeft + (col + 0.5) * cellW
       const cy = yForString(stringIndex)
       dots.push({ cx, cy, key: `scale-s${stringIndex}-f${fret}` })
     })
   } else if (fingering) {
+    const barreSegs = barreSegments(fingering)
+
     fingering.strings.forEach((state, stringIndex) => {
       if (typeof state !== 'number' || state < 1) {
         return
       }
       const col = state - startFret
       if (col < 0 || col >= fretCount) {
+        return
+      }
+      if (isOnBarre(stringIndex, state, barreSegs)) {
         return
       }
       const cx = gridLeft + (col + 0.5) * cellW
@@ -134,6 +226,33 @@ function layoutGeometry(
       }
     })
 
+    const barWidth = dotR * 2
+    for (const seg of barreSegs) {
+      const col = seg.fret - startFret
+      if (col < 0 || col >= fretCount) {
+        continue
+      }
+      const cx = gridLeft + (col + 0.5) * cellW
+      const yTop = yForString(seg.stringMax) - dotR
+      const yBottom = yForString(seg.stringMin) + dotR
+      barres.push({
+        x: cx - barWidth / 2,
+        y: yTop,
+        width: barWidth,
+        height: yBottom - yTop,
+        rx: barWidth / 2,
+        key: seg.key,
+      })
+      if (!displayNotes && fingering.fingers != null) {
+        fingerLabels.push({
+          cx,
+          cy: (yTop + yBottom) / 2,
+          text: '1',
+          key: `finger-${seg.key}`,
+        })
+      }
+    }
+
     fingering.strings.forEach((state, stringIndex) => {
       const y = yForString(stringIndex)
       if (state === 'x') {
@@ -150,20 +269,36 @@ function layoutGeometry(
     n: startFret + i,
   }))
 
-  const dotR = Math.min(cellW, innerH / (STRINGS - 1)) * 0.34
-
   const fretWireXs = Array.from({ length: fretCount }, (_, j) => gridLeft + (j + 1) * cellW)
 
   const inlayR = 3.15
   const inlayCy = topPad + innerH / 2
+  const inlayCyTop = topPad + innerH * 0.33
+  const inlayCyBottom = topPad + innerH * 0.67
   const fretInlays: { cx: number; cy: number; key: string }[] = []
   for (let col = 0; col < fretCount; col++) {
     const absoluteFret = startFret + col
-    if (SIDE_INLAY_FRETS.has(absoluteFret)) {
+    const kind = fretInlayKind(absoluteFret)
+    if (kind == null) {
+      continue
+    }
+    const cx = gridLeft + (col + 0.5) * cellW
+    if (kind === 'single') {
       fretInlays.push({
-        cx: gridLeft + (col + 0.5) * cellW,
+        cx,
         cy: inlayCy,
         key: `inlay-fret-${absoluteFret}`,
+      })
+    } else {
+      fretInlays.push({
+        cx,
+        cy: inlayCyTop,
+        key: `inlay-fret-${absoluteFret}-top`,
+      })
+      fretInlays.push({
+        cx,
+        cy: inlayCyBottom,
+        key: `inlay-fret-${absoluteFret}-bottom`,
       })
     }
   }
@@ -197,6 +332,7 @@ function layoutGeometry(
     boardW,
     dots,
     fingerLabels,
+    barres,
     markers,
     openNoteLabels,
     fretCellNotes,
@@ -357,6 +493,18 @@ export function Fretboard({
             </text>
           ),
         )}
+
+        {geo.barres.map((b) => (
+          <rect
+            key={b.key}
+            x={b.x}
+            y={b.y}
+            width={b.width}
+            height={b.height}
+            rx={b.rx}
+            className={styles.barre}
+          />
+        ))}
 
         {geo.dots.map((d) => (
           <circle

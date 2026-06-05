@@ -1,121 +1,86 @@
-/**
- * Five minor-pentatonic “boxes” in standard tuning, keyed to A minor pentatonic
- * (root on the 6th string at the 5th fret). Movable to other keys by shifting
- * every fret number equally.
- */
-export type PentatonicShapeId = 1 | 2 | 3 | 4 | 5
+import { OPEN_STRING_PITCH_CLASS } from './tuning'
+
+/** Relative minor / major pairs — same five notes on the fretboard */
+export type PentatonicKeyId = 'Am/C' | 'Em/G' | 'Dm/F' | 'Bm/D' | 'Gm/A#'
+
+export type PentatonicKeyDef = {
+  label: PentatonicKeyId
+  name: string
+  pitchClasses: readonly number[]
+}
+
+export const PENTATONIC_KEYS: Record<PentatonicKeyId, PentatonicKeyDef> = {
+  'Am/C': {
+    label: 'Am/C',
+    name: 'A minor / C major pentatonic',
+    pitchClasses: [0, 2, 4, 7, 9],
+  },
+  'Em/G': {
+    label: 'Em/G',
+    name: 'E minor / G major pentatonic',
+    pitchClasses: [2, 4, 7, 9, 11],
+  },
+  'Dm/F': {
+    label: 'Dm/F',
+    name: 'D minor / F major pentatonic',
+    pitchClasses: [0, 2, 5, 7, 9],
+  },
+  'Bm/D': {
+    label: 'Bm/D',
+    name: 'B minor / D major pentatonic',
+    pitchClasses: [2, 4, 6, 9, 11],
+  },
+  'Gm/A#': {
+    label: 'Gm/A#',
+    name: 'G minor / A# major pentatonic',
+    pitchClasses: [0, 2, 5, 7, 10],
+  },
+}
+
+export const PENTATONIC_KEY_IDS = [
+  'Am/C',
+  'Em/G',
+  'Dm/F',
+  'Bm/D',
+  'Gm/A#',
+] as const satisfies readonly PentatonicKeyId[]
 
 export type PentatonicPosition = {
   /** 0 = low E … 5 = high E */
   stringIndex: number
+  /** 0 = open string */
   fret: number
 }
 
-export type PentatonicShapeDef = {
-  name: string
-  /** CAGED-style letter shown on the diagram control (minor pentatonic “box”). */
-  shapeKey: string
-  /** Left edge of the diagram so the box fits in a small fret window. */
-  startFret: number
-  positions: readonly PentatonicPosition[]
+const STRINGS = 6
+
+/** All scale tones from the open string through `fretCount` (inclusive). */
+export function pentatonicPositionsInRange(
+  pitchClasses: readonly number[],
+  fretCount: number,
+): PentatonicPosition[] {
+  const pcs = new Set(pitchClasses)
+  const positions: PentatonicPosition[] = []
+
+  for (let stringIndex = 0; stringIndex < STRINGS; stringIndex++) {
+    for (let fret = 0; fret <= fretCount; fret++) {
+      const pc = (OPEN_STRING_PITCH_CLASS[stringIndex]! + fret) % 12
+      if (pcs.has(pc)) {
+        positions.push({ stringIndex, fret })
+      }
+    }
+  }
+
+  return positions
 }
 
-export const PENTATONIC_SHAPES: Record<PentatonicShapeId, PentatonicShapeDef> = {
-  1: {
-    name: 'Minor pentatonic — G shape',
-    shapeKey: 'G',
-    startFret: 5,
-    positions: [
-      { stringIndex: 0, fret: 5 },
-      { stringIndex: 0, fret: 8 },
-      { stringIndex: 1, fret: 5 },
-      { stringIndex: 1, fret: 7 },
-      { stringIndex: 2, fret: 5 },
-      { stringIndex: 2, fret: 7 },
-      { stringIndex: 3, fret: 5 },
-      { stringIndex: 3, fret: 7 },
-      { stringIndex: 4, fret: 5 },
-      { stringIndex: 4, fret: 8 },
-      { stringIndex: 5, fret: 5 },
-      { stringIndex: 5, fret: 8 },
-    ],
-  },
-  2: {
-    name: 'Minor pentatonic — E shape',
-    shapeKey: 'E',
-    startFret: 7,
-    positions: [
-      { stringIndex: 0, fret: 8 },
-      { stringIndex: 0, fret: 10 },
-      { stringIndex: 1, fret: 7 },
-      { stringIndex: 1, fret: 10 },
-      { stringIndex: 2, fret: 7 },
-      { stringIndex: 2, fret: 9 },
-      { stringIndex: 3, fret: 7 },
-      { stringIndex: 3, fret: 9 },
-      { stringIndex: 4, fret: 8 },
-      { stringIndex: 4, fret: 10 },
-      { stringIndex: 5, fret: 8 },
-      { stringIndex: 5, fret: 10 },
-    ],
-  },
-  3: {
-    name: 'Minor pentatonic — D shape',
-    shapeKey: 'D',
-    startFret: 9,
-    positions: [
-      { stringIndex: 0, fret: 10 },
-      { stringIndex: 0, fret: 12 },
-      { stringIndex: 1, fret: 10 },
-      { stringIndex: 1, fret: 12 },
-      { stringIndex: 2, fret: 9 },
-      { stringIndex: 2, fret: 12 },
-      { stringIndex: 3, fret: 9 },
-      { stringIndex: 3, fret: 12 },
-      { stringIndex: 4, fret: 10 },
-      { stringIndex: 4, fret: 12 },
-      { stringIndex: 5, fret: 10 },
-      { stringIndex: 5, fret: 12 },
-    ],
-  },
-  4: {
-    name: 'Minor pentatonic — C shape',
-    shapeKey: 'C',
-    startFret: 12,
-    positions: [
-      { stringIndex: 0, fret: 12 },
-      { stringIndex: 0, fret: 15 },
-      { stringIndex: 1, fret: 12 },
-      { stringIndex: 1, fret: 14 },
-      { stringIndex: 2, fret: 12 },
-      { stringIndex: 2, fret: 14 },
-      { stringIndex: 3, fret: 12 },
-      { stringIndex: 3, fret: 14 },
-      { stringIndex: 4, fret: 12 },
-      { stringIndex: 4, fret: 15 },
-      { stringIndex: 5, fret: 12 },
-      { stringIndex: 5, fret: 15 },
-    ],
-  },
-  5: {
-    name: 'Minor pentatonic — A shape',
-    shapeKey: 'A',
-    startFret: 1,
-    positions: [
-      { stringIndex: 0, fret: 3 },
-      { stringIndex: 0, fret: 5 },
-      { stringIndex: 1, fret: 3 },
-      { stringIndex: 1, fret: 5 },
-      { stringIndex: 2, fret: 2 },
-      { stringIndex: 2, fret: 5 },
-      { stringIndex: 3, fret: 2 },
-      { stringIndex: 3, fret: 5 },
-      { stringIndex: 4, fret: 3 },
-      { stringIndex: 4, fret: 5 },
-      { stringIndex: 5, fret: 3 },
-      { stringIndex: 5, fret: 5 },
-    ],
-  },
+export function pentatonicPatternForWindow(
+  keyId: PentatonicKeyId,
+  fretCount: number,
+): { name: string; positions: PentatonicPosition[] } {
+  const key = PENTATONIC_KEYS[keyId]
+  return {
+    name: key.name,
+    positions: pentatonicPositionsInRange(key.pitchClasses, fretCount),
+  }
 }
-
-export const PENTATONIC_SHAPE_IDS = [5, 1, 2, 3, 4] as const satisfies readonly PentatonicShapeId[]
