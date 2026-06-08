@@ -32,6 +32,13 @@ export {
   type KeyDef,
 } from './keys'
 export {
+  PROGRESSIONS,
+  PROGRESSION_IDS,
+  chordsForProgression,
+  type ProgressionId,
+  type ProgressionDef,
+} from './progressions'
+export {
   NOTE_NAMES_SHARP,
   OPEN_STRING_PITCH_CLASS,
   noteAtFret,

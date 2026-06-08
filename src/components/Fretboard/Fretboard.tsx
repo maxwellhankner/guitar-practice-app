@@ -261,6 +261,15 @@ function layoutGeometry(
         markers.push({ x: openMarkerX, y, kind: 'open', key: `o${stringIndex}` })
       }
     })
+  } else {
+    for (let stringIndex = 0; stringIndex < STRINGS; stringIndex++) {
+      markers.push({
+        x: openMarkerX,
+        y: yForString(stringIndex),
+        kind: 'open',
+        key: `o${stringIndex}`,
+      })
+    }
   }
 
   const fretLabels = Array.from({ length: fretCount }, (_, i) => ({
@@ -380,7 +389,7 @@ export function Fretboard({
     scalePattern != null && scalePattern.positions.length > 0
       ? scalePattern.name
       : resolved == null
-        ? 'No chord'
+        ? 'Open strings'
         : (resolved.name ??
           (typeof chord === 'string' ? chord : 'Custom chord'))
 

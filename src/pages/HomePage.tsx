@@ -5,16 +5,20 @@ import {
   CHORD_MINOR_IDS,
   Fretboard,
   chordsInKeyOrder,
+  chordsForProgression,
   isChordInKey,
   chordRomanNumeral,
   KEY_DEFS,
   KEY_MAJOR_IDS,
   KEY_MINOR_IDS,
+  PROGRESSIONS,
+  PROGRESSION_IDS,
   PENTATONIC_KEYS,
   PENTATONIC_KEY_IDS,
   pentatonicPatternForWindow,
   type ChordPresetId,
   type KeyId,
+  type ProgressionId,
   type PentatonicKeyId,
 } from '../components/Fretboard'
 
@@ -33,6 +37,14 @@ export function HomePage() {
   })
   const [displayNotes, setDisplayNotes] = useState(true)
   const [selectedKey, setSelectedKey] = useState<KeyId | null>(null)
+  const [selectedProgression, setSelectedProgression] =
+    useState<ProgressionId | null>(null)
+
+  useEffect(() => {
+    if (selectedKey == null) {
+      setSelectedProgression(null)
+    }
+  }, [selectedKey])
 
   useEffect(() => {
     if (
@@ -45,20 +57,34 @@ export function HomePage() {
     setSelection(null)
   }, [selectedKey, selection])
 
+  const visibleChordIds = useMemo(() => {
+    if (selectedKey == null) {
+      return [...CHORD_MAJOR_IDS, ...CHORD_MINOR_IDS]
+    }
+    if (selectedProgression != null) {
+      return chordsForProgression(selectedKey, selectedProgression)
+    }
+    return chordsInKeyOrder(selectedKey)
+  }, [selectedKey, selectedProgression])
+
+  useEffect(() => {
+    if (
+      selectedKey == null ||
+      selectedProgression == null ||
+      selection?.kind !== 'chord' ||
+      visibleChordIds.includes(selection.id)
+    ) {
+      return
+    }
+    setSelection(null)
+  }, [selectedKey, selectedProgression, selection, visibleChordIds])
+
   const scalePattern = useMemo(() => {
     if (selection?.kind !== 'pentatonic') {
       return null
     }
     return pentatonicPatternForWindow(selection.key, fretCount)
   }, [selection, fretCount])
-
-  const visibleChordIds = useMemo(
-    () =>
-      selectedKey != null
-        ? chordsInKeyOrder(selectedKey)
-        : [...CHORD_MAJOR_IDS, ...CHORD_MINOR_IDS],
-    [selectedKey],
-  )
 
   return (
     <main className="app-page">
@@ -71,33 +97,76 @@ export function HomePage() {
             Guitar diagram
           </h1>
           <div className="diagram-controls">
-            <div className="diagram-field">
-              <p className="diagram-label" id={`${baseId}-frets-label`}>
-                Frets showing
-              </p>
-              <div
-                className="diagram-chord-grid diagram-fret-grid"
-                role="group"
-                aria-labelledby={`${baseId}-frets-label`}
-              >
-                {FRET_COUNT_OPTIONS.map((n) => {
-                  const selected = fretCount === n
-                  return (
+            <div className="diagram-field diagram-field--notes-frets">
+              <div className="diagram-notes-frets">
+                <div className="diagram-notes-frets__notes">
+                  <p className="diagram-label" id={`${baseId}-notes-label`}>
+                    Notes
+                  </p>
+                  <div
+                    className="diagram-notes-toggle"
+                    role="group"
+                    aria-labelledby={`${baseId}-notes-label`}
+                  >
                     <button
-                      key={n}
                       type="button"
                       className={
-                        selected
+                        displayNotes
                           ? 'diagram-chord-btn diagram-chord-btn--selected'
                           : 'diagram-chord-btn'
                       }
-                      aria-pressed={selected}
-                      onClick={() => setFretCount(n)}
+                      aria-pressed={displayNotes}
+                      onClick={() => setDisplayNotes(true)}
                     >
-                      {n}
+                      On
                     </button>
-                  )
-                })}
+                    <button
+                      type="button"
+                      className={
+                        !displayNotes
+                          ? 'diagram-chord-btn diagram-chord-btn--selected'
+                          : 'diagram-chord-btn'
+                      }
+                      aria-pressed={!displayNotes}
+                      onClick={() => setDisplayNotes(false)}
+                    >
+                      Off
+                    </button>
+                  </div>
+                </div>
+                <div
+                  className="diagram-notes-frets__divider"
+                  aria-hidden
+                />
+                <div className="diagram-notes-frets__frets">
+                  <p className="diagram-label" id={`${baseId}-frets-label`}>
+                    Frets
+                  </p>
+                  <div
+                    className="diagram-chord-grid diagram-fret-grid"
+                    role="group"
+                    aria-labelledby={`${baseId}-frets-label`}
+                  >
+                    {FRET_COUNT_OPTIONS.map((n) => {
+                      const selected = fretCount === n
+                      return (
+                        <button
+                          key={n}
+                          type="button"
+                          className={
+                            selected
+                              ? 'diagram-chord-btn diagram-chord-btn--selected'
+                              : 'diagram-chord-btn'
+                          }
+                          aria-pressed={selected}
+                          onClick={() => setFretCount(n)}
+                        >
+                          {n}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -126,6 +195,48 @@ export function HomePage() {
                       title={def.name}
                       onClick={() =>
                         setSelectedKey((cur) => (cur === keyId ? null : keyId))
+                      }
+                    >
+                      {def.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            <div className="diagram-field">
+              <p className="diagram-label" id={`${baseId}-progression-label`}>
+                Progression
+              </p>
+              <div
+                className="diagram-chord-grid diagram-progression-grid"
+                role="group"
+                aria-labelledby={`${baseId}-progression-label`}
+              >
+                {PROGRESSION_IDS.map((progressionId) => {
+                  const def = PROGRESSIONS[progressionId]
+                  const selected = selectedProgression === progressionId
+                  const disabled = selectedKey == null
+                  return (
+                    <button
+                      key={progressionId}
+                      type="button"
+                      className={
+                        selected
+                          ? 'diagram-chord-btn diagram-chord-btn--selected'
+                          : 'diagram-chord-btn'
+                      }
+                      aria-pressed={selected}
+                      disabled={disabled}
+                      title={
+                        disabled
+                          ? 'Select a key first'
+                          : `${def.label} in ${KEY_DEFS[selectedKey!].name}`
+                      }
+                      onClick={() =>
+                        setSelectedProgression((cur) =>
+                          cur === progressionId ? null : progressionId,
+                        )
                       }
                     >
                       {def.label}
@@ -266,48 +377,12 @@ export function HomePage() {
                 })}
               </div>
             </div>
-
-            <div className="diagram-field">
-              <p className="diagram-label" id={`${baseId}-notes-label`}>
-                Display notes
-              </p>
-              <div
-                className="diagram-chord-grid"
-                role="group"
-                aria-labelledby={`${baseId}-notes-label`}
-              >
-                <button
-                  type="button"
-                  className={
-                    displayNotes
-                      ? 'diagram-chord-btn diagram-chord-btn--selected'
-                      : 'diagram-chord-btn'
-                  }
-                  aria-pressed={displayNotes}
-                  onClick={() => setDisplayNotes(true)}
-                >
-                  On
-                </button>
-                <button
-                  type="button"
-                  className={
-                    !displayNotes
-                      ? 'diagram-chord-btn diagram-chord-btn--selected'
-                      : 'diagram-chord-btn'
-                  }
-                  aria-pressed={!displayNotes}
-                  onClick={() => setDisplayNotes(false)}
-                >
-                  Off
-                </button>
-              </div>
-            </div>
           </div>
         </div>
       </section>
 
       <section className="app-page__diagram" aria-label="Fretboard preview">
-        <div className="app-page__inner">
+        <div className="app-page__diagram-stage">
           <Fretboard
             chord={selection?.kind === 'chord' ? selection.id : null}
             scalePattern={scalePattern}

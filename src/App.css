@@ -6,7 +6,7 @@
 .app-page {
   height: 100%;
   display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-rows: minmax(0, 1fr) 35dvh;
   overflow: hidden;
 }
 
@@ -26,8 +26,26 @@
 
 .app-page__diagram {
   min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 1rem 1.5rem 1.25rem;
   background: var(--card-bg);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.app-page__diagram::-webkit-scrollbar {
+  display: none;
+}
+
+.app-page__diagram-stage {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .app-page__inner {
@@ -56,6 +74,45 @@
   gap: 0.3rem;
 }
 
+.diagram-notes-frets {
+  display: flex;
+  align-items: stretch;
+  gap: 0.75rem;
+}
+
+.diagram-notes-frets__divider {
+  width: 1px;
+  align-self: stretch;
+  background: var(--card-border);
+  flex-shrink: 0;
+}
+
+.diagram-notes-frets__notes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  flex-shrink: 0;
+}
+
+.diagram-notes-toggle {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.diagram-notes-toggle .diagram-chord-btn {
+  width: 3.25rem;
+  min-width: 3.25rem;
+}
+
+.diagram-notes-frets__frets {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  flex: 1;
+  min-width: 0;
+}
+
 .diagram-label {
   margin: 0;
   font-size: 0.75rem;
@@ -81,6 +138,17 @@
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 0.375rem;
+}
+
+.diagram-progression-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 0.375rem;
+}
+
+.diagram-progression-grid .diagram-chord-btn {
+  font-size: 0.6875rem;
+  padding-inline: 0.125rem;
 }
 
 .diagram-chord-select-grid {
@@ -126,7 +194,9 @@
 }
 
 .diagram-fret-grid .diagram-chord-btn,
+.diagram-notes-toggle .diagram-chord-btn,
 .diagram-key-select-grid .diagram-chord-btn,
+.diagram-progression-grid .diagram-chord-btn,
 .diagram-chord-in-key .diagram-chord-btn,
 .diagram-chord-select-grid .diagram-chord-btn {
   width: 100%;
