@@ -6,10 +6,12 @@
     "capo",
     "capo's",
     "diatonic",
-    "fretboard",
+    "hexatonic",
     "fretboards",
     "metronome",
-    "pentatonic",
+    "playability",
+    "playable",
+    "unplayable",
     "Phrygian",
     "voicings"
   ]

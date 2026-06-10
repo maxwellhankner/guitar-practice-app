@@ -1,14 +1,16 @@
-import { OPEN_STRING_PITCH_CLASS } from './tuning'
+import { scalePositionsInRange } from './scales'
 
-/** Relative minor / major pairs — same five notes on the fretboard */
+/** @deprecated Use KeyId + scalePatternForKey instead. */
 export type PentatonicKeyId = 'Am/C' | 'Em/G' | 'Dm/F' | 'Bm/D' | 'Gm/A#'
 
+/** @deprecated Use KeyId + scalePatternForKey instead. */
 export type PentatonicKeyDef = {
   label: PentatonicKeyId
   name: string
   pitchClasses: readonly number[]
 }
 
+/** @deprecated Use KeyId + scalePatternForKey instead. */
 export const PENTATONIC_KEYS: Record<PentatonicKeyId, PentatonicKeyDef> = {
   'Am/C': {
     label: 'Am/C',
@@ -37,6 +39,7 @@ export const PENTATONIC_KEYS: Record<PentatonicKeyId, PentatonicKeyDef> = {
   },
 }
 
+/** @deprecated Use KeyId + scalePatternForKey instead. */
 export const PENTATONIC_KEY_IDS = [
   'Am/C',
   'Em/G',
@@ -45,35 +48,16 @@ export const PENTATONIC_KEY_IDS = [
   'Gm/A#',
 ] as const satisfies readonly PentatonicKeyId[]
 
+/** @deprecated Use ScalePosition from ./scales instead. */
 export type PentatonicPosition = {
-  /** 0 = low E … 5 = high E */
   stringIndex: number
-  /** 0 = open string */
   fret: number
 }
 
-const STRINGS = 6
+/** @deprecated Use scalePositionsInRange instead. */
+export const pentatonicPositionsInRange = scalePositionsInRange
 
-/** All scale tones from the open string through `fretCount` (inclusive). */
-export function pentatonicPositionsInRange(
-  pitchClasses: readonly number[],
-  fretCount: number,
-): PentatonicPosition[] {
-  const pcs = new Set(pitchClasses)
-  const positions: PentatonicPosition[] = []
-
-  for (let stringIndex = 0; stringIndex < STRINGS; stringIndex++) {
-    for (let fret = 0; fret <= fretCount; fret++) {
-      const pc = (OPEN_STRING_PITCH_CLASS[stringIndex]! + fret) % 12
-      if (pcs.has(pc)) {
-        positions.push({ stringIndex, fret })
-      }
-    }
-  }
-
-  return positions
-}
-
+/** @deprecated Use scalePatternForKey instead. */
 export function pentatonicPatternForWindow(
   keyId: PentatonicKeyId,
   fretCount: number,
@@ -81,6 +65,6 @@ export function pentatonicPatternForWindow(
   const key = PENTATONIC_KEYS[keyId]
   return {
     name: key.name,
-    positions: pentatonicPositionsInRange(key.pitchClasses, fretCount),
+    positions: scalePositionsInRange(key.pitchClasses, fretCount),
   }
 }

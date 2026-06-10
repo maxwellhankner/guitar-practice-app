@@ -96,7 +96,7 @@ type FretboardProps = {
   /** When `null`, only the blank fretboard is shown (no fingering dots or O/X). */
   chord: ChordFingering | ChordPresetId | null
   /**
-   * When set, draws scale dots and skips chord dots / O / X (use mutually exclusive with `chord`).
+   * When set, draws faint scale dots behind chord fingering (layers with `chord`).
    */
   scalePattern?: FretboardScalePattern | null
   className?: string
@@ -153,6 +153,7 @@ function layoutGeometry(
   }))
 
   const dots: { cx: number; cy: number; key: string }[] = []
+  const scaleDots: { cx: number; cy: number; key: string }[] = []
   const fingerLabels: { cx: number; cy: number; text: string; key: string }[] =
     []
   const barres: {
@@ -193,9 +194,11 @@ function layoutGeometry(
         cx = gridLeft + (col + 0.5) * cellW
       }
       const cy = yForString(stringIndex)
-      dots.push({ cx, cy, key: `scale-s${stringIndex}-f${fret}` })
+      scaleDots.push({ cx, cy, key: `scale-s${stringIndex}-f${fret}` })
     })
-  } else if (fingering) {
+  }
+
+  if (fingering) {
     const barreSegs = barreSegments(fingering)
 
     fingering.strings.forEach((state, stringIndex) => {
@@ -261,7 +264,7 @@ function layoutGeometry(
         markers.push({ x: openMarkerX, y, kind: 'open', key: `o${stringIndex}` })
       }
     })
-  } else {
+  } else if (scalePattern == null || scalePattern.positions.length === 0) {
     for (let stringIndex = 0; stringIndex < STRINGS; stringIndex++) {
       markers.push({
         x: openMarkerX,
@@ -340,6 +343,7 @@ function layoutGeometry(
     boardX,
     boardW,
     dots,
+    scaleDots,
     fingerLabels,
     barres,
     markers,
@@ -363,13 +367,10 @@ export function Fretboard({
   scalePattern = null,
   className,
 }: FretboardProps) {
-  const resolved =
-    scalePattern != null && scalePattern.positions.length > 0
-      ? null
-      : chord == null
-        ? null
-        : resolveChord(chord)
+  const resolved = chord == null ? null : resolveChord(chord)
   const startFret = Math.max(1, startFretProp ?? 1)
+  const hasScale =
+    scalePattern != null && scalePattern.positions.length > 0
 
   const geo = useMemo(
     () =>
@@ -378,20 +379,24 @@ export function Fretboard({
         startFret,
         resolved,
         displayNotes,
-        scalePattern != null && scalePattern.positions.length > 0
-          ? scalePattern
-          : null,
+        hasScale ? scalePattern : null,
       ),
-    [fretCount, startFret, resolved, displayNotes, scalePattern],
+    [fretCount, startFret, resolved, displayNotes, scalePattern, hasScale],
   )
 
-  const label =
-    scalePattern != null && scalePattern.positions.length > 0
-      ? scalePattern.name
-      : resolved == null
+  const label = (() => {
+    const chordLabel =
+      resolved == null
         ? 'Open strings'
         : (resolved.name ??
           (typeof chord === 'string' ? chord : 'Custom chord'))
+    if (hasScale && scalePattern != null) {
+      return resolved != null
+        ? `${chordLabel} · ${scalePattern.name}`
+        : scalePattern.name
+    }
+    return chordLabel
+  })()
 
   const ariaLabel = `Fretboard diagram, ${label}`
 
@@ -477,6 +482,16 @@ export function Fretboard({
           >
             {n.text}
           </text>
+        ))}
+
+        {geo.scaleDots.map((d) => (
+          <circle
+            key={d.key}
+            cx={d.cx}
+            cy={d.cy}
+            r={geo.dotR}
+            className={styles.scaleDot}
+          />
         ))}
 
         {geo.markers.map((m) =>

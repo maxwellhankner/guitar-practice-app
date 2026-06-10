@@ -240,3 +240,46 @@ export function chordLabelInKey(
   const roman = chordRomanNumeral(keyId, chordId)
   return roman != null ? `${chordId} (${roman})` : chordId
 }
+
+const MAJOR_PENTATONIC_STEPS = [0, 2, 4, 7, 9] as const
+const MINOR_PENTATONIC_STEPS = [0, 3, 5, 7, 10] as const
+/** Full major / natural minor with one diatonic degree omitted (6 notes). */
+const MAJOR_HEXATONIC_STEPS = [0, 2, 4, 7, 9, 11] as const
+const MINOR_HEXATONIC_STEPS = [0, 3, 5, 7, 8, 10] as const
+
+export type ScaleVariant = 'full' | 'pentatonic' | 'hexatonic'
+
+/** Pitch classes (0–11) for a diatonic scale variant in a key. */
+export function scalePitchClassesForKey(
+  keyId: KeyId,
+  variant: ScaleVariant,
+): readonly number[] {
+  const root = KEY_ROOT_PC[keyId]
+  const isMinorKey = keyId.endsWith('m')
+  const steps = (() => {
+    if (variant === 'full') {
+      return isMinorKey ? MINOR_SCALE_STEPS : MAJOR_SCALE_STEPS
+    }
+    if (variant === 'pentatonic') {
+      return isMinorKey ? MINOR_PENTATONIC_STEPS : MAJOR_PENTATONIC_STEPS
+    }
+    return isMinorKey ? MINOR_HEXATONIC_STEPS : MAJOR_HEXATONIC_STEPS
+  })()
+  return steps.map((step) => (root + step) % 12)
+}
+
+export function scaleNameForKey(
+  keyId: KeyId,
+  variant: ScaleVariant,
+): string {
+  const isMinorKey = keyId.endsWith('m')
+  if (variant === 'full') {
+    return isMinorKey ? `${keyId} natural minor` : `${keyId} major`
+  }
+  if (variant === 'pentatonic') {
+    return isMinorKey
+      ? `${keyId} minor pentatonic`
+      : `${keyId} major pentatonic`
+  }
+  return isMinorKey ? `${keyId} minor hexatonic` : `${keyId} major hexatonic`
+}

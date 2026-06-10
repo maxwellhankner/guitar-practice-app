@@ -9,6 +9,7 @@
   --fb-string: #6a6a6a;
   --fb-dot: #f4efe6;
   --fb-dot-stroke: var(--fb-nut);
+  --fb-scale-dot-stroke: #8a8480;
   --fb-marker: var(--heading, #14120f);
   --fb-fret-label: var(--muted, #5c574f);
   --fb-cell-note: rgb(212, 169, 74);
@@ -71,6 +72,12 @@
   stroke-width: 1.25;
 }
 
+.scaleDot {
+  fill: var(--fb-dot);
+  stroke: var(--fb-scale-dot-stroke);
+  stroke-width: 1.25;
+}
+
 .barre {
   fill: var(--fb-dot);
   stroke: var(--fb-dot-stroke);
@@ -126,6 +133,7 @@
     --fb-fret: #8a7f72;
     --fb-string: #565656;
     --fb-dot: #2c2824;
+    --fb-scale-dot-stroke: #7a756e;
     --fb-cell-note: rgb(212, 169, 74);
     --fb-position-bar: #e8e0d4;
     --fb-inlay: rgba(255, 245, 228, 0.42);

@@ -1,12 +1,15 @@
 export { Fretboard, type FretboardScalePattern } from './Fretboard'
 export {
-  PENTATONIC_KEYS,
-  PENTATONIC_KEY_IDS,
-  pentatonicPatternForWindow,
-  type PentatonicKeyId,
-  type PentatonicKeyDef,
-  type PentatonicPosition,
-} from './pentatonicShapes'
+  scalePatternForKey,
+  scalePositionsInRange,
+  type ScaleDisplayMode,
+  type ScalePosition,
+} from './scales'
+export {
+  scalePitchClassesForKey,
+  scaleNameForKey,
+  type ScaleVariant,
+} from './keys'
 export type {
   ChordFingering,
   FingerNumber,
@@ -38,6 +41,15 @@ export {
   type ProgressionId,
   type ProgressionDef,
 } from './progressions'
+export {
+  isChordPlayable,
+  allChordsPlayable,
+  unplayableChordsIn,
+  isProgressionPlayableInKey,
+  isKeyPlayable,
+  playableProgressionsInKey,
+  playableChordsInKey,
+} from './playability'
 export {
   NOTE_NAMES_SHARP,
   OPEN_STRING_PITCH_CLASS,
