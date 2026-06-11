@@ -2,7 +2,7 @@ import { type ChordPresetId } from './chords'
 import {
   KEY_MAJOR_IDS,
   KEY_MINOR_IDS,
-  chordsInKeyOrder,
+  chordIdForScaleDegree,
   type KeyId,
 } from './keys'
 
@@ -44,17 +44,27 @@ function chordForDegree(
   keyId: KeyId,
   degree: number,
 ): ChordPresetId {
-  const inKey = chordsInKeyOrder(keyId)
-  const chordId = inKey[degree - 1]
+  const chordId = chordIdForScaleDegree(keyId, degree)
   if (chordId == null) {
     throw new Error(`Key ${keyId}: no chord for degree ${degree}`)
   }
   return chordId
 }
 
+export function isProgressionResolvableInKey(
+  keyId: KeyId,
+  progressionId: ProgressionId,
+): boolean {
+  const { degrees } = PROGRESSIONS[progressionId]
+  return degrees.every((degree) => chordIdForScaleDegree(keyId, degree) != null)
+}
+
 function assertProgressions(): void {
   for (const keyId of ALL_KEY_IDS) {
     for (const progressionId of PROGRESSION_IDS) {
+      if (!isProgressionResolvableInKey(keyId, progressionId)) {
+        continue
+      }
       chordsForProgression(keyId, progressionId)
     }
   }

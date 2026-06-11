@@ -7,14 +7,16 @@ type ChordPlayabilityCellProps = {
   chordId: ChordPresetId
   /** Stored in the database — user can play this chord. */
   playable: boolean
-  /** Whether the chord can be selected on the diagram right now. */
-  selectable: boolean
   selected: boolean
   title?: string
   onSelect: () => void
   onPlayableChange: (playable: boolean) => void
   /** When false, no hover popup (e.g. KNOWN filtering is off). */
   showPlayabilityPopup: boolean
+  /** Majors / upper row: above; minors / lower row: below. */
+  popupPlacement?: 'above' | 'below'
+  /** Diminished triads — selectable for the diagram, excluded from KNOWN. */
+  diminished?: boolean
 }
 
 function LockIcon({ locked }: { locked: boolean }) {
@@ -59,12 +61,13 @@ function LockIcon({ locked }: { locked: boolean }) {
 export function ChordPlayabilityCell({
   chordId,
   playable,
-  selectable,
   selected,
   title,
   onSelect,
   onPlayableChange,
   showPlayabilityPopup,
+  popupPlacement = 'above',
+  diminished = false,
 }: ChordPlayabilityCellProps) {
   const popupId = `chord-play-${chordId}`
   const [popupVisible, setPopupVisible] = useState(false)
@@ -104,13 +107,20 @@ export function ChordPlayabilityCell({
       type="button"
       className={[
         'diagram-chord-btn',
-        selected ? 'diagram-chord-btn--selected' : '',
-        showPlayabilityPopup && !playable ? 'diagram-chord-btn--unplayable' : '',
+        selected && !diminished && (!showPlayabilityPopup || playable)
+          ? 'diagram-chord-btn--selected'
+          : '',
+        selected && (diminished || (showPlayabilityPopup && !playable))
+          ? 'diagram-chord-btn--selected-unplayable'
+          : '',
+        diminished && !selected ? 'diagram-chord-btn--dim' : '',
+        showPlayabilityPopup && !playable && !diminished
+          ? 'diagram-chord-btn--unplayable'
+          : '',
       ]
         .filter(Boolean)
         .join(' ')}
       aria-pressed={selected}
-      disabled={!selectable}
       title={title}
       onClick={(e) => {
         onSelect()
@@ -135,6 +145,9 @@ export function ChordPlayabilityCell({
       <div
         className={[
           'diagram-chord-playability',
+          popupPlacement === 'below'
+            ? 'diagram-chord-playability--below'
+            : 'diagram-chord-playability--above',
           popupVisible ? 'diagram-chord-playability--visible' : '',
         ]
           .filter(Boolean)

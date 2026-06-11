@@ -1,8 +1,9 @@
-import { type ChordPresetId } from './chords'
+import { isChordPracticeable, type ChordPresetId } from './chords'
 import { chordsInKeyOrder, type KeyId } from './keys'
 import {
   PROGRESSION_IDS,
   chordsForProgression,
+  isProgressionResolvableInKey,
   type ProgressionId,
 } from './progressions'
 
@@ -17,7 +18,9 @@ export function allChordsPlayable(
   chordIds: readonly ChordPresetId[],
   disabled: ReadonlySet<ChordPresetId>,
 ): boolean {
-  return chordIds.every((id) => isChordPlayable(id, disabled))
+  return chordIds
+    .filter((id) => isChordPracticeable(id))
+    .every((id) => isChordPlayable(id, disabled))
 }
 
 export function unplayableChordsIn(
@@ -32,6 +35,9 @@ export function isProgressionPlayableInKey(
   progressionId: ProgressionId,
   disabled: ReadonlySet<ChordPresetId>,
 ): boolean {
+  if (!isProgressionResolvableInKey(keyId, progressionId)) {
+    return false
+  }
   return allChordsPlayable(
     chordsForProgression(keyId, progressionId),
     disabled,

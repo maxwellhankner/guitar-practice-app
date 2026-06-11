@@ -1,20 +1,18 @@
-import { CHORD_PRESET_IDS, type ChordPresetId } from './chords'
+import {
+  CHORD_MAJOR_IDS,
+  CHORD_MINOR_IDS,
+  CHORD_PRESET_IDS,
+  parseChordPresetId,
+  triadPitchClasses,
+  type ChordPresetId,
+} from './chords'
+
+export const KEY_MAJOR_IDS = CHORD_MAJOR_IDS
+export const KEY_MINOR_IDS = CHORD_MINOR_IDS
 
 export type KeyId =
-  | 'C'
-  | 'D'
-  | 'E'
-  | 'F'
-  | 'G'
-  | 'A'
-  | 'B'
-  | 'Am'
-  | 'Bm'
-  | 'Cm'
-  | 'Dm'
-  | 'Em'
-  | 'Fm'
-  | 'Gm'
+  | (typeof KEY_MAJOR_IDS)[number]
+  | (typeof KEY_MINOR_IDS)[number]
 
 export type KeyDef = {
   label: KeyId
@@ -43,47 +41,19 @@ const MINOR_SCALE_STEPS = [0, 2, 3, 5, 7, 8, 10] as const
 const MAJOR_ROMAN = ['I', 'ii', 'iii', 'IV', 'V', 'vi', 'vii°'] as const
 const MINOR_ROMAN = ['i', 'ii°', 'III', 'iv', 'v', 'VI', 'VII'] as const
 
-const KEY_ROOT_PC: Record<KeyId, number> = {
-  C: 0,
-  D: 2,
-  E: 4,
-  F: 5,
-  G: 7,
-  A: 9,
-  B: 11,
-  Am: 9,
-  Bm: 11,
-  Cm: 0,
-  Dm: 2,
-  Em: 4,
-  Fm: 5,
-  Gm: 7,
-}
-
-function parseChordId(
-  chordId: ChordPresetId,
-): { rootPc: number; quality: 'major' | 'minor' } {
-  const isMinor = chordId.endsWith('m')
-  const rootName = isMinor ? chordId.slice(0, -1) : chordId
-  const rootPc = ROOT_PC[rootName]
-  if (rootPc == null) {
-    throw new Error(`Unknown chord root: ${rootName}`)
+function keyRootPc(keyId: KeyId): number {
+  const isMinor = keyId.endsWith('m')
+  const rootName = isMinor ? keyId.slice(0, -1) : keyId
+  const pc = ROOT_PC[rootName]
+  if (pc == null) {
+    throw new Error(`Unknown key root: ${rootName}`)
   }
-  return { rootPc, quality: isMinor ? 'minor' : 'major' }
-}
-
-/** Major: root + M3 + P5. Minor: root + m3 + P5. */
-function triadPitchClasses(
-  rootPc: number,
-  quality: 'major' | 'minor',
-): readonly number[] {
-  const third = quality === 'major' ? 4 : 3
-  return [rootPc, (rootPc + third) % 12, (rootPc + 7) % 12]
+  return pc
 }
 
 const CHORD_PITCH_CLASSES = Object.fromEntries(
   CHORD_PRESET_IDS.map((chordId) => {
-    const { rootPc, quality } = parseChordId(chordId)
+    const { rootPc, quality } = parseChordPresetId(chordId)
     return [chordId, triadPitchClasses(rootPc, quality)]
   }),
 ) as Record<ChordPresetId, readonly number[]>
@@ -102,40 +72,65 @@ function chordFitsScale(
   return CHORD_PITCH_CLASSES[chordId].every((pc) => scale.has(pc))
 }
 
-function diatonicChordsForKey(keyId: KeyId): ChordPresetId[] {
-  const rootPc = KEY_ROOT_PC[keyId]
-  const isMinor = keyId.endsWith('m')
-  const scale = scalePitchClasses(
-    rootPc,
-    isMinor ? MINOR_SCALE_STEPS : MAJOR_SCALE_STEPS,
-  )
-  return CHORD_PRESET_IDS.filter((chordId) => chordFitsScale(chordId, scale))
+export type DiatonicSlot = {
+  /** Scale degree 1–7 */
+  degree: number
+  roman: string
+  chordId: ChordPresetId | null
 }
 
-/** Diatonic chords in Roman-numeral order (I → vii° / i → VII); skips missing degrees. */
-export function chordsInKeyOrder(keyId: KeyId): ChordPresetId[] {
-  const keyRoot = KEY_ROOT_PC[keyId]
+function chordIdOnScaleDegree(
+  keyId: KeyId,
+  degree: number,
+): ChordPresetId | null {
+  if (degree < 1 || degree > 7) {
+    return null
+  }
+  const keyRoot = keyRootPc(keyId)
   const isMinorKey = keyId.endsWith('m')
   const steps = isMinorKey ? MINOR_SCALE_STEPS : MAJOR_SCALE_STEPS
   const scale = scalePitchClasses(
     keyRoot,
     isMinorKey ? MINOR_SCALE_STEPS : MAJOR_SCALE_STEPS,
   )
-  const result: ChordPresetId[] = []
-
-  for (let degree = 0; degree < 7; degree++) {
-    const degreePc = (keyRoot + steps[degree]!) % 12
-    const match = CHORD_PRESET_IDS.find(
+  const degreePc = (keyRoot + steps[degree - 1]!) % 12
+  return (
+    CHORD_PRESET_IDS.find(
       (chordId) =>
-        parseChordId(chordId).rootPc === degreePc &&
+        parseChordPresetId(chordId).rootPc === degreePc &&
         chordFitsScale(chordId, scale),
-    )
-    if (match != null) {
-      result.push(match)
-    }
-  }
+    ) ?? null
+  )
+}
 
-  return result
+/** All seven scale degrees with Roman labels; `chordId` is null when no preset matches (e.g. ii°). */
+export function diatonicSlotsInKey(keyId: KeyId): DiatonicSlot[] {
+  const isMinorKey = keyId.endsWith('m')
+  const numerals = isMinorKey ? MINOR_ROMAN : MAJOR_ROMAN
+
+  return Array.from({ length: 7 }, (_, index) => {
+    const degree = index + 1
+    return {
+      degree,
+      roman: numerals[index]!,
+      chordId: chordIdOnScaleDegree(keyId, degree),
+    }
+  })
+}
+
+/** Chord for a Roman scale degree (1 = tonic … 7 = leading tone). */
+export function chordIdForScaleDegree(
+  keyId: KeyId,
+  degree: number,
+): ChordPresetId | null {
+  return chordIdOnScaleDegree(keyId, degree)
+}
+
+/** Diatonic chords in Roman-numeral order (I → vii° / i → VII); omits missing degrees. */
+export function chordsInKeyOrder(keyId: KeyId): ChordPresetId[] {
+  return diatonicSlotsInKey(keyId)
+    .map((slot) => slot.chordId)
+    .filter((id): id is ChordPresetId => id != null)
 }
 
 function keyName(keyId: KeyId): string {
@@ -147,37 +142,19 @@ function keyName(keyId: KeyId): string {
 
 function assertKeyChordMaps(): void {
   for (const keyId of ALL_KEY_IDS) {
-    const computed = diatonicChordsForKey(keyId)
-    if (computed.length === 0) {
-      throw new Error(`Key ${keyId}: no diatonic chords matched`)
-    }
-    for (const chordId of computed) {
-      if (chordRomanNumeral(keyId, chordId) == null) {
-        throw new Error(`Key ${keyId}: no Roman numeral for ${chordId}`)
+    const slots = diatonicSlotsInKey(keyId)
+    for (const slot of slots) {
+      if (slot.chordId == null) {
+        throw new Error(`Key ${keyId}: no chord for degree ${slot.degree}`)
+      }
+      if (chordRomanNumeral(keyId, slot.chordId) !== slot.roman) {
+        throw new Error(
+          `Key ${keyId}: ${slot.chordId} expected ${slot.roman}`,
+        )
       }
     }
   }
 }
-
-export const KEY_MAJOR_IDS = [
-  'A',
-  'B',
-  'C',
-  'D',
-  'E',
-  'F',
-  'G',
-] as const satisfies readonly KeyId[]
-
-export const KEY_MINOR_IDS = [
-  'Am',
-  'Bm',
-  'Cm',
-  'Dm',
-  'Em',
-  'Fm',
-  'Gm',
-] as const satisfies readonly KeyId[]
 
 const ALL_KEY_IDS = [...KEY_MAJOR_IDS, ...KEY_MINOR_IDS] as const
 
@@ -207,7 +184,7 @@ export function chordRomanNumeral(
   keyId: KeyId,
   chordId: ChordPresetId,
 ): string | null {
-  const keyRoot = KEY_ROOT_PC[keyId]
+  const keyRoot = keyRootPc(keyId)
   const isMinorKey = keyId.endsWith('m')
   const scale = scalePitchClasses(
     keyRoot,
@@ -217,7 +194,7 @@ export function chordRomanNumeral(
     return null
   }
 
-  const { rootPc } = parseChordId(chordId)
+  const { rootPc } = parseChordPresetId(chordId)
   const steps = isMinorKey ? MINOR_SCALE_STEPS : MAJOR_SCALE_STEPS
   const numerals = isMinorKey ? MINOR_ROMAN : MAJOR_ROMAN
 
@@ -254,7 +231,7 @@ export function scalePitchClassesForKey(
   keyId: KeyId,
   variant: ScaleVariant,
 ): readonly number[] {
-  const root = KEY_ROOT_PC[keyId]
+  const root = keyRootPc(keyId)
   const isMinorKey = keyId.endsWith('m')
   const steps = (() => {
     if (variant === 'full') {

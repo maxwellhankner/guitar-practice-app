@@ -6,7 +6,26 @@ import {
 } from './keys'
 import { OPEN_STRING_PITCH_CLASS } from './tuning'
 
-export type ScaleDisplayMode = 'off' | 'pentatonic' | 'hexatonic' | 'full'
+export const SCALE_SELECTIONS = [
+  'pentatonic',
+  'hexatonic',
+  'full',
+] as const satisfies readonly ScaleVariant[]
+
+export type ScaleSelection = (typeof SCALE_SELECTIONS)[number] | null
+
+export function sanitizeScaleSelection(value: unknown): ScaleSelection {
+  if (value == null) {
+    return null
+  }
+  if (
+    typeof value === 'string' &&
+    (SCALE_SELECTIONS as readonly string[]).includes(value)
+  ) {
+    return value as ScaleSelection
+  }
+  return null
+}
 
 export type ScalePosition = {
   /** 0 = low E … 5 = high E */
@@ -39,7 +58,7 @@ export function scalePositionsInRange(
 
 export function scalePatternForKey(
   keyId: KeyId,
-  mode: Exclude<ScaleDisplayMode, 'off'>,
+  mode: Exclude<ScaleSelection, null>,
   fretCount: number,
 ): { name: string; positions: ScalePosition[] } {
   const variant: ScaleVariant = mode

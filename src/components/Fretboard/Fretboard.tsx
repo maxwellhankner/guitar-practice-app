@@ -93,13 +93,15 @@ type FretboardProps = {
   startFret?: number
   /** When true, show chromatic note names in each fret cell (standard tuning, sharp names). */
   displayNotes?: boolean
-  /** When `null`, only the blank fretboard is shown (no fingering dots or O/X). */
+  /** When `null`, only the blank fretboard is shown (no chord fingering dots). */
   chord: ChordFingering | ChordPresetId | null
   /**
    * When set, draws faint scale dots behind chord fingering (layers with `chord`).
    */
   scalePattern?: FretboardScalePattern | null
   className?: string
+  /** Shrink to fit a flex column (e.g. progression row). */
+  fitContainer?: boolean
 }
 
 function layoutGeometry(
@@ -109,14 +111,10 @@ function layoutGeometry(
   displayNotes: boolean,
   scalePattern: FretboardScalePattern | null,
 ) {
-  /** Far left: O / X; next: open-string names (E A D G B E) */
-  const openMarkerColW = 22
-  const noteColW = 16
-  const markerW = openMarkerColW + noteColW
-  const openMarkerX = openMarkerColW / 2
-  const noteLabelX = openMarkerColW + noteColW - 2
-  /** Start after O/X column so indicators stay clear; still run under open-string names. */
-  const stringStartX = openMarkerColW
+  /** Open-string note names + open/scale rings (merged column). */
+  const markerW = 24
+  const openNoteCenterX = markerW / 2
+  const stringStartX = markerW
   const leadIn = 12
   const gridLeft = markerW + leadIn
   const cellW = 40
@@ -147,7 +145,7 @@ function layoutGeometry(
 
   const openNoteLabels = Array.from({ length: STRINGS }, (_, stringIndex) => ({
     key: `note-${stringIndex}`,
-    x: noteLabelX,
+    x: openNoteCenterX,
     y: yForString(stringIndex),
     text: OPEN_STRING_NAMES[stringIndex]!,
   }))
@@ -165,37 +163,73 @@ function layoutGeometry(
     key: string
   }[] = []
 
-  const dotR = Math.min(cellW, innerH / (STRINGS - 1)) * 0.34
+  const dotR = Math.min(cellW, innerH / (STRINGS - 1)) * 0.38
 
-  const markers: {
-    x: number
-    y: number
-    kind: 'open' | 'mute'
+  const openStringRings: {
+    cx: number
+    cy: number
     key: string
+    variant: 'chord' | 'scale'
   }[] = []
+  const openStringMutes: { cx: number; cy: number; key: string }[] = []
 
   if (scalePattern != null && scalePattern.positions.length > 0) {
     scalePattern.positions.forEach((p) => {
       const { stringIndex, fret } = p
-      if (stringIndex < 0 || stringIndex >= STRINGS || fret < 0) {
+      if (stringIndex < 0 || stringIndex >= STRINGS || fret < 1) {
         return
       }
-      let cx: number
-      if (fret === 0) {
-        if (startFret > 1) {
-          return
-        }
-        cx = openMarkerX
-      } else {
-        const col = fret - startFret
-        if (col < 0 || col >= fretCount) {
-          return
-        }
-        cx = gridLeft + (col + 0.5) * cellW
+      const col = fret - startFret
+      if (col < 0 || col >= fretCount) {
+        return
       }
+      const cx = gridLeft + (col + 0.5) * cellW
       const cy = yForString(stringIndex)
       scaleDots.push({ cx, cy, key: `scale-s${stringIndex}-f${fret}` })
     })
+  }
+
+  const scaleOpenStrings = new Set<number>()
+  if (scalePattern != null) {
+    for (const p of scalePattern.positions) {
+      if (p.fret === 0 && p.stringIndex >= 0 && p.stringIndex < STRINGS) {
+        scaleOpenStrings.add(p.stringIndex)
+      }
+    }
+  }
+
+  for (let stringIndex = 0; stringIndex < STRINGS; stringIndex++) {
+    const state = fingering?.strings[stringIndex]
+    const cy = yForString(stringIndex)
+    const cx = openNoteCenterX
+    const chordOpen = state === 0
+    const chordMute = state === 'x'
+    const scaleOpen =
+      scalePattern != null && scaleOpenStrings.has(stringIndex)
+
+    if (scaleOpen) {
+      openStringRings.push({
+        cx,
+        cy,
+        key: `open-ring-scale-${stringIndex}`,
+        variant: 'scale',
+      })
+    }
+    if (chordOpen) {
+      openStringRings.push({
+        cx,
+        cy,
+        key: `open-ring-chord-${stringIndex}`,
+        variant: 'chord',
+      })
+    }
+    if (chordMute) {
+      openStringMutes.push({
+        cx,
+        cy,
+        key: `open-mute-${stringIndex}`,
+      })
+    }
   }
 
   if (fingering) {
@@ -256,23 +290,6 @@ function layoutGeometry(
       }
     }
 
-    fingering.strings.forEach((state, stringIndex) => {
-      const y = yForString(stringIndex)
-      if (state === 'x') {
-        markers.push({ x: openMarkerX, y, kind: 'mute', key: `m${stringIndex}` })
-      } else if (state === 0) {
-        markers.push({ x: openMarkerX, y, kind: 'open', key: `o${stringIndex}` })
-      }
-    })
-  } else if (scalePattern == null || scalePattern.positions.length === 0) {
-    for (let stringIndex = 0; stringIndex < STRINGS; stringIndex++) {
-      markers.push({
-        x: openMarkerX,
-        y: yForString(stringIndex),
-        kind: 'open',
-        key: `o${stringIndex}`,
-      })
-    }
   }
 
   const fretLabels = Array.from({ length: fretCount }, (_, i) => ({
@@ -331,6 +348,16 @@ function layoutGeometry(
     }
   }
 
+  const scrollMarkerY = vbH - 8
+  const openPositionLabel =
+    startFret > 1
+      ? { x: openNoteCenterX, y: scrollMarkerY, text: '0' as const }
+      : null
+  const nutScrollEllipsis =
+    startFret > 1
+      ? { x: gridLeft, y: scrollMarkerY, text: '...' as const }
+      : null
+
   return {
     vbW,
     vbH,
@@ -346,8 +373,11 @@ function layoutGeometry(
     scaleDots,
     fingerLabels,
     barres,
-    markers,
+    openStringRings,
+    openStringMutes,
     openNoteLabels,
+    openPositionLabel,
+    nutScrollEllipsis,
     fretCellNotes,
     fretLabels,
     fretWireXs,
@@ -366,6 +396,7 @@ export function Fretboard({
   chord,
   scalePattern = null,
   className,
+  fitContainer = false,
 }: FretboardProps) {
   const resolved = chord == null ? null : resolveChord(chord)
   const startFret = Math.max(1, startFretProp ?? 1)
@@ -402,7 +433,13 @@ export function Fretboard({
 
   return (
     <figure
-      className={[styles.wrap, className].filter(Boolean).join(' ')}
+      className={[
+        styles.wrap,
+        fitContainer ? styles.wrapFit : '',
+        className,
+      ]
+        .filter(Boolean)
+        .join(' ')}
       aria-label={ariaLabel}
     >
       <svg
@@ -420,23 +457,13 @@ export function Fretboard({
           className={styles.board}
         />
 
-        {geo.startFret === 1 ? (
-          <line
-            x1={geo.gridLeft}
-            y1={geo.topPad - 4}
-            x2={geo.gridLeft}
-            y2={geo.topPad + geo.innerH + 4}
-            className={styles.nut}
-          />
-        ) : (
-          <line
-            x1={geo.gridLeft}
-            y1={geo.topPad - 4}
-            x2={geo.gridLeft}
-            y2={geo.topPad + geo.innerH + 4}
-            className={styles.positionBar}
-          />
-        )}
+        <line
+          x1={geo.gridLeft}
+          y1={geo.topPad - 4}
+          x2={geo.gridLeft}
+          y2={geo.topPad + geo.innerH + 4}
+          className={geo.startFret === 1 ? styles.nut : styles.fretWire}
+        />
 
         {geo.fretWireXs.map((x, i) => (
           <line
@@ -472,6 +499,42 @@ export function Fretboard({
           />
         ))}
 
+        {geo.openStringRings.map((ring) => (
+          <circle
+            key={ring.key}
+            cx={ring.cx}
+            cy={ring.cy}
+            r={geo.dotR}
+            className={
+              ring.variant === 'chord'
+                ? styles.openStringRingChord
+                : styles.openStringRingScale
+            }
+          />
+        ))}
+
+        {geo.openStringMutes.map((m) => {
+          const arm = geo.dotR * Math.SQRT1_2
+          return (
+            <g key={m.key} aria-hidden>
+              <line
+                x1={m.cx - arm}
+                y1={m.cy - arm}
+                x2={m.cx + arm}
+                y2={m.cy + arm}
+                className={styles.openStringMuteX}
+              />
+              <line
+                x1={m.cx - arm}
+                y1={m.cy + arm}
+                x2={m.cx + arm}
+                y2={m.cy - arm}
+                className={styles.openStringMuteX}
+              />
+            </g>
+          )
+        })}
+
         {geo.openNoteLabels.map((n) => (
           <text
             key={n.key}
@@ -484,6 +547,17 @@ export function Fretboard({
           </text>
         ))}
 
+        {geo.openPositionLabel != null ? (
+          <text
+            x={geo.openPositionLabel.x}
+            y={geo.openPositionLabel.y}
+            className={styles.fretLabel}
+            dominantBaseline="auto"
+          >
+            {geo.openPositionLabel.text}
+          </text>
+        ) : null}
+
         {geo.scaleDots.map((d) => (
           <circle
             key={d.key}
@@ -493,30 +567,6 @@ export function Fretboard({
             className={styles.scaleDot}
           />
         ))}
-
-        {geo.markers.map((m) =>
-          m.kind === 'open' ? (
-            <text
-              key={m.key}
-              x={m.x}
-              y={m.y}
-              className={styles.marker}
-              dominantBaseline="central"
-            >
-              O
-            </text>
-          ) : (
-            <text
-              key={m.key}
-              x={m.x}
-              y={m.y}
-              className={styles.marker}
-              dominantBaseline="central"
-            >
-              X
-            </text>
-          ),
-        )}
 
         {geo.barres.map((b) => (
           <rect
@@ -569,6 +619,17 @@ export function Fretboard({
             {fl.n}
           </text>
         ))}
+
+        {geo.nutScrollEllipsis != null ? (
+          <text
+            x={geo.nutScrollEllipsis.x}
+            y={geo.nutScrollEllipsis.y}
+            className={styles.fretLabel}
+            dominantBaseline="auto"
+          >
+            {geo.nutScrollEllipsis.text}
+          </text>
+        ) : null}
       </svg>
     </figure>
   )

@@ -19,12 +19,14 @@ The app should stay fast, readable, and single-page. New features should compose
 
 | Area | What works today |
 |------|------------------|
-| **Fretboard** | 6–21 frets, fixed diagram height, width scales with fret count, note names on/off, barre shapes, open-string `O` when no chord selected |
+| **Fretboard** | 4–21 frets, fixed diagram height, width scales with fret count, note names on/off, barre shapes, auto `startFret` scroll for barre shapes |
 | **Chords** | 24 presets (12 major + 12 minor, sharp spellings), finger numbers, O/X markers |
-| **Key** | 7 major + 7 minor keys; filters chords to diatonic set with Roman numerals |
+| **Key** | 12 major + 12 minor keys (sharp spellings); filters chords to diatonic set with Roman numerals |
 | **Progression** | 8 common Roman-numeral patterns; reduces chord row to 3–4 chords in order (requires key) |
-| **Pentatonic** | 5 relative-major/minor pairs (`Am/C`, `Em/G`, …); all positions in visible fret range |
-| **Layout** | Options panel (scrollable) + diagram panel (35vh), NOTES/FRETS row at top |
+| **Known chords** | Per-chord playability toggles; KNOWN filter for keys/progressions; persisted via JSON Server |
+| **Display prefs** | Notes on/off and fret count persisted via JSON Server |
+| **Scale** | Toggle Pentatonic / Hexatonic / Full Scale (key-linked, persisted; none selected = off) |
+| **Layout** | Options panel (scrollable) + diagram panel (35vh), NOTES/FRETS/KNOWN row at top |
 
 ### Core modules
 
@@ -32,8 +34,33 @@ The app should stay fast, readable, and single-page. New features should compose
 - `src/components/Fretboard/chords.ts` — chord fingerings
 - `src/components/Fretboard/keys.ts` — key theory, Roman numerals, diatonic chords
 - `src/components/Fretboard/progressions.ts` — progression definitions → chord lists
-- `src/components/Fretboard/pentatonicShapes.ts` — pentatonic pitch classes + positions
+- `src/components/Fretboard/scales.ts` — scale positions + key-linked patterns
+- `src/components/Fretboard/viewport.ts` — fret window / auto-scroll
 - `src/pages/HomePage.tsx` — all UI state and controls
+- `src/db/userSettingsRepository.ts` — user settings CRUD
+- `src/api.ts` — fetch helpers for JSON Server
+- `db/db.json` — persisted dev data
+
+---
+
+## Dev API (JSON Server)
+
+User settings (known chords, KNOWN filter, display notes, fret count, scale selection) persist in a file-backed mock REST API during development.
+
+| Piece | Location |
+|-------|----------|
+| **Data file** | `db/db.json` — `userSettings` collection |
+| **API** | `npm run dev:api` → JSON Server on **http://localhost:3001** |
+| **Frontend** | `src/api.ts` + `src/db/userSettingsRepository.ts` |
+| **Dev** | `npm run dev` runs API + Vite together via `concurrently` |
+
+Endpoints:
+
+- `GET/PATCH http://localhost:3001/userSettings/default`
+
+JSON Server writes changes back to `db/db.json`, so edits survive dev restarts. One-time migration from the old `localStorage` fake DB runs on first fetch if needed.
+
+Override API URL with `VITE_API_BASE` in `.env` if needed.
 
 ---
 
@@ -221,7 +248,6 @@ Phases 2 and 3 could be swapped or done together as one **Scale** refactor.
 
 ## Other ideas (backlog)
 
-- **Auto scroll** `startFret` so selected chord shape is always in view (especially barre chords).
 - **Custom progressions** — user-defined degree lists, saved in `localStorage`.
 - **Alternate voicings** — multiple chord shapes per `ChordPresetId`.
 - **7th / sus chords** — extend chord library for richer songs.
@@ -244,4 +270,5 @@ Phases 2 and 3 could be swapped or done together as one **Scale** refactor.
 
 | Date | Note |
 |------|------|
+| 2026-06-11 | JSON Server mock API for user settings (`db/db.json`, port 3001) |
 | 2026-06-05 | Initial roadmap: metronome + progressions, song library, capo, full pentatonic, full key scale |

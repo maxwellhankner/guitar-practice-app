@@ -14,14 +14,28 @@
   --fb-fret-label: var(--muted, #5c574f);
   --fb-cell-note: rgb(212, 169, 74);
   /** Open-string names (left) + chromatic labels in cells */
-  --fb-note-font-size: 9px;
-  --fb-position-bar: #f5f0e6;
+  --fb-note-font-size: 8px;
   --fb-inlay: rgba(255, 248, 235, 0.52);
   --fb-inlay-edge: rgba(255, 255, 255, 0.18);
   height: 100%;
   width: fit-content;
   flex-shrink: 0;
   margin: 0;
+}
+
+.wrap.wrapFit {
+  width: 100%;
+  max-width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wrap.wrapFit .svg {
+  max-height: 100%;
+  max-width: 100%;
+  height: auto;
+  width: auto;
 }
 
 .svg {
@@ -38,12 +52,6 @@
 
 .nut {
   stroke: var(--fb-nut);
-  stroke-width: 5;
-  stroke-linecap: square;
-}
-
-.positionBar {
-  stroke: var(--fb-position-bar);
   stroke-width: 5;
   stroke-linecap: square;
 }
@@ -102,7 +110,25 @@
 }
 
 .openNote {
-  text-anchor: end;
+  text-anchor: middle;
+}
+
+.openStringRingChord {
+  fill: none;
+  stroke: var(--fb-nut);
+  stroke-width: 1.25;
+}
+
+.openStringRingScale {
+  fill: none;
+  stroke: var(--fb-scale-dot-stroke);
+  stroke-width: 1.25;
+}
+
+.openStringMuteX {
+  stroke: var(--fb-scale-dot-stroke);
+  stroke-width: 1.25;
+  stroke-linecap: square;
 }
 
 .fretCellNote {
@@ -135,7 +161,6 @@
     --fb-dot: #2c2824;
     --fb-scale-dot-stroke: #7a756e;
     --fb-cell-note: rgb(212, 169, 74);
-    --fb-position-bar: #e8e0d4;
     --fb-inlay: rgba(255, 245, 228, 0.42);
     --fb-inlay-edge: rgba(255, 255, 255, 0.12);
   }

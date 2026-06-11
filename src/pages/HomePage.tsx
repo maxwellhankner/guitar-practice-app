@@ -2,11 +2,14 @@ import { useEffect, useId, useMemo, useState } from 'react'
 import { ChordPlayabilityCell } from '../components/ChordPlayabilityCell'
 import {
   CHORD_PRESETS,
-  CHORD_MAJOR_IDS,
-  CHORD_MINOR_IDS,
+  CHORD_SELECTABLE_IDS,
+  isChordPracticeable,
+  isDiminishedChord,
   Fretboard,
   chordsInKeyOrder,
   chordsForProgression,
+  diatonicSlotsInKey,
+  isProgressionResolvableInKey,
   isChordInKey,
   isChordPlayable,
   isKeyPlayable,
@@ -18,42 +21,48 @@ import {
   KEY_MINOR_IDS,
   PROGRESSIONS,
   PROGRESSION_IDS,
+  resolveChord,
   scalePatternForKey,
+  startFretForFingering,
+  FRET_COUNT_MIN,
+  FRET_COUNT_MAX,
   type ChordPresetId,
   type KeyId,
   type ProgressionId,
-  type ScaleDisplayMode,
+  type ScaleSelection,
 } from '../components/Fretboard'
 import { useUserSettings } from '../hooks/useUserSettings'
 
-const FRET_COUNT_OPTIONS = Array.from({ length: 16 }, (_, i) => i + 6)
+const FRET_COUNT_OPTIONS = Array.from(
+  { length: FRET_COUNT_MAX - FRET_COUNT_MIN + 1 },
+  (_, i) => i + FRET_COUNT_MIN,
+)
 
 type BoardSelection = { kind: 'chord'; id: ChordPresetId }
 
 export function HomePage() {
   const baseId = useId()
-  const [fretCount, setFretCount] = useState(6)
-  const [selection, setSelection] = useState<BoardSelection | null>({
-    kind: 'chord',
-    id: 'C',
-  })
-  const [displayNotes, setDisplayNotes] = useState(true)
+  const [selection, setSelection] = useState<BoardSelection | null>(null)
   const [selectedKey, setSelectedKey] = useState<KeyId | null>(null)
   const [selectedProgression, setSelectedProgression] =
     useState<ProgressionId | null>(null)
-  const [scaleMode, setScaleMode] = useState<ScaleDisplayMode>('off')
   const {
     ready: settingsReady,
     disabledChords,
     filterPlayableOnly,
+    displayNotes,
+    fretCount,
+    scaleSelection,
     setChordPlayable,
     setFilterPlayableOnly,
+    setDisplayNotes,
+    setFretCount,
+    setScaleSelection,
   } = useUserSettings()
 
   useEffect(() => {
     if (selectedKey == null) {
       setSelectedProgression(null)
-      setScaleMode('off')
     }
   }, [selectedKey])
 
@@ -88,18 +97,6 @@ export function HomePage() {
   }, [selectedKey, selectedProgression, disabledChords, filterPlayableOnly])
 
   useEffect(() => {
-    if (!filterPlayableOnly) {
-      return
-    }
-    if (
-      selection?.kind === 'chord' &&
-      !isChordPlayable(selection.id, disabledChords)
-    ) {
-      setSelection(null)
-    }
-  }, [selection, disabledChords, filterPlayableOnly])
-
-  useEffect(() => {
     if (
       selectedKey == null ||
       selection?.kind !== 'chord' ||
@@ -112,7 +109,7 @@ export function HomePage() {
 
   const visibleChordIds = useMemo(() => {
     if (selectedKey == null) {
-      return [...CHORD_MAJOR_IDS, ...CHORD_MINOR_IDS]
+      return [...CHORD_SELECTABLE_IDS]
     }
     if (selectedProgression != null) {
       return chordsForProgression(selectedKey, selectedProgression)
@@ -133,16 +130,47 @@ export function HomePage() {
   }, [selectedKey, selectedProgression, selection, visibleChordIds])
 
   const scalePattern = useMemo(() => {
-    if (selectedKey == null || scaleMode === 'off') {
+    if (selectedKey == null || scaleSelection == null) {
       return null
     }
-    return scalePatternForKey(selectedKey, scaleMode, fretCount)
-  }, [selectedKey, scaleMode, fretCount])
+    return scalePatternForKey(selectedKey, scaleSelection, fretCount)
+  }, [selectedKey, scaleSelection, fretCount])
+
+  const toggleScaleSelection = (mode: Exclude<ScaleSelection, null>) => {
+    void setScaleSelection(scaleSelection === mode ? null : mode)
+  }
+
+  const isScaleSelected = (mode: Exclude<ScaleSelection, null>) =>
+    selectedKey != null && scaleSelection === mode
+
+  const startFret = useMemo(() => {
+    if (selection?.kind !== 'chord') {
+      return 1
+    }
+    return startFretForFingering(resolveChord(selection.id), fretCount)
+  }, [selection, fretCount])
+
+  const progressionChordIds = useMemo(() => {
+    if (selectedKey == null || selectedProgression == null) {
+      return null
+    }
+    return chordsForProgression(selectedKey, selectedProgression)
+  }, [selectedKey, selectedProgression])
+
+  const diatonicSlots = useMemo(() => {
+    if (selectedKey == null || selectedProgression != null) {
+      return null
+    }
+    return diatonicSlotsInKey(selectedKey)
+  }, [selectedKey, selectedProgression])
 
   const progressionDisabledReason = (
     keyId: KeyId,
     progressionId: ProgressionId,
   ): string | null => {
+    if (!isProgressionResolvableInKey(keyId, progressionId)) {
+      return 'Not available in this key'
+    }
     if (!filterPlayableOnly) {
       return null
     }
@@ -160,8 +188,8 @@ export function HomePage() {
     id: ChordPresetId,
     options?: { keyId?: KeyId },
   ) => {
+    const diminished = isDiminishedChord(id)
     const storedPlayable = isChordPlayable(id, disabledChords)
-    const effectivePlayable = !filterPlayableOnly || storedPlayable
     const selected = selection?.kind === 'chord' && selection.id === id
     const title =
       options?.keyId != null
@@ -172,8 +200,7 @@ export function HomePage() {
       <ChordPlayabilityCell
         key={id}
         chordId={id}
-        playable={storedPlayable}
-        selectable={effectivePlayable}
+        playable={diminished ? false : storedPlayable}
         selected={selected}
         title={title}
         onSelect={() =>
@@ -184,7 +211,9 @@ export function HomePage() {
           )
         }
         onPlayableChange={(next) => void setChordPlayable(id, next)}
-        showPlayabilityPopup={filterPlayableOnly}
+        showPlayabilityPopup={filterPlayableOnly && isChordPracticeable(id)}
+        popupPlacement={id.endsWith('m') ? 'below' : 'above'}
+        diminished={diminished}
       />
     )
   }
@@ -209,7 +238,7 @@ export function HomePage() {
       >
         <div className="app-page__inner">
           <h1 className="app-page__title" id={`${baseId}-heading`}>
-            Guitar diagram
+            Practice Guitar App
           </h1>
           <div className="diagram-controls">
             <div className="diagram-field diagram-field--notes-frets">
@@ -226,26 +255,26 @@ export function HomePage() {
                     <button
                       type="button"
                       className={
-                        displayNotes
-                          ? 'diagram-chord-btn diagram-chord-btn--selected'
-                          : 'diagram-chord-btn'
-                      }
-                      aria-pressed={displayNotes}
-                      onClick={() => setDisplayNotes(true)}
-                    >
-                      On
-                    </button>
-                    <button
-                      type="button"
-                      className={
                         !displayNotes
                           ? 'diagram-chord-btn diagram-chord-btn--selected'
                           : 'diagram-chord-btn'
                       }
                       aria-pressed={!displayNotes}
-                      onClick={() => setDisplayNotes(false)}
+                      onClick={() => void setDisplayNotes(false)}
                     >
                       Off
+                    </button>
+                    <button
+                      type="button"
+                      className={
+                        displayNotes
+                          ? 'diagram-chord-btn diagram-chord-btn--selected'
+                          : 'diagram-chord-btn'
+                      }
+                      aria-pressed={displayNotes}
+                      onClick={() => void setDisplayNotes(true)}
+                    >
+                      On
                     </button>
                   </div>
                 </div>
@@ -265,19 +294,6 @@ export function HomePage() {
                     <button
                       type="button"
                       className={
-                        filterPlayableOnly
-                          ? 'diagram-chord-btn diagram-chord-btn--selected'
-                          : 'diagram-chord-btn'
-                      }
-                      aria-pressed={filterPlayableOnly}
-                      title="Only show what you can play"
-                      onClick={() => void setFilterPlayableOnly(true)}
-                    >
-                      On
-                    </button>
-                    <button
-                      type="button"
-                      className={
                         !filterPlayableOnly
                           ? 'diagram-chord-btn diagram-chord-btn--selected'
                           : 'diagram-chord-btn'
@@ -287,6 +303,19 @@ export function HomePage() {
                       onClick={() => void setFilterPlayableOnly(false)}
                     >
                       Off
+                    </button>
+                    <button
+                      type="button"
+                      className={
+                        filterPlayableOnly
+                          ? 'diagram-chord-btn diagram-chord-btn--selected'
+                          : 'diagram-chord-btn'
+                      }
+                      aria-pressed={filterPlayableOnly}
+                      title="Only show what you can play"
+                      onClick={() => void setFilterPlayableOnly(true)}
+                    >
+                      On
                     </button>
                   </div>
                 </div>
@@ -315,7 +344,7 @@ export function HomePage() {
                               : 'diagram-chord-btn'
                           }
                           aria-pressed={selected}
-                          onClick={() => setFretCount(n)}
+                          onClick={() => void setFretCount(n)}
                         >
                           {n}
                         </button>
@@ -380,66 +409,54 @@ export function HomePage() {
                 <button
                   type="button"
                   className={
-                    scaleMode === 'off'
+                    isScaleSelected('pentatonic')
                       ? 'diagram-chord-btn diagram-chord-btn--selected'
                       : 'diagram-chord-btn'
                   }
-                  aria-pressed={scaleMode === 'off'}
-                  onClick={() => setScaleMode('off')}
-                >
-                  Off
-                </button>
-                <button
-                  type="button"
-                  className={
-                    scaleMode === 'pentatonic'
-                      ? 'diagram-chord-btn diagram-chord-btn--selected'
-                      : 'diagram-chord-btn'
-                  }
-                  aria-pressed={scaleMode === 'pentatonic'}
+                  aria-pressed={isScaleSelected('pentatonic')}
                   disabled={selectedKey == null}
                   title={
                     selectedKey == null
                       ? 'Select a key first'
                       : `Pentatonic scale in ${KEY_DEFS[selectedKey]?.name ?? 'key'}`
                   }
-                  onClick={() => setScaleMode('pentatonic')}
+                  onClick={() => toggleScaleSelection('pentatonic')}
                 >
                   Pentatonic
                 </button>
                 <button
                   type="button"
                   className={
-                    scaleMode === 'hexatonic'
+                    isScaleSelected('hexatonic')
                       ? 'diagram-chord-btn diagram-chord-btn--selected'
                       : 'diagram-chord-btn'
                   }
-                  aria-pressed={scaleMode === 'hexatonic'}
+                  aria-pressed={isScaleSelected('hexatonic')}
                   disabled={selectedKey == null}
                   title={
                     selectedKey == null
                       ? 'Select a key first'
                       : `Hexatonic scale in ${KEY_DEFS[selectedKey]?.name ?? 'key'}`
                   }
-                  onClick={() => setScaleMode('hexatonic')}
+                  onClick={() => toggleScaleSelection('hexatonic')}
                 >
                   Hexatonic
                 </button>
                 <button
                   type="button"
                   className={
-                    scaleMode === 'full'
+                    isScaleSelected('full')
                       ? 'diagram-chord-btn diagram-chord-btn--selected'
                       : 'diagram-chord-btn'
                   }
-                  aria-pressed={scaleMode === 'full'}
+                  aria-pressed={isScaleSelected('full')}
                   disabled={selectedKey == null}
                   title={
                     selectedKey == null
                       ? 'Select a key first'
                       : `Full scale in ${KEY_DEFS[selectedKey]?.name ?? 'key'}`
                   }
-                  onClick={() => setScaleMode('full')}
+                  onClick={() => toggleScaleSelection('full')}
                 >
                   Full Scale
                 </button>
@@ -459,15 +476,19 @@ export function HomePage() {
                   const def = PROGRESSIONS[progressionId]
                   const selected = selectedProgression === progressionId
                   const noKey = selectedKey == null
+                  const unresolved =
+                    selectedKey != null &&
+                    !isProgressionResolvableInKey(selectedKey, progressionId)
                   const blocked =
                     filterPlayableOnly &&
                     selectedKey != null &&
+                    !unresolved &&
                     !isProgressionPlayableInKey(
                       selectedKey,
                       progressionId,
                       disabledChords,
                     )
-                  const disabled = noKey || blocked
+                  const disabled = noKey || unresolved || blocked
                   const blockedReason =
                     selectedKey != null
                       ? progressionDisabledReason(selectedKey, progressionId)
@@ -510,7 +531,11 @@ export function HomePage() {
                 <div
                   className="diagram-chord-in-key"
                   style={{
-                    gridTemplateColumns: `repeat(${visibleChordIds.length}, 1fr)`,
+                    gridTemplateColumns: `repeat(${
+                      diatonicSlots != null
+                        ? diatonicSlots.length
+                        : visibleChordIds.length
+                    }, 1fr)`,
                   }}
                 >
                   <div
@@ -518,22 +543,49 @@ export function HomePage() {
                     role="group"
                     aria-labelledby={`${baseId}-chord-label`}
                   >
-                    {visibleChordIds.map((id) =>
-                      renderChordCell(id, { keyId: selectedKey }),
-                    )}
+                    {diatonicSlots != null
+                      ? diatonicSlots.map((slot) =>
+                          slot.chordId != null ? (
+                            renderChordCell(slot.chordId, {
+                              keyId: selectedKey,
+                            })
+                          ) : (
+                            <div
+                              key={`degree-${slot.degree}`}
+                              className="diagram-chord-slot diagram-chord-slot--empty"
+                              aria-hidden
+                            />
+                          ),
+                        )
+                      : visibleChordIds.map((id) =>
+                          renderChordCell(id, { keyId: selectedKey }),
+                        )}
                   </div>
                   <div
                     className="diagram-chord-in-key__numerals"
                     aria-hidden
                   >
-                    {visibleChordIds.map((id) => (
-                      <span
-                        key={`${id}-numeral`}
-                        className="diagram-chord-roman"
-                      >
-                        {chordRomanNumeral(selectedKey, id)}
-                      </span>
-                    ))}
+                    {diatonicSlots != null
+                      ? diatonicSlots.map((slot) => (
+                          <span
+                            key={`degree-${slot.degree}-numeral`}
+                            className={
+                              slot.chordId == null
+                                ? 'diagram-chord-roman diagram-chord-roman--missing'
+                                : 'diagram-chord-roman'
+                            }
+                          >
+                            {slot.roman}
+                          </span>
+                        ))
+                      : visibleChordIds.map((id) => (
+                          <span
+                            key={`${id}-numeral`}
+                            className="diagram-chord-roman"
+                          >
+                            {chordRomanNumeral(selectedKey, id)}
+                          </span>
+                        ))}
                   </div>
                 </div>
               ) : (
@@ -550,15 +602,62 @@ export function HomePage() {
         </div>
       </section>
 
-      <section className="app-page__diagram" aria-label="Fretboard preview">
-        <div className="app-page__diagram-stage">
-          <Fretboard
-            chord={selection?.kind === 'chord' ? selection.id : null}
-            scalePattern={scalePattern}
-            fretCount={fretCount}
-            displayNotes={displayNotes}
-          />
-        </div>
+      <section
+        className={
+          progressionChordIds != null
+            ? 'app-page__diagram app-page__diagram--progression'
+            : 'app-page__diagram'
+        }
+        aria-label="Fretboard preview"
+      >
+        {progressionChordIds != null ? (
+          <div className="app-page__diagram-stage app-page__diagram-stage--progression">
+            {progressionChordIds.map((chordId) => {
+              const selected =
+                selection?.kind === 'chord' && selection.id === chordId
+              const roman = chordRomanNumeral(selectedKey!, chordId)
+              return (
+                <div
+                  key={chordId}
+                  className={[
+                    'diagram-progression-board',
+                    selected ? 'diagram-progression-board--selected' : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                >
+                  <div className="diagram-progression-board__fret">
+                    <Fretboard
+                      chord={chordId}
+                      scalePattern={scalePattern}
+                      fretCount={fretCount}
+                      startFret={startFretForFingering(
+                        resolveChord(chordId),
+                        fretCount,
+                      )}
+                      displayNotes={displayNotes}
+                      fitContainer
+                    />
+                  </div>
+                  <p className="diagram-progression-board__label">
+                    {chordId}
+                    {roman != null ? ` · ${roman}` : ''}
+                  </p>
+                </div>
+              )
+            })}
+          </div>
+        ) : (
+          <div className="app-page__diagram-stage">
+            <Fretboard
+              chord={selection?.kind === 'chord' ? selection.id : null}
+              scalePattern={scalePattern}
+              fretCount={fretCount}
+              startFret={startFret}
+              displayNotes={displayNotes}
+            />
+          </div>
+        )}
       </section>
     </main>
   )

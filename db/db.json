@@ -1,0 +1,28 @@
+{
+  "userSettings": [
+    {
+      "id": "default",
+      "disabledChords": [
+        "A#",
+        "B",
+        "C#",
+        "D#",
+        "F#",
+        "G#",
+        "A#m",
+        "Bm",
+        "Cm",
+        "C#m",
+        "D#m",
+        "F#m",
+        "Gm",
+        "G#m"
+      ],
+      "filterPlayableOnly": false,
+      "displayNotes": true,
+      "fretCount": 8,
+      "scaleSelection": "full"
+    }
+  ],
+  "$schema": "./node_modules/json-server/schema.json"
+}
