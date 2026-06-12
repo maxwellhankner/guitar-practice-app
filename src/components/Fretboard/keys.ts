@@ -2,10 +2,17 @@ import {
   CHORD_MAJOR_IDS,
   CHORD_MINOR_IDS,
   CHORD_PRESET_IDS,
+  chordPitchClasses,
   parseChordPresetId,
-  triadPitchClasses,
   type ChordPresetId,
+  type ChordQuality,
 } from './chords'
+
+const DIATONIC_QUALITIES = new Set<ChordQuality>([
+  'major',
+  'minor',
+  'diminished',
+])
 
 export const KEY_MAJOR_IDS = CHORD_MAJOR_IDS
 export const KEY_MINOR_IDS = CHORD_MINOR_IDS
@@ -54,7 +61,7 @@ function keyRootPc(keyId: KeyId): number {
 const CHORD_PITCH_CLASSES = Object.fromEntries(
   CHORD_PRESET_IDS.map((chordId) => {
     const { rootPc, quality } = parseChordPresetId(chordId)
-    return [chordId, triadPitchClasses(rootPc, quality)]
+    return [chordId, chordPitchClasses(rootPc, quality)]
   }),
 ) as Record<ChordPresetId, readonly number[]>
 
@@ -95,11 +102,14 @@ function chordIdOnScaleDegree(
   )
   const degreePc = (keyRoot + steps[degree - 1]!) % 12
   return (
-    CHORD_PRESET_IDS.find(
-      (chordId) =>
-        parseChordPresetId(chordId).rootPc === degreePc &&
-        chordFitsScale(chordId, scale),
-    ) ?? null
+    CHORD_PRESET_IDS.find((chordId) => {
+      const { rootPc, quality } = parseChordPresetId(chordId)
+      return (
+        rootPc === degreePc &&
+        DIATONIC_QUALITIES.has(quality) &&
+        chordFitsScale(chordId, scale)
+      )
+    }) ?? null
   )
 }
 

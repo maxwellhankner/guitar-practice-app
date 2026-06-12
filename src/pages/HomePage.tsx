@@ -3,8 +3,10 @@ import { ChordPlayabilityCell } from '../components/ChordPlayabilityCell'
 import {
   CHORD_PRESETS,
   CHORD_SELECTABLE_IDS,
+  ROOT_NAMES,
+  chordIdsForRoot,
   isChordPracticeable,
-  isDiminishedChord,
+  parseChordPresetId,
   Fretboard,
   chordsInKeyOrder,
   chordsForProgression,
@@ -188,19 +190,21 @@ export function HomePage() {
     id: ChordPresetId,
     options?: { keyId?: KeyId },
   ) => {
-    const diminished = isDiminishedChord(id)
+    const { quality } = parseChordPresetId(id)
     const storedPlayable = isChordPlayable(id, disabledChords)
     const selected = selection?.kind === 'chord' && selection.id === id
     const title =
       options?.keyId != null
         ? `${CHORD_PRESETS[id].name} · ${chordRomanNumeral(options.keyId, id) ?? ''} in ${KEY_DEFS[options.keyId].name}`
         : CHORD_PRESETS[id].name
+    const popupPlacement =
+      quality === 'minor' || quality === 'min7' ? 'below' : 'above'
 
     return (
       <ChordPlayabilityCell
         key={id}
         chordId={id}
-        playable={diminished ? false : storedPlayable}
+        playable={storedPlayable}
         selected={selected}
         title={title}
         onSelect={() =>
@@ -212,8 +216,7 @@ export function HomePage() {
         }
         onPlayableChange={(next) => void setChordPlayable(id, next)}
         showPlayabilityPopup={filterPlayableOnly && isChordPracticeable(id)}
-        popupPlacement={id.endsWith('m') ? 'below' : 'above'}
-        diminished={diminished}
+        popupPlacement={popupPlacement}
       />
     )
   }
@@ -590,11 +593,19 @@ export function HomePage() {
                 </div>
               ) : (
                 <div
-                  className="diagram-chord-grid diagram-chord-select-grid diagram-chord-select-grid--cells"
+                  className="diagram-chord-select-grid diagram-chord-select-grid--by-root"
                   role="group"
                   aria-labelledby={`${baseId}-chord-label`}
                 >
-                  {visibleChordIds.map((id) => renderChordCell(id))}
+                  {ROOT_NAMES.map((root) => (
+                    <div
+                      key={root}
+                      className="diagram-chord-root-column"
+                      aria-label={`${root} chords`}
+                    >
+                      {chordIdsForRoot(root).map((id) => renderChordCell(id))}
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

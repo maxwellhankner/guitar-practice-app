@@ -16,12 +16,14 @@
         "D#m",
         "F#m",
         "Gm",
-        "G#m"
+        "G#m",
+        "F",
+        "Fm"
       ],
       "filterPlayableOnly": false,
-      "displayNotes": true,
-      "fretCount": 8,
-      "scaleSelection": "full"
+      "displayNotes": false,
+      "fretCount": 7,
+      "scaleSelection": null
     }
   ],
   "$schema": "./node_modules/json-server/schema.json"

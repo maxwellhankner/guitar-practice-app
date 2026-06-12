@@ -1,3 +1,7 @@
+import {
+  EXTENDED_VOICINGS,
+  type ExtendedVoicingId,
+} from './extendedVoicings'
 import type { ChordFingering } from './types'
 
 function c(
@@ -7,73 +11,6 @@ function c(
 ): ChordFingering {
   return fingers != null ? { name, strings, fingers } : { name, strings }
 }
-
-/**
- * Diminished triads — root on A string (x, r, r+1, r+2, r+1, x) except G#dim
- * (E-string shape at fret 4 to stay in a comfortable range).
- */
-const DIM_CHORD_PRESETS = {
-  Adim: c(
-    ['x', 0, 1, 2, 1, 'x'],
-    'A diminished',
-    [null, 1, 1, 2, 3, null],
-  ),
-  'A#dim': c(
-    ['x', 1, 2, 3, 2, 'x'],
-    'A# diminished',
-    [null, 1, 1, 2, 3, null],
-  ),
-  Bdim: c(
-    ['x', 2, 3, 4, 3, 'x'],
-    'B diminished',
-    [null, 1, 1, 2, 3, null],
-  ),
-  Cdim: c(
-    ['x', 3, 4, 5, 4, 'x'],
-    'C diminished',
-    [null, 1, 1, 2, 3, null],
-  ),
-  'C#dim': c(
-    ['x', 4, 5, 6, 5, 'x'],
-    'C# diminished',
-    [null, 1, 1, 2, 3, null],
-  ),
-  Ddim: c(
-    ['x', 5, 6, 7, 6, 'x'],
-    'D diminished',
-    [null, 1, 1, 2, 3, null],
-  ),
-  'D#dim': c(
-    ['x', 6, 7, 8, 7, 'x'],
-    'D# diminished',
-    [null, 1, 1, 2, 3, null],
-  ),
-  Edim: c(
-    ['x', 7, 8, 9, 8, 'x'],
-    'E diminished',
-    [null, 1, 1, 2, 3, null],
-  ),
-  Fdim: c(
-    ['x', 8, 9, 10, 9, 'x'],
-    'F diminished',
-    [null, 1, 1, 2, 3, null],
-  ),
-  'F#dim': c(
-    ['x', 9, 10, 11, 10, 'x'],
-    'F# diminished',
-    [null, 1, 1, 2, 3, null],
-  ),
-  Gdim: c(
-    ['x', 10, 11, 12, 11, 'x'],
-    'G diminished',
-    [null, 1, 1, 2, 3, null],
-  ),
-  'G#dim': c(
-    [4, 5, 4, 5, 'x', 'x'],
-    'G# diminished',
-    [1, 2, 1, 3, null, null],
-  ),
-} as const satisfies Record<string, ChordFingering>
 
 const ROOT_NAMES = [
   'A',
@@ -89,6 +26,59 @@ const ROOT_NAMES = [
   'G',
   'G#',
 ] as const
+
+export type RootName = (typeof ROOT_NAMES)[number]
+
+const ROOT_NAMES_BY_LENGTH = [...ROOT_NAMES].sort(
+  (a, b) => b.length - a.length,
+)
+
+const EXTENDED_QUALITY_LABEL: Record<
+  Exclude<ChordQuality, 'major' | 'minor'>,
+  string
+> = {
+  diminished: 'diminished',
+  sus2: 'suspended 2nd',
+  sus4: 'suspended 4th',
+  dom7: '7th',
+  maj7: 'major 7th',
+  min7: 'minor 7th',
+}
+
+function extendedPresetName(id: ExtendedVoicingId): string {
+  for (const rootName of ROOT_NAMES_BY_LENGTH) {
+    if (!id.startsWith(rootName)) {
+      continue
+    }
+    const suffix = id.slice(rootName.length)
+    const label = EXTENDED_QUALITY_LABEL[
+      suffix === 'dim'
+        ? 'diminished'
+        : suffix === '7'
+          ? 'dom7'
+          : suffix === 'maj7'
+            ? 'maj7'
+            : suffix === 'm7'
+              ? 'min7'
+              : (suffix as 'sus2' | 'sus4')
+    ]
+    return `${rootName} ${label}`
+  }
+  throw new Error(`Unknown extended voicing id: ${id}`)
+}
+
+function buildExtendedChordPresets(): Record<string, ChordFingering> {
+  const presets: Record<string, ChordFingering> = {}
+  for (const id of Object.keys(EXTENDED_VOICINGS) as ExtendedVoicingId[]) {
+    const voicing = EXTENDED_VOICINGS[id]
+    presets[id] = c(
+      voicing.strings,
+      extendedPresetName(id),
+      voicing.fingers,
+    )
+  }
+  return presets
+}
 
 /** Open and barre shapes — sharp spellings only (A# not Bb, etc.). */
 const MAJOR_MINOR_CHORD_PRESETS = {
@@ -118,14 +108,24 @@ const MAJOR_MINOR_CHORD_PRESETS = {
   'G#m': c(['x', 4, 6, 6, 4, 4], 'G# minor', [null, 1, 3, 4, 2, 1]),
 } as const satisfies Record<string, ChordFingering>
 
+const EXTENDED_CHORD_PRESETS = buildExtendedChordPresets()
+
 export const CHORD_PRESETS = {
   ...MAJOR_MINOR_CHORD_PRESETS,
-  ...DIM_CHORD_PRESETS,
+  ...EXTENDED_CHORD_PRESETS,
 } as const satisfies Record<string, ChordFingering>
 
 export type ChordPresetId = keyof typeof CHORD_PRESETS
 
-export type ChordQuality = 'major' | 'minor' | 'diminished'
+export type ChordQuality =
+  | 'major'
+  | 'minor'
+  | 'diminished'
+  | 'sus2'
+  | 'sus4'
+  | 'dom7'
+  | 'maj7'
+  | 'min7'
 
 export const CHORD_MAJOR_IDS = [
   'A',
@@ -159,18 +159,77 @@ export const CHORD_MINOR_IDS = [
 
 export const CHORD_DIM_IDS = ROOT_NAMES.map(
   (rootName) => `${rootName}dim`,
-) as readonly `${(typeof ROOT_NAMES)[number]}dim`[] & readonly ChordPresetId[]
+) as readonly `${RootName}dim`[] & readonly ChordPresetId[]
 
-/** Major + minor only — used for the full chord picker when no key is selected. */
-export const CHORD_SELECTABLE_IDS = [
-  ...CHORD_MAJOR_IDS,
-  ...CHORD_MINOR_IDS,
-] as const satisfies readonly ChordPresetId[]
+export const CHORD_SUS2_IDS = ROOT_NAMES.map(
+  (rootName) => `${rootName}sus2`,
+) as readonly `${RootName}sus2`[] & readonly ChordPresetId[]
 
-export const CHORD_PRESET_IDS = [
-  ...CHORD_SELECTABLE_IDS,
-  ...CHORD_DIM_IDS,
-] as const satisfies readonly ChordPresetId[]
+export const CHORD_SUS4_IDS = ROOT_NAMES.map(
+  (rootName) => `${rootName}sus4`,
+) as readonly `${RootName}sus4`[] & readonly ChordPresetId[]
+
+export const CHORD_DOM7_IDS = ROOT_NAMES.map(
+  (rootName) => `${rootName}7`,
+) as readonly `${RootName}7`[] & readonly ChordPresetId[]
+
+export const CHORD_MAJ7_IDS = ROOT_NAMES.map(
+  (rootName) => `${rootName}maj7`,
+) as readonly `${RootName}maj7`[] & readonly ChordPresetId[]
+
+export const CHORD_MIN7_IDS = ROOT_NAMES.map(
+  (rootName) => `${rootName}m7`,
+) as readonly `${RootName}m7`[] & readonly ChordPresetId[]
+
+/** Column order within each root group in the chord picker (top → bottom). */
+export const CHORD_VARIANT_ORDER = [
+  'major',
+  'minor',
+  'diminished',
+  'sus2',
+  'sus4',
+  'dom7',
+  'maj7',
+  'min7',
+] as const
+
+export type ChordVariant = (typeof CHORD_VARIANT_ORDER)[number]
+
+export function chordIdForRootVariant(
+  rootName: RootName,
+  variant: ChordVariant,
+): ChordPresetId {
+  switch (variant) {
+    case 'major':
+      return rootName
+    case 'minor':
+      return `${rootName}m` as ChordPresetId
+    case 'diminished':
+      return `${rootName}dim` as ChordPresetId
+    case 'sus2':
+      return `${rootName}sus2` as ChordPresetId
+    case 'sus4':
+      return `${rootName}sus4` as ChordPresetId
+    case 'dom7':
+      return `${rootName}7` as ChordPresetId
+    case 'maj7':
+      return `${rootName}maj7` as ChordPresetId
+    case 'min7':
+      return `${rootName}m7` as ChordPresetId
+  }
+}
+
+export function chordIdsForRoot(rootName: RootName): ChordPresetId[] {
+  return CHORD_VARIANT_ORDER.map((variant) =>
+    chordIdForRootVariant(rootName, variant),
+  )
+}
+
+export const CHORD_SELECTABLE_IDS = ROOT_NAMES.flatMap((rootName) =>
+  chordIdsForRoot(rootName),
+) as readonly ChordPresetId[]
+
+export const CHORD_PRESET_IDS = [...CHORD_SELECTABLE_IDS] as const satisfies readonly ChordPresetId[]
 
 const ROOT_PC: Record<string, number> = {
   C: 0,
@@ -191,41 +250,102 @@ export function isDiminishedChord(chordId: ChordPresetId): boolean {
   return chordId.endsWith('dim')
 }
 
-/** Diminished chords can be viewed on the diagram but are excluded from KNOWN. */
-export function isChordPracticeable(chordId: ChordPresetId): boolean {
-  return !isDiminishedChord(chordId)
+export function isChordPracticeable(_chordId: ChordPresetId): boolean {
+  return true
 }
 
-export function parseChordPresetId(
-  chordId: ChordPresetId,
-): { rootName: string; rootPc: number; quality: ChordQuality } {
-  if (isDiminishedChord(chordId)) {
-    const rootName = chordId.slice(0, -3)
+export function parseChordPresetId(chordId: ChordPresetId): {
+  rootName: string
+  rootPc: number
+  quality: ChordQuality
+} {
+  for (const rootName of ROOT_NAMES_BY_LENGTH) {
+    if (!chordId.startsWith(rootName)) {
+      continue
+    }
+    const suffix = chordId.slice(rootName.length)
     const rootPc = ROOT_PC[rootName]
     if (rootPc == null) {
-      throw new Error(`Unknown chord root: ${rootName}`)
+      break
     }
-    return { rootName, rootPc, quality: 'diminished' }
+
+    if (suffix === '') {
+      return { rootName, rootPc, quality: 'major' }
+    }
+    if (suffix === 'm') {
+      return { rootName, rootPc, quality: 'minor' }
+    }
+    if (suffix === 'dim') {
+      return { rootName, rootPc, quality: 'diminished' }
+    }
+    if (suffix === 'sus2') {
+      return { rootName, rootPc, quality: 'sus2' }
+    }
+    if (suffix === 'sus4') {
+      return { rootName, rootPc, quality: 'sus4' }
+    }
+    if (suffix === '7') {
+      return { rootName, rootPc, quality: 'dom7' }
+    }
+    if (suffix === 'maj7') {
+      return { rootName, rootPc, quality: 'maj7' }
+    }
+    if (suffix === 'm7') {
+      return { rootName, rootPc, quality: 'min7' }
+    }
+    break
   }
-  const isMinor = chordId.endsWith('m')
-  const rootName = isMinor ? chordId.slice(0, -1) : chordId
-  const rootPc = ROOT_PC[rootName]
-  if (rootPc == null) {
-    throw new Error(`Unknown chord root: ${rootName}`)
-  }
-  return { rootName, rootPc, quality: isMinor ? 'minor' : 'major' }
+
+  throw new Error(`Unknown chord preset id: ${chordId}`)
 }
 
-/** Major: M3+P5. Minor: m3+P5. Diminished: m3+d5. */
+export function chordPitchClasses(
+  rootPc: number,
+  quality: ChordQuality,
+): readonly number[] {
+  switch (quality) {
+    case 'diminished':
+      return [rootPc, (rootPc + 3) % 12, (rootPc + 6) % 12]
+    case 'sus2':
+      return [rootPc, (rootPc + 2) % 12, (rootPc + 7) % 12]
+    case 'sus4':
+      return [rootPc, (rootPc + 5) % 12, (rootPc + 7) % 12]
+    case 'dom7':
+      return [
+        rootPc,
+        (rootPc + 4) % 12,
+        (rootPc + 7) % 12,
+        (rootPc + 10) % 12,
+      ]
+    case 'maj7':
+      return [
+        rootPc,
+        (rootPc + 4) % 12,
+        (rootPc + 7) % 12,
+        (rootPc + 11) % 12,
+      ]
+    case 'min7':
+      return [
+        rootPc,
+        (rootPc + 3) % 12,
+        (rootPc + 7) % 12,
+        (rootPc + 10) % 12,
+      ]
+    case 'major': {
+      return [rootPc, (rootPc + 4) % 12, (rootPc + 7) % 12]
+    }
+    case 'minor': {
+      return [rootPc, (rootPc + 3) % 12, (rootPc + 7) % 12]
+    }
+  }
+}
+
+/** @deprecated Use {@link chordPitchClasses}. */
 export function triadPitchClasses(
   rootPc: number,
   quality: ChordQuality,
 ): readonly number[] {
-  if (quality === 'diminished') {
-    return [rootPc, (rootPc + 3) % 12, (rootPc + 6) % 12]
-  }
-  const third = quality === 'major' ? 4 : 3
-  return [rootPc, (rootPc + third) % 12, (rootPc + 7) % 12]
+  return chordPitchClasses(rootPc, quality)
 }
 
 export function resolveChord(
@@ -240,3 +360,5 @@ export function resolveChord(
   }
   return chord
 }
+
+export { ROOT_NAMES }

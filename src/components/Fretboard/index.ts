@@ -24,11 +24,16 @@ export {
   CHORD_MINOR_IDS,
   CHORD_DIM_IDS,
   CHORD_SELECTABLE_IDS,
+  ROOT_NAMES,
+  chordIdsForRoot,
+  chordPitchClasses,
   isChordPracticeable,
   isDiminishedChord,
+  parseChordPresetId,
   resolveChord,
   type ChordPresetId,
   type ChordQuality,
+  type RootName,
 } from './chords'
 export {
   KEY_DEFS,
