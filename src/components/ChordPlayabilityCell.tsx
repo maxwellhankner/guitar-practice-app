@@ -13,8 +13,6 @@ type ChordPlayabilityCellProps = {
   onPlayableChange: (playable: boolean) => void
   /** When false, no hover popup (e.g. KNOWN filtering is off). */
   showPlayabilityPopup: boolean
-  /** Majors / upper row: above; minors / lower row: below. */
-  popupPlacement?: 'above' | 'below'
   /** Diminished triads — selectable for the diagram, excluded from KNOWN. */
   diminished?: boolean
   /** Diatonic chord root matches the active scale in the selected key. */
@@ -76,7 +74,6 @@ export function ChordPlayabilityCell({
   onSelect,
   onPlayableChange,
   showPlayabilityPopup,
-  popupPlacement = 'above',
   diminished = false,
   scaleTone = false,
   compact = false,
@@ -174,9 +171,7 @@ export function ChordPlayabilityCell({
       <div
         className={[
           'diagram-chord-playability',
-          popupPlacement === 'below'
-            ? 'diagram-chord-playability--below'
-            : 'diagram-chord-playability--above',
+          'diagram-chord-playability--above',
           popupVisible ? 'diagram-chord-playability--visible' : '',
         ]
           .filter(Boolean)

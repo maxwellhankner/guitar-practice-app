@@ -199,10 +199,6 @@ export function HomePage() {
   const isScaleSelected = (mode: Exclude<ScaleSelection, null>) =>
     scaleSelection === mode
 
-  const showDiagram =
-    selectedKey != null ||
-    (selection?.kind === 'chord' && selection.id != null)
-
   const scaleToneChordIds = useMemo((): ReadonlySet<ChordPresetId> | null => {
     if (selectedKey == null || scaleSelection == null) {
       return null
@@ -268,7 +264,6 @@ export function HomePage() {
       onSelect?: () => void
     },
   ) => {
-    const { quality } = parseChordPresetId(id)
     const storedPlayable = isChordPlayable(id, disabledChords)
     const selected =
       options?.selected ??
@@ -277,8 +272,6 @@ export function HomePage() {
       options?.keyId != null
         ? `${CHORD_PRESETS[id].name}${options.roman != null ? ` · ${options.roman}` : chordRomanNumeral(options.keyId, id) != null ? ` · ${chordRomanNumeral(options.keyId, id)}` : ''} in ${KEY_DEFS[options.keyId].name}`
         : CHORD_PRESETS[id].name
-    const popupPlacement =
-      quality === 'minor' || quality === 'min7' ? 'below' : 'above'
     const scaleTone =
       options?.keyId != null &&
       scaleToneChordIds != null &&
@@ -312,7 +305,6 @@ export function HomePage() {
         }
         onPlayableChange={(next) => void setChordPlayable(id, next)}
         showPlayabilityPopup={filterPlayableOnly && isChordPracticeable(id)}
-        popupPlacement={popupPlacement}
       />
     )
   }
@@ -609,7 +601,7 @@ export function HomePage() {
 
             <div className="diagram-field">
               <p className="diagram-label" id={`${baseId}-chord-label`}>
-                Chord
+                Chords
               </p>
               {selectedKey != null ? (
                 diatonicSlots != null ? (
@@ -787,11 +779,7 @@ export function HomePage() {
         }
         aria-label="Fretboard preview"
       >
-        {!showDiagram ? (
-          <p className="app-page__diagram-empty">
-            Select a key or chord to show the fretboard
-          </p>
-        ) : progressionVoicings != null && progressionSteps != null ? (
+        {progressionVoicings != null && progressionSteps != null ? (
           <div className="app-page__diagram-stage app-page__diagram-stage--progression">
             {progressionVoicings.map((chordId, stepIndex) => {
               const step = progressionSteps[stepIndex]

@@ -34,14 +34,22 @@ function barreSegments(fingering: ChordFingering): BarreSegment[] {
     if (fingerOneStrings.length < 2) {
       continue
     }
-    const atFret: number[] = []
-    fingering.strings.forEach((state, stringIndex) => {
-      if (state === fret) {
-        atFret.push(stringIndex)
+    const stringMin = Math.min(...fingerOneStrings)
+    let stringMax = Math.max(...fingerOneStrings)
+
+    // Index barre also covers treble strings fretted above the barre (e.g. Fm9 high E, G#7sus4 B/E).
+    for (let s = stringMax + 1; s < STRINGS; s++) {
+      const state = fingering.strings[s]
+      if (state === 'x' || state === 0) {
+        break
       }
-    })
-    const stringMin = Math.min(...atFret)
-    const stringMax = Math.max(...atFret)
+      if (typeof state === 'number' && state >= fret) {
+        stringMax = s
+      } else {
+        break
+      }
+    }
+
     segments.push({
       fret,
       stringMin,

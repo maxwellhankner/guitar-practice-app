@@ -307,10 +307,6 @@
   bottom: 100%;
 }
 
-.diagram-chord-playability--below {
-  top: 100%;
-}
-
 /* Invisible bridge so the pointer can reach the card from the chord button */
 .diagram-chord-playability--above::after {
   content: '';
@@ -318,15 +314,6 @@
   left: -0.25rem;
   right: -0.25rem;
   top: 100%;
-  height: 0.375rem;
-}
-
-.diagram-chord-playability--below::after {
-  content: '';
-  position: absolute;
-  left: -0.25rem;
-  right: -0.25rem;
-  bottom: 100%;
   height: 0.375rem;
 }
 
