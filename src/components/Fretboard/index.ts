@@ -45,17 +45,27 @@ export {
   isChordInKey,
   chordLabelInKey,
   chordRomanNumeral,
+  chordIdToScaleKey,
+  diatonicChordIdsOnScale,
   type KeyId,
   type KeyDef,
   type DiatonicSlot,
 } from './keys'
 export {
+  colorAlternativesForDegree,
+  isSelectableChordInKey,
+  type ResolvedColorChord,
+} from './chordColors'
+export {
   PROGRESSIONS,
   PROGRESSION_IDS,
   chordsForProgression,
+  progressionStepsInKey,
+  allowedChordsForProgression,
   isProgressionResolvableInKey,
   type ProgressionId,
   type ProgressionDef,
+  type ProgressionStep,
 } from './progressions'
 export {
   isChordPlayable,

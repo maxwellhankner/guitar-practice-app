@@ -10,9 +10,12 @@ import {
   Fretboard,
   chordsInKeyOrder,
   chordsForProgression,
+  progressionStepsInKey,
+  allowedChordsForProgression,
   diatonicSlotsInKey,
   isProgressionResolvableInKey,
-  isChordInKey,
+  isSelectableChordInKey,
+  colorAlternativesForDegree,
   isChordPlayable,
   isKeyPlayable,
   isProgressionPlayableInKey,
@@ -24,6 +27,8 @@ import {
   PROGRESSIONS,
   PROGRESSION_IDS,
   resolveChord,
+  chordIdToScaleKey,
+  diatonicChordIdsOnScale,
   scalePatternForKey,
   startFretForFingering,
   FRET_COUNT_MIN,
@@ -48,6 +53,9 @@ export function HomePage() {
   const [selectedKey, setSelectedKey] = useState<KeyId | null>(null)
   const [selectedProgression, setSelectedProgression] =
     useState<ProgressionId | null>(null)
+  const [progressionVoicings, setProgressionVoicings] = useState<
+    ChordPresetId[] | null
+  >(null)
   const {
     ready: settingsReady,
     disabledChords,
@@ -65,8 +73,19 @@ export function HomePage() {
   useEffect(() => {
     if (selectedKey == null) {
       setSelectedProgression(null)
+      setProgressionVoicings(null)
     }
   }, [selectedKey])
+
+  useEffect(() => {
+    if (selectedKey == null || selectedProgression == null) {
+      setProgressionVoicings(null)
+      return
+    }
+    setProgressionVoicings(
+      chordsForProgression(selectedKey, selectedProgression),
+    )
+  }, [selectedKey, selectedProgression])
 
   useEffect(() => {
     if (!filterPlayableOnly) {
@@ -102,7 +121,7 @@ export function HomePage() {
     if (
       selectedKey == null ||
       selection?.kind !== 'chord' ||
-      isChordInKey(selectedKey, selection.id)
+      isSelectableChordInKey(selectedKey, selection.id)
     ) {
       return
     }
@@ -123,27 +142,28 @@ export function HomePage() {
     if (
       selectedKey == null ||
       selectedProgression == null ||
-      selection?.kind !== 'chord' ||
-      visibleChordIds.includes(selection.id)
+      selection?.kind !== 'chord'
     ) {
       return
     }
-    setSelection(null)
-  }, [selectedKey, selectedProgression, selection, visibleChordIds])
-
-  const scalePattern = useMemo(() => {
-    if (selectedKey == null || scaleSelection == null) {
-      return null
+    const allowed = allowedChordsForProgression(
+      selectedKey,
+      selectedProgression,
+    )
+    if (!allowed.has(selection.id)) {
+      setSelection(null)
     }
-    return scalePatternForKey(selectedKey, scaleSelection, fretCount)
-  }, [selectedKey, scaleSelection, fretCount])
+  }, [selectedKey, selectedProgression, selection])
 
-  const toggleScaleSelection = (mode: Exclude<ScaleSelection, null>) => {
-    void setScaleSelection(scaleSelection === mode ? null : mode)
-  }
-
-  const isScaleSelected = (mode: Exclude<ScaleSelection, null>) =>
-    selectedKey != null && scaleSelection === mode
+  const scaleKey = useMemo((): KeyId | null => {
+    if (selectedKey != null) {
+      return selectedKey
+    }
+    if (selection?.kind === 'chord') {
+      return chordIdToScaleKey(selection.id)
+    }
+    return null
+  }, [selectedKey, selection])
 
   const startFret = useMemo(() => {
     if (selection?.kind !== 'chord') {
@@ -152,18 +172,56 @@ export function HomePage() {
     return startFretForFingering(resolveChord(selection.id), fretCount)
   }, [selection, fretCount])
 
-  const progressionChordIds = useMemo(() => {
-    if (selectedKey == null || selectedProgression == null) {
+  const scalePattern = useMemo(() => {
+    if (scaleKey == null || scaleSelection == null) {
       return null
     }
-    return chordsForProgression(selectedKey, selectedProgression)
-  }, [selectedKey, selectedProgression])
+    return scalePatternForKey(
+      scaleKey,
+      scaleSelection,
+      fretCount,
+      startFret,
+    )
+  }, [scaleKey, scaleSelection, fretCount, startFret])
+
+  const scaleContextName =
+    scaleKey != null ? KEY_DEFS[scaleKey].name : null
+
+  const scaleModeTitle = (label: string) =>
+    scaleContextName != null
+      ? `${label} scale in ${scaleContextName}`
+      : 'Select a key or chord to show scale on the fretboard'
+
+  const toggleScaleSelection = (mode: Exclude<ScaleSelection, null>) => {
+    void setScaleSelection(scaleSelection === mode ? null : mode)
+  }
+
+  const isScaleSelected = (mode: Exclude<ScaleSelection, null>) =>
+    scaleSelection === mode
+
+  const showDiagram =
+    selectedKey != null ||
+    (selection?.kind === 'chord' && selection.id != null)
+
+  const scaleToneChordIds = useMemo((): ReadonlySet<ChordPresetId> | null => {
+    if (selectedKey == null || scaleSelection == null) {
+      return null
+    }
+    return new Set(diatonicChordIdsOnScale(selectedKey, scaleSelection))
+  }, [selectedKey, scaleSelection])
 
   const diatonicSlots = useMemo(() => {
     if (selectedKey == null || selectedProgression != null) {
       return null
     }
     return diatonicSlotsInKey(selectedKey)
+  }, [selectedKey, selectedProgression])
+
+  const progressionSteps = useMemo(() => {
+    if (selectedKey == null || selectedProgression == null) {
+      return null
+    }
+    return progressionStepsInKey(selectedKey, selectedProgression)
   }, [selectedKey, selectedProgression])
 
   const progressionDisabledReason = (
@@ -186,19 +244,50 @@ export function HomePage() {
     return `Requires ${missing.join(', ')}`
   }
 
+  const selectProgressionStep = (stepIndex: number, chordId: ChordPresetId) => {
+    setProgressionVoicings((cur) => {
+      if (cur == null) {
+        return cur
+      }
+      const next = [...cur]
+      next[stepIndex] = chordId
+      return next
+    })
+  }
+
   const renderChordCell = (
     id: ChordPresetId,
-    options?: { keyId?: KeyId },
+    options?: {
+      keyId?: KeyId
+      compact?: boolean
+      label?: string
+      roman?: string
+      inProgression?: boolean
+      selectable?: boolean
+      selected?: boolean
+      onSelect?: () => void
+    },
   ) => {
     const { quality } = parseChordPresetId(id)
     const storedPlayable = isChordPlayable(id, disabledChords)
-    const selected = selection?.kind === 'chord' && selection.id === id
+    const selected =
+      options?.selected ??
+      (selection?.kind === 'chord' && selection.id === id)
     const title =
       options?.keyId != null
-        ? `${CHORD_PRESETS[id].name} · ${chordRomanNumeral(options.keyId, id) ?? ''} in ${KEY_DEFS[options.keyId].name}`
+        ? `${CHORD_PRESETS[id].name}${options.roman != null ? ` · ${options.roman}` : chordRomanNumeral(options.keyId, id) != null ? ` · ${chordRomanNumeral(options.keyId, id)}` : ''} in ${KEY_DEFS[options.keyId].name}`
         : CHORD_PRESETS[id].name
     const popupPlacement =
       quality === 'minor' || quality === 'min7' ? 'below' : 'above'
+    const scaleTone =
+      options?.keyId != null &&
+      scaleToneChordIds != null &&
+      (scaleToneChordIds.has(id) ||
+        [...scaleToneChordIds].some(
+          (triadId) =>
+            parseChordPresetId(triadId).rootName ===
+            parseChordPresetId(id).rootName,
+        ))
 
     return (
       <ChordPlayabilityCell
@@ -207,12 +296,19 @@ export function HomePage() {
         playable={storedPlayable}
         selected={selected}
         title={title}
-        onSelect={() =>
-          setSelection((cur) =>
-            cur?.kind === 'chord' && cur.id === id
-              ? null
-              : { kind: 'chord', id },
-          )
+        label={options?.label}
+        compact={options?.compact}
+        scaleTone={scaleTone}
+        inProgression={options?.inProgression}
+        selectable={options?.selectable}
+        onSelect={
+          options?.onSelect ??
+          (() =>
+            setSelection((cur) =>
+              cur?.kind === 'chord' && cur.id === id
+                ? null
+                : { kind: 'chord', id },
+            ))
         }
         onPlayableChange={(next) => void setChordPlayable(id, next)}
         showPlayabilityPopup={filterPlayableOnly && isChordPracticeable(id)}
@@ -417,12 +513,7 @@ export function HomePage() {
                       : 'diagram-chord-btn'
                   }
                   aria-pressed={isScaleSelected('pentatonic')}
-                  disabled={selectedKey == null}
-                  title={
-                    selectedKey == null
-                      ? 'Select a key first'
-                      : `Pentatonic scale in ${KEY_DEFS[selectedKey]?.name ?? 'key'}`
-                  }
+                  title={scaleModeTitle('Pentatonic')}
                   onClick={() => toggleScaleSelection('pentatonic')}
                 >
                   Pentatonic
@@ -435,12 +526,7 @@ export function HomePage() {
                       : 'diagram-chord-btn'
                   }
                   aria-pressed={isScaleSelected('hexatonic')}
-                  disabled={selectedKey == null}
-                  title={
-                    selectedKey == null
-                      ? 'Select a key first'
-                      : `Hexatonic scale in ${KEY_DEFS[selectedKey]?.name ?? 'key'}`
-                  }
+                  title={scaleModeTitle('Hexatonic')}
                   onClick={() => toggleScaleSelection('hexatonic')}
                 >
                   Hexatonic
@@ -453,12 +539,7 @@ export function HomePage() {
                       : 'diagram-chord-btn'
                   }
                   aria-pressed={isScaleSelected('full')}
-                  disabled={selectedKey == null}
-                  title={
-                    selectedKey == null
-                      ? 'Select a key first'
-                      : `Full scale in ${KEY_DEFS[selectedKey]?.name ?? 'key'}`
-                  }
+                  title={scaleModeTitle('Full')}
                   onClick={() => toggleScaleSelection('full')}
                 >
                   Full Scale
@@ -531,66 +612,151 @@ export function HomePage() {
                 Chord
               </p>
               {selectedKey != null ? (
-                <div
-                  className="diagram-chord-in-key"
-                  style={{
-                    gridTemplateColumns: `repeat(${
-                      diatonicSlots != null
-                        ? diatonicSlots.length
-                        : visibleChordIds.length
-                    }, 1fr)`,
-                  }}
-                >
+                diatonicSlots != null ? (
                   <div
-                    className="diagram-chord-in-key__chords"
+                    className="diagram-chord-in-key diagram-chord-in-key--columns"
+                    style={{
+                      gridTemplateColumns: `repeat(${diatonicSlots.length}, 1fr)`,
+                    }}
                     role="group"
                     aria-labelledby={`${baseId}-chord-label`}
                   >
-                    {diatonicSlots != null
-                      ? diatonicSlots.map((slot) =>
-                          slot.chordId != null ? (
-                            renderChordCell(slot.chordId, {
+                    {diatonicSlots.map((slot) => (
+                      <div
+                        key={`degree-${slot.degree}`}
+                        className="diagram-chord-in-key__column"
+                      >
+                        {slot.chordId != null ? (
+                          <>
+                            {renderChordCell(slot.chordId, {
                               keyId: selectedKey,
-                            })
-                          ) : (
+                              roman: slot.roman,
+                            })}
+                            <span
+                              className="diagram-chord-roman"
+                              aria-hidden
+                            >
+                              {slot.roman}
+                            </span>
+                            {colorAlternativesForDegree(
+                              selectedKey,
+                              slot.degree,
+                            ).map((color) =>
+                              renderChordCell(color.chordId, {
+                                keyId: selectedKey,
+                                compact: true,
+                                roman: `${slot.roman} · ${color.chordId}`,
+                              }),
+                            )}
+                          </>
+                        ) : (
+                          <>
                             <div
-                              key={`degree-${slot.degree}`}
                               className="diagram-chord-slot diagram-chord-slot--empty"
                               aria-hidden
                             />
-                          ),
-                        )
-                      : visibleChordIds.map((id) =>
-                          renderChordCell(id, { keyId: selectedKey }),
+                            <span
+                              className="diagram-chord-roman diagram-chord-roman--missing"
+                              aria-hidden
+                            >
+                              {slot.roman}
+                            </span>
+                          </>
                         )}
+                      </div>
+                    ))}
                   </div>
+                ) : progressionSteps != null && progressionVoicings != null ? (
                   <div
-                    className="diagram-chord-in-key__numerals"
-                    aria-hidden
+                    className="diagram-chord-in-key diagram-chord-in-key--columns"
+                    style={{
+                      gridTemplateColumns: `repeat(${progressionSteps.length}, minmax(min-content, 1fr))`,
+                    }}
+                    role="group"
+                    aria-labelledby={`${baseId}-chord-label`}
                   >
-                    {diatonicSlots != null
-                      ? diatonicSlots.map((slot) => (
+                    {progressionSteps.map((step) => {
+                      const voicingId =
+                        progressionVoicings[step.stepIndex] ?? step.triadId
+                      const roman =
+                        chordRomanNumeral(selectedKey, step.triadId) ??
+                        String(step.degree)
+                      return (
+                        <div
+                          key={`progression-step-${step.stepIndex}`}
+                          className="diagram-chord-in-key__column"
+                        >
+                          {renderChordCell(voicingId, {
+                            keyId: selectedKey,
+                            roman,
+                            inProgression: true,
+                            selectable: false,
+                          })}
                           <span
-                            key={`degree-${slot.degree}-numeral`}
-                            className={
-                              slot.chordId == null
-                                ? 'diagram-chord-roman diagram-chord-roman--missing'
-                                : 'diagram-chord-roman'
-                            }
-                          >
-                            {slot.roman}
-                          </span>
-                        ))
-                      : visibleChordIds.map((id) => (
-                          <span
-                            key={`${id}-numeral`}
                             className="diagram-chord-roman"
+                            aria-hidden
                           >
-                            {chordRomanNumeral(selectedKey, id)}
+                            {roman}
                           </span>
-                        ))}
+                          {colorAlternativesForDegree(
+                            selectedKey,
+                            step.degree,
+                          ).map((color) =>
+                            renderChordCell(color.chordId, {
+                              keyId: selectedKey,
+                              compact: true,
+                              roman: `${roman} · ${color.chordId}`,
+                              selected: voicingId === color.chordId,
+                              onSelect: () => {
+                                if (voicingId === color.chordId) {
+                                  selectProgressionStep(
+                                    step.stepIndex,
+                                    step.triadId,
+                                  )
+                                } else {
+                                  selectProgressionStep(
+                                    step.stepIndex,
+                                    color.chordId,
+                                  )
+                                }
+                              },
+                            }),
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
-                </div>
+                ) : (
+                  <div
+                    className="diagram-chord-in-key"
+                    style={{
+                      gridTemplateColumns: `repeat(${visibleChordIds.length}, 1fr)`,
+                    }}
+                  >
+                    <div
+                      className="diagram-chord-in-key__chords"
+                      role="group"
+                      aria-labelledby={`${baseId}-chord-label`}
+                    >
+                      {visibleChordIds.map((id) =>
+                        renderChordCell(id, { keyId: selectedKey }),
+                      )}
+                    </div>
+                    <div
+                      className="diagram-chord-in-key__numerals"
+                      aria-hidden
+                    >
+                      {visibleChordIds.map((id) => (
+                        <span
+                          key={`${id}-numeral`}
+                          className="diagram-chord-roman"
+                        >
+                          {chordRomanNumeral(selectedKey, id)}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )
               ) : (
                 <div
                   className="diagram-chord-select-grid diagram-chord-select-grid--by-root"
@@ -615,37 +781,49 @@ export function HomePage() {
 
       <section
         className={
-          progressionChordIds != null
+          progressionVoicings != null
             ? 'app-page__diagram app-page__diagram--progression'
             : 'app-page__diagram'
         }
         aria-label="Fretboard preview"
       >
-        {progressionChordIds != null ? (
+        {!showDiagram ? (
+          <p className="app-page__diagram-empty">
+            Select a key or chord to show the fretboard
+          </p>
+        ) : progressionVoicings != null && progressionSteps != null ? (
           <div className="app-page__diagram-stage app-page__diagram-stage--progression">
-            {progressionChordIds.map((chordId) => {
-              const selected =
-                selection?.kind === 'chord' && selection.id === chordId
-              const roman = chordRomanNumeral(selectedKey!, chordId)
+            {progressionVoicings.map((chordId, stepIndex) => {
+              const step = progressionSteps[stepIndex]
+              const boardStartFret = startFretForFingering(
+                resolveChord(chordId),
+                fretCount,
+              )
+              const boardScalePattern =
+                scaleKey != null && scaleSelection != null
+                  ? scalePatternForKey(
+                      scaleKey,
+                      scaleSelection,
+                      fretCount,
+                      boardStartFret,
+                    )
+                  : null
+              const roman =
+                step != null
+                  ? (chordRomanNumeral(selectedKey!, step.triadId) ??
+                    String(step.degree))
+                  : null
               return (
                 <div
-                  key={chordId}
-                  className={[
-                    'diagram-progression-board',
-                    selected ? 'diagram-progression-board--selected' : '',
-                  ]
-                    .filter(Boolean)
-                    .join(' ')}
+                  key={`progression-board-${stepIndex}-${chordId}`}
+                  className="diagram-progression-board"
                 >
                   <div className="diagram-progression-board__fret">
                     <Fretboard
                       chord={chordId}
-                      scalePattern={scalePattern}
+                      scalePattern={boardScalePattern}
                       fretCount={fretCount}
-                      startFret={startFretForFingering(
-                        resolveChord(chordId),
-                        fretCount,
-                      )}
+                      startFret={boardStartFret}
                       displayNotes={displayNotes}
                       fitContainer
                     />

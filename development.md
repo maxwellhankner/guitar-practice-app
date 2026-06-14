@@ -31,7 +31,8 @@ The app should stay fast, readable, and single-page. New features should compose
 ### Core modules
 
 - `src/components/Fretboard/Fretboard.tsx` — SVG diagram
-- `src/components/Fretboard/chords.ts` — chord fingerings
+- `src/components/Fretboard/chordVoicings.ts` — chord strings + fingerings (one shape per preset)
+- `src/components/Fretboard/chords.ts` — chord IDs, theory, pitch classes
 - `src/components/Fretboard/keys.ts` — key theory, Roman numerals, diatonic chords
 - `src/components/Fretboard/progressions.ts` — progression definitions → chord lists
 - `src/components/Fretboard/scales.ts` — scale positions + key-linked patterns

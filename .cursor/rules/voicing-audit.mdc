@@ -1,0 +1,59 @@
+---
+description: Workflow when the user asks to audit chord voicings (research, pick one shape, edit chordVoicings.ts)
+globs: src/components/Fretboard/chordVoicings.ts
+alwaysApply: false
+---
+
+# Chord voicing audit
+
+When the user says **"audit the chord voicings of …"** (or similar), follow this workflow.
+
+## Scope
+
+- Parse scope from the request: one root (e.g. A), one variant family (e.g. dim7, add9), all presets, or "outliers / high fret".
+- **Only edit** `src/components/Fretboard/chordVoicings.ts` unless validation requires a tiny script.
+- **One voicing per preset id** — no runtime API, no generator, no second shape.
+
+## Source panel (cross-check, do not auto-import)
+
+1. **[tombatossals/chords-db](https://github.com/tombatossals/chords-db)** — `lib/guitar.json`; list all `positions` for key + suffix; pick lowest/easiest, not position 0 by default.
+2. **Justin Guitar chord library** — tie-breaker for teaching default + fingers.
+3. **Oolimo / All-Guitar-Chords** — confirm common open/barre shape.
+4. **Book tie-breaker** only if sites disagree.
+
+Map suffixes: major, minor, dim, dim7, sus2, sus4, 7, 7sus4, maj7, m7, add9, 6, m6, 9, maj9, m9.
+
+**Spelling:** app uses sharp roots only (`A#`, `C#`, …). Map chords-db `Bb`→`A#`, `Eb`→`D#`, `Ab`→`G#`.
+
+## Pick one shape
+
+Prefer, in order:
+
+1. **Consensus** across 2+ sources
+2. **Low neck** (fits default fret count; `startFret` ≈ 1 for open-key columns)
+3. **Easy** (≤4 fingers, familiar grip in that root column)
+4. **Diagram-friendly** (barre = finger `1` on multiple strings at same fret)
+
+Reject: single random tab, fret 8+ when a common low shape exists, wrong pitch content.
+
+## Fingers
+
+Copy from the winning source. Match app conventions: `null` on `x`/`0`; finger `1` = barre when barre shape.
+
+## After edits
+
+- Run `npm run build`
+- Mentally check: open A/C/G columns don't jump to 12th fret unless unavoidable
+- Summarize what changed and why (1 line per preset if batch)
+
+## Repeatable audit script
+
+`scripts/audit-voicings.mjs` compares presets against a local copy of [tombatossals/chords-db](https://github.com/tombatossals/chords-db) `lib/guitar.json` (download to `/tmp/guitar-chords-db.json`). Dry run: `node scripts/audit-voicings.mjs`. Apply: `node scripts/audit-voicings.mjs --write`.
+
+Hand-tuned overrides live in the script (`Cadd9`, `Fadd9`). Replacement only when current shape is clearly worse (high fret ≥6, or large score gap).
+
+## Do not
+
+- Add npm dependency on chords-db to the app runtime
+- Replace all 192 voicings in one go unless user asked for full audit
+- Change `chords.ts` theory unless parsing new suffixes

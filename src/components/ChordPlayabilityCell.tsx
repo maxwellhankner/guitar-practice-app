@@ -17,6 +17,16 @@ type ChordPlayabilityCellProps = {
   popupPlacement?: 'above' | 'below'
   /** Diminished triads — selectable for the diagram, excluded from KNOWN. */
   diminished?: boolean
+  /** Diatonic chord root matches the active scale in the selected key. */
+  scaleTone?: boolean
+  /** Smaller styling for color-chord alternatives under diatonic columns. */
+  compact?: boolean
+  /** Override button text (defaults to `chordId`). */
+  label?: string
+  /** Progression triad — yellow border marking a step shown in the diagram row. */
+  inProgression?: boolean
+  /** When false, shows the chord label without selection or click handling. */
+  selectable?: boolean
 }
 
 function LockIcon({ locked }: { locked: boolean }) {
@@ -68,6 +78,11 @@ export function ChordPlayabilityCell({
   showPlayabilityPopup,
   popupPlacement = 'above',
   diminished = false,
+  scaleTone = false,
+  compact = false,
+  label,
+  inProgression = false,
+  selectable = true,
 }: ChordPlayabilityCellProps) {
   const popupId = `chord-play-${chordId}`
   const [popupVisible, setPopupVisible] = useState(false)
@@ -102,24 +117,34 @@ export function ChordPlayabilityCell({
     }
   }, [showPlayabilityPopup])
 
-  const chordButton = (
+  const chordClasses = [
+    'diagram-chord-btn',
+    compact ? 'diagram-chord-btn--compact' : '',
+    selectable && selected && !diminished && (!showPlayabilityPopup || playable)
+      ? 'diagram-chord-btn--selected'
+      : '',
+    selectable &&
+    selected &&
+    (diminished || (showPlayabilityPopup && !playable))
+      ? 'diagram-chord-btn--selected-unplayable'
+      : '',
+    selectable && diminished && !selected ? 'diagram-chord-btn--dim' : '',
+    selectable && showPlayabilityPopup && !playable && !diminished
+      ? 'diagram-chord-btn--unplayable'
+      : '',
+    scaleTone ? 'diagram-chord-btn--scale-tone' : '',
+    inProgression ? 'diagram-chord-btn--progression' : '',
+    !selectable ? 'diagram-chord-btn--display' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+
+  const chordContent = label ?? chordId
+
+  const chordButton = selectable ? (
     <button
       type="button"
-      className={[
-        'diagram-chord-btn',
-        selected && !diminished && (!showPlayabilityPopup || playable)
-          ? 'diagram-chord-btn--selected'
-          : '',
-        selected && (diminished || (showPlayabilityPopup && !playable))
-          ? 'diagram-chord-btn--selected-unplayable'
-          : '',
-        diminished && !selected ? 'diagram-chord-btn--dim' : '',
-        showPlayabilityPopup && !playable && !diminished
-          ? 'diagram-chord-btn--unplayable'
-          : '',
-      ]
-        .filter(Boolean)
-        .join(' ')}
+      className={chordClasses}
       aria-pressed={selected}
       title={title}
       onClick={(e) => {
@@ -127,11 +152,15 @@ export function ChordPlayabilityCell({
         e.currentTarget.blur()
       }}
     >
-      {chordId}
+      {chordContent}
     </button>
+  ) : (
+    <div className={chordClasses} title={title}>
+      {chordContent}
+    </div>
   )
 
-  if (!showPlayabilityPopup) {
+  if (!selectable || !showPlayabilityPopup) {
     return <div className="diagram-chord-cell">{chordButton}</div>
   }
 

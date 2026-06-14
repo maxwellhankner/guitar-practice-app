@@ -1,4 +1,5 @@
 import { type ChordPresetId } from './chords'
+import { colorAlternativesForDegree } from './chordColors'
 import {
   KEY_MAJOR_IDS,
   KEY_MINOR_IDS,
@@ -68,6 +69,45 @@ function assertProgressions(): void {
       chordsForProgression(keyId, progressionId)
     }
   }
+}
+
+/** All triads and color alternatives for each step in a progression. */
+export function allowedChordsForProgression(
+  keyId: KeyId,
+  progressionId: ProgressionId,
+): ReadonlySet<ChordPresetId> {
+  const { degrees } = PROGRESSIONS[progressionId]
+  const allowed = new Set<ChordPresetId>()
+  for (const degree of degrees) {
+    const triadId = chordIdForScaleDegree(keyId, degree)
+    if (triadId == null) {
+      continue
+    }
+    allowed.add(triadId)
+    for (const color of colorAlternativesForDegree(keyId, degree)) {
+      allowed.add(color.chordId)
+    }
+  }
+  return allowed
+}
+
+export type ProgressionStep = {
+  stepIndex: number
+  degree: number
+  triadId: ChordPresetId
+}
+
+/** Ordered progression steps with diatonic triads for the key. */
+export function progressionStepsInKey(
+  keyId: KeyId,
+  progressionId: ProgressionId,
+): ProgressionStep[] {
+  const { degrees } = PROGRESSIONS[progressionId]
+  return degrees.map((degree, stepIndex) => ({
+    stepIndex,
+    degree,
+    triadId: chordForDegree(keyId, degree),
+  }))
 }
 
 /** Chords for a progression in the given key, in progression order. */

@@ -228,6 +228,32 @@ export function chordLabelInKey(
   return roman != null ? `${chordId} (${roman})` : chordId
 }
 
+/** Implied key for scale overlay when no key is selected (chord root + quality). */
+export function chordIdToScaleKey(chordId: ChordPresetId): KeyId {
+  const { rootName, quality } = parseChordPresetId(chordId)
+  if (quality === 'minor' || quality === 'min7') {
+    return `${rootName}m` as KeyId
+  }
+  return rootName as KeyId
+}
+
+/** Diatonic triads in `keyId` whose root is a tone of the scale variant. */
+export function diatonicChordIdsOnScale(
+  keyId: KeyId,
+  variant: ScaleVariant,
+): ChordPresetId[] {
+  const scalePcs = new Set(scalePitchClassesForKey(keyId, variant))
+  return diatonicSlotsInKey(keyId)
+    .map((slot) => slot.chordId)
+    .filter((id): id is ChordPresetId => {
+      if (id == null) {
+        return false
+      }
+      const { rootPc } = parseChordPresetId(id)
+      return scalePcs.has(rootPc)
+    })
+}
+
 const MAJOR_PENTATONIC_STEPS = [0, 2, 4, 7, 9] as const
 const MINOR_PENTATONIC_STEPS = [0, 3, 5, 7, 10] as const
 /** Full major / natural minor with one diatonic degree omitted (6 notes). */

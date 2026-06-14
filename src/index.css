@@ -2,6 +2,9 @@
   --heading: #14120f;
   --muted: #5c574f;
   --accent-line: #9a7324;
+  --fretboard-dot-stroke: #f5f0e6;
+  --fretboard-scale-dot-stroke: #8a8480;
+  --fretboard-fret: #c5baa8;
   --page-bg: #f4f1eb;
   --card-bg: #fff;
   --card-border: rgba(20, 18, 15, 0.08);
@@ -25,6 +28,9 @@
     --heading: #f2efe9;
     --muted: #a39e94;
     --accent-line: #d4a94a;
+    --fretboard-dot-stroke: #e8e0d4;
+    --fretboard-scale-dot-stroke: #7a756e;
+    --fretboard-fret: #8a7f72;
     --page-bg: #121210;
     --card-bg: #1c1b18;
     --card-border: rgba(242, 239, 233, 0.1);
