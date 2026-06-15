@@ -7,6 +7,7 @@
   --fb-nut: #f5f0e6;
   --fb-fret: #c5baa8;
   --fb-string: #6a6a6a;
+  --fb-string-muted: #4a4a4a;
   --fb-dot: #f4efe6;
   --fb-dot-stroke: var(--fretboard-dot-stroke, #f5f0e6);
   --fb-scale-dot-stroke: var(--fretboard-scale-dot-stroke, #8a8480);
@@ -29,6 +30,77 @@
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.wrapPortrait.wrapFit {
+  height: 100%;
+  width: auto;
+  max-width: 100%;
+  align-self: stretch;
+}
+
+:global(.app-page:not(.app-page--split))
+  :global(.app-page__diagram-stage--single)
+  .wrapPortrait.wrapFit {
+  width: auto;
+  height: 100%;
+  max-width: 100%;
+}
+
+:global(.app-page:not(.app-page--split))
+  :global(.app-page__diagram-stage--single)
+  .wrapPortrait.wrapFit
+  .svg {
+  width: auto;
+  height: 100%;
+  max-width: 100%;
+}
+
+.wrapPortrait.wrapFit .svg {
+  height: 100%;
+  width: auto;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+:global(.app-page--split) :global(.app-page__diagram-stage--single) .wrapFit {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+:global(.app-page--split) :global(.app-page__diagram-stage--single) .wrapFit .svg {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+}
+
+:global(.app-page--split) :global(.app-page__diagram-stage--single) .wrapPortrait.wrapFit {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+}
+
+:global(.app-page--split) :global(.app-page__diagram-stage--single) .wrapPortrait.wrapFit .svg {
+  height: 100%;
+  width: auto;
+  max-width: 100%;
+}
+
+:global(.app-page:not(.app-page--split)) :global(.app-page__diagram-stage--single) .wrapFit {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+:global(.app-page:not(.app-page--split)) :global(.app-page__diagram-stage--single) .wrapFit .svg {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
 }
 
 .wrap.wrapFit .svg {
@@ -71,6 +143,11 @@
 
 .string {
   stroke: var(--fb-string);
+  stroke-width: 1.15;
+}
+
+.stringMuted {
+  stroke: var(--fb-string-muted);
   stroke-width: 1.15;
 }
 
@@ -136,6 +213,15 @@
   pointer-events: none;
 }
 
+.scaleCellNote {
+  fill: var(--fb-scale-dot-stroke);
+  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  font-size: var(--fb-note-font-size);
+  font-weight: 700;
+  text-anchor: middle;
+  pointer-events: none;
+}
+
 .marker {
   fill: var(--fb-marker);
   font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
@@ -152,12 +238,22 @@
   text-anchor: middle;
 }
 
+.captionTitle {
+  fill: var(--fb-fret-label);
+  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  text-anchor: middle;
+  pointer-events: none;
+}
+
 @media (prefers-color-scheme: dark) {
   .wrap {
     --fb-board: #1a1410;
     --fb-nut: #e8e0d4;
     --fb-fret: #8a7f72;
     --fb-string: #565656;
+    --fb-string-muted: #3a3a3a;
     --fb-dot: #2c2824;
     --fb-dot-stroke: var(--fretboard-dot-stroke, #e8e0d4);
     --fb-scale-dot-stroke: var(--fretboard-scale-dot-stroke, #7a756e);

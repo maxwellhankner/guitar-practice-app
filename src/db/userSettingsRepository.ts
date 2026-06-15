@@ -12,6 +12,15 @@ const DOC_ID = 'default'
 const LEGACY_DISABLED_CHORDS_KEY = 'guitar-practice-disabled-chords'
 const LEGACY_FAKE_DB_KEY = 'guitar-practice-fake-db'
 
+/** Options panel share; diagram gets `1 - ratio` (capped at 50%). */
+export const PANEL_SPLIT_MIN = 0.5
+export const PANEL_SPLIT_MAX = 0.78
+export const DEFAULT_HORIZONTAL_SPLIT = 0.65
+export const DEFAULT_VERTICAL_SPLIT = 0.58
+
+export type DiagramLayout = 'horizontal' | 'vertical'
+export type FretboardOrientation = 'landscape' | 'portrait'
+
 export type UserSettings = {
   disabledChords: ChordPresetId[]
   /** When true, keys/progressions/chords filter to what you can play. */
@@ -20,6 +29,11 @@ export type UserSettings = {
   fretCount: number
   /** null = no scale overlay */
   scaleSelection: ScaleSelection
+  diagramLayout: DiagramLayout
+  horizontalSplitRatio: number
+  verticalSplitRatio: number
+  fretboardOrientation: FretboardOrientation
+  panelsSwapped: boolean
 }
 
 type UserSettingsRecord = UserSettings & { id: string }
@@ -30,9 +44,29 @@ const DEFAULT_SETTINGS: UserSettings = {
   displayNotes: false,
   fretCount: 6,
   scaleSelection: null,
+  diagramLayout: 'horizontal',
+  horizontalSplitRatio: DEFAULT_HORIZONTAL_SPLIT,
+  verticalSplitRatio: DEFAULT_VERTICAL_SPLIT,
+  fretboardOrientation: 'landscape',
+  panelsSwapped: false,
 }
 
 const validChordIds = new Set<string>(CHORD_PRESET_IDS)
+
+function sanitizeDiagramLayout(value: unknown): DiagramLayout {
+  return value === 'vertical' ? 'vertical' : 'horizontal'
+}
+
+function sanitizeFretboardOrientation(value: unknown): FretboardOrientation {
+  return value === 'portrait' ? 'portrait' : 'landscape'
+}
+
+function sanitizeSplitRatio(value: unknown, fallback: number): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return fallback
+  }
+  return Math.min(PANEL_SPLIT_MAX, Math.max(PANEL_SPLIT_MIN, value))
+}
 
 function sanitizeChordIds(ids: unknown): ChordPresetId[] {
   if (!Array.isArray(ids)) {
@@ -54,6 +88,22 @@ function fromRecord(record: UserSettingsRecord): UserSettings {
         : DEFAULT_SETTINGS.displayNotes,
     fretCount: sanitizeFretCount(record.fretCount),
     scaleSelection: sanitizeScaleSelection(record.scaleSelection),
+    diagramLayout: sanitizeDiagramLayout(record.diagramLayout),
+    horizontalSplitRatio: sanitizeSplitRatio(
+      record.horizontalSplitRatio,
+      DEFAULT_HORIZONTAL_SPLIT,
+    ),
+    verticalSplitRatio: sanitizeSplitRatio(
+      record.verticalSplitRatio,
+      DEFAULT_VERTICAL_SPLIT,
+    ),
+    fretboardOrientation: sanitizeFretboardOrientation(
+      record.fretboardOrientation,
+    ),
+    panelsSwapped:
+      typeof record.panelsSwapped === 'boolean'
+        ? record.panelsSwapped
+        : DEFAULT_SETTINGS.panelsSwapped,
   }
 }
 
@@ -104,6 +154,22 @@ function loadLegacyFakeDbSettings(): UserSettings | null {
           : DEFAULT_SETTINGS.displayNotes,
       fretCount: sanitizeFretCount(data.fretCount),
       scaleSelection: sanitizeScaleSelection(data.scaleSelection),
+      diagramLayout: sanitizeDiagramLayout(data.diagramLayout),
+      horizontalSplitRatio: sanitizeSplitRatio(
+        data.horizontalSplitRatio,
+        DEFAULT_HORIZONTAL_SPLIT,
+      ),
+      verticalSplitRatio: sanitizeSplitRatio(
+        data.verticalSplitRatio,
+        DEFAULT_VERTICAL_SPLIT,
+      ),
+      fretboardOrientation: sanitizeFretboardOrientation(
+        data.fretboardOrientation,
+      ),
+      panelsSwapped:
+        typeof data.panelsSwapped === 'boolean'
+          ? data.panelsSwapped
+          : DEFAULT_SETTINGS.panelsSwapped,
     }
   } catch {
     return null
@@ -187,6 +253,29 @@ export async function saveUserSettings(
       partial.scaleSelection !== undefined
         ? sanitizeScaleSelection(partial.scaleSelection)
         : current.scaleSelection,
+    diagramLayout:
+      partial.diagramLayout != null
+        ? sanitizeDiagramLayout(partial.diagramLayout)
+        : current.diagramLayout,
+    horizontalSplitRatio:
+      partial.horizontalSplitRatio != null
+        ? sanitizeSplitRatio(
+            partial.horizontalSplitRatio,
+            current.horizontalSplitRatio,
+          )
+        : current.horizontalSplitRatio,
+    verticalSplitRatio:
+      partial.verticalSplitRatio != null
+        ? sanitizeSplitRatio(
+            partial.verticalSplitRatio,
+            current.verticalSplitRatio,
+          )
+        : current.verticalSplitRatio,
+    fretboardOrientation:
+      partial.fretboardOrientation != null
+        ? sanitizeFretboardOrientation(partial.fretboardOrientation)
+        : current.fretboardOrientation,
+    panelsSwapped: partial.panelsSwapped ?? current.panelsSwapped,
   }
 
   try {
@@ -232,4 +321,36 @@ export async function setScaleSelection(
   value: ScaleSelection,
 ): Promise<UserSettings> {
   return saveUserSettings({ scaleSelection: value })
+}
+
+export async function setDiagramLayout(
+  value: DiagramLayout,
+): Promise<UserSettings> {
+  return saveUserSettings({ diagramLayout: value })
+}
+
+export async function setHorizontalSplitRatio(
+  value: number,
+): Promise<UserSettings> {
+  return saveUserSettings({
+    horizontalSplitRatio: sanitizeSplitRatio(value, DEFAULT_HORIZONTAL_SPLIT),
+  })
+}
+
+export async function setVerticalSplitRatio(
+  value: number,
+): Promise<UserSettings> {
+  return saveUserSettings({
+    verticalSplitRatio: sanitizeSplitRatio(value, DEFAULT_VERTICAL_SPLIT),
+  })
+}
+
+export async function setFretboardOrientation(
+  value: FretboardOrientation,
+): Promise<UserSettings> {
+  return saveUserSettings({ fretboardOrientation: value })
+}
+
+export async function setPanelsSwapped(value: boolean): Promise<UserSettings> {
+  return saveUserSettings({ panelsSwapped: value })
 }

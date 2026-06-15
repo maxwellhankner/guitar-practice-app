@@ -4,10 +4,382 @@
 }
 
 .app-page {
+  --app-content-width: min(100%, max(20rem, min(52rem, 48vw)));
   height: 100%;
   display: grid;
-  grid-template-rows: minmax(0, 1fr) 35dvh;
   overflow: hidden;
+}
+
+.app-page__options {
+  grid-row: 1;
+  grid-column: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+.app-page__divider--horizontal {
+  grid-row: 2;
+  grid-column: 1;
+}
+
+.app-page__diagram {
+  grid-row: 3;
+  grid-column: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+.app-page--split .app-page__options {
+  grid-row: 1;
+  grid-column: 1;
+}
+
+.app-page--split .app-page__divider--vertical {
+  grid-row: 1;
+  grid-column: 2;
+}
+
+.app-page--split .app-page__diagram {
+  grid-row: 1;
+  grid-column: 3;
+  align-items: stretch;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.app-page--panels-swapped:not(.app-page--split) .app-page__options {
+  grid-row: 3;
+}
+
+.app-page--panels-swapped:not(.app-page--split) .app-page__diagram {
+  grid-row: 1;
+}
+
+.app-page--panels-swapped.app-page--split .app-page__options {
+  grid-column: 3;
+}
+
+.app-page--panels-swapped.app-page--split .app-page__diagram {
+  grid-column: 1;
+}
+
+.app-page__divider {
+  position: relative;
+  z-index: 3;
+  flex-shrink: 0;
+  touch-action: none;
+  overflow: visible;
+  background: transparent;
+  --divider-btn-size: 1.875rem;
+  --divider-btn-gap: 0.375rem;
+  --divider-btn-step: calc(var(--divider-btn-size) + var(--divider-btn-gap));
+}
+
+.app-page__divider--horizontal {
+  height: 0;
+  border-top: 1px solid var(--card-border);
+  cursor: ns-resize;
+}
+
+.app-page__divider--vertical {
+  width: 0;
+  border-left: 1px solid var(--card-border);
+  cursor: ew-resize;
+}
+
+.app-page__divider-handle,
+.app-page__divider-layout-toggle,
+.app-page__divider-orientation-toggle,
+.app-page__divider-swap-toggle,
+.app-page__divider-known-toggle,
+.app-page__divider-notes-toggle {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--divider-btn-size);
+  height: var(--divider-btn-size);
+  padding: 0;
+  border: 1px solid var(--card-border);
+  border-radius: 50%;
+  background: var(--card-bg);
+  color: var(--muted);
+}
+
+.app-page__divider-handle {
+  top: 50%;
+  left: 50%;
+  translate: -50% -50%;
+  z-index: 1;
+}
+
+.app-page__divider--horizontal .app-page__divider-handle {
+  cursor: ns-resize;
+}
+
+.app-page__divider--vertical .app-page__divider-handle {
+  cursor: ew-resize;
+}
+
+.app-page__divider-handle .app-page__divider-icon {
+  pointer-events: none;
+}
+
+.app-page__divider-layout-toggle,
+.app-page__divider-orientation-toggle,
+.app-page__divider-swap-toggle,
+.app-page__divider-known-toggle,
+.app-page__divider-notes-toggle {
+  z-index: 1;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  transition:
+    color 0.12s ease,
+    background 0.12s ease,
+    border-color 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+.app-page__divider-layout-toggle:hover,
+.app-page__divider-orientation-toggle:hover,
+.app-page__divider-swap-toggle:hover,
+.app-page__divider-known-toggle:hover,
+.app-page__divider-notes-toggle:hover {
+  color: var(--heading);
+  background: var(--page-bg);
+}
+
+.app-page__divider-layout-toggle:focus-visible,
+.app-page__divider-orientation-toggle:focus-visible,
+.app-page__divider-swap-toggle:focus-visible,
+.app-page__divider-known-toggle:focus-visible,
+.app-page__divider-notes-toggle:focus-visible {
+  outline: none;
+  border-color: var(--accent-line);
+}
+
+.app-page__divider-tool--active {
+  color: var(--heading);
+  border-color: var(--accent-line);
+  box-shadow: inset 0 0 0 1px var(--accent-line);
+}
+
+.app-tooltip {
+  position: fixed;
+  z-index: 1000;
+  max-width: min(12rem, calc(100vw - 1rem));
+  padding: 0.3125rem 0.5rem;
+  border: 1px solid var(--card-border);
+  border-radius: 0.3125rem;
+  background: var(--card-bg);
+  color: var(--heading);
+  font-family: inherit;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  line-height: 1.25;
+  text-align: left;
+  white-space: normal;
+  pointer-events: none;
+  box-shadow: 0 0.125rem 0.5rem rgba(0, 0, 0, 0.1);
+}
+
+.app-page__divider-frets {
+  position: absolute;
+  z-index: 2;
+}
+
+.app-page__divider-frets-toggle,
+.app-page__divider-frets-option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--divider-btn-size);
+  height: var(--divider-btn-size);
+  padding: 0;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  color: var(--muted);
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1;
+  transition:
+    color 0.12s ease,
+    background 0.12s ease,
+    border-color 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+.app-page__divider-frets-toggle {
+  border-radius: 50%;
+}
+
+.app-page__divider-frets-option {
+  border-radius: 50%;
+}
+
+.app-page__divider-frets-toggle:hover,
+.app-page__divider-frets-option:hover {
+  color: var(--heading);
+  background: var(--page-bg);
+}
+
+.app-page__divider-frets-toggle:focus-visible,
+.app-page__divider-frets-option:focus-visible {
+  outline: none;
+  border-color: var(--accent-line);
+}
+
+.app-page__divider-frets-option--selected {
+  color: var(--heading);
+  border-color: var(--accent-line);
+  box-shadow: inset 0 0 0 1px var(--accent-line);
+}
+
+.app-page__divider-frets-value {
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+}
+
+.app-page__divider-frets-menu {
+  position: absolute;
+  z-index: 3;
+  display: grid;
+  grid-template-columns: repeat(4, var(--divider-btn-size));
+  grid-auto-rows: var(--divider-btn-size);
+  gap: var(--divider-btn-gap);
+  padding: 0.375rem;
+  border: 1px solid var(--card-border);
+  border-radius: 0.75rem;
+  background: var(--card-bg);
+  box-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.12);
+}
+
+.app-page__divider-frets-menu--below {
+  top: calc(100% + var(--divider-btn-gap));
+  left: 50%;
+  translate: -50% 0;
+}
+
+.app-page__divider-frets-menu--above {
+  bottom: calc(100% + var(--divider-btn-gap));
+  left: 50%;
+  translate: -50% 0;
+}
+
+.app-page__divider-frets-menu--right {
+  left: calc(100% + var(--divider-btn-gap));
+  top: 50%;
+  translate: 0 -50%;
+}
+
+.app-page__divider-frets-menu--left {
+  right: calc(100% + var(--divider-btn-gap));
+  left: auto;
+  top: 50%;
+  translate: 0 -50%;
+}
+
+.app-page__divider--horizontal .app-page__divider-layout-toggle {
+  top: 50%;
+  right: calc(0.5rem + 0 * var(--divider-btn-step));
+  left: auto;
+  translate: 0 -50%;
+}
+
+.app-page__divider--horizontal .app-page__divider-swap-toggle {
+  top: 50%;
+  right: calc(0.5rem + 1 * var(--divider-btn-step));
+  left: auto;
+  translate: 0 -50%;
+}
+
+.app-page__divider--horizontal .app-page__divider-orientation-toggle {
+  top: 50%;
+  right: calc(0.5rem + 2 * var(--divider-btn-step));
+  left: auto;
+  translate: 0 -50%;
+}
+
+.app-page__divider--horizontal .app-page__divider-frets {
+  top: 50%;
+  right: calc(0.5rem + 3 * var(--divider-btn-step));
+  left: auto;
+  translate: 0 -50%;
+}
+
+.app-page__divider--horizontal .app-page__divider-known-toggle {
+  top: 50%;
+  right: calc(0.5rem + 4 * var(--divider-btn-step));
+  left: auto;
+  translate: 0 -50%;
+}
+
+.app-page__divider--horizontal .app-page__divider-notes-toggle {
+  top: 50%;
+  right: calc(0.5rem + 5 * var(--divider-btn-step));
+  left: auto;
+  translate: 0 -50%;
+}
+
+.app-page__divider--vertical .app-page__divider-layout-toggle {
+  top: calc(0.5rem + 0 * var(--divider-btn-step));
+  bottom: auto;
+  left: 50%;
+  right: auto;
+  translate: -50% 0;
+}
+
+.app-page__divider--vertical .app-page__divider-swap-toggle {
+  top: calc(0.5rem + 1 * var(--divider-btn-step));
+  bottom: auto;
+  left: 50%;
+  right: auto;
+  translate: -50% 0;
+}
+
+.app-page__divider--vertical .app-page__divider-orientation-toggle {
+  top: calc(0.5rem + 2 * var(--divider-btn-step));
+  bottom: auto;
+  left: 50%;
+  right: auto;
+  translate: -50% 0;
+}
+
+.app-page__divider--vertical .app-page__divider-frets {
+  top: calc(0.5rem + 3 * var(--divider-btn-step));
+  bottom: auto;
+  left: 50%;
+  right: auto;
+  translate: -50% 0;
+}
+
+.app-page__divider--vertical .app-page__divider-known-toggle {
+  top: calc(0.5rem + 4 * var(--divider-btn-step));
+  bottom: auto;
+  left: 50%;
+  right: auto;
+  translate: -50% 0;
+}
+
+.app-page__divider--vertical .app-page__divider-notes-toggle {
+  top: calc(0.5rem + 5 * var(--divider-btn-step));
+  bottom: auto;
+  left: 50%;
+  right: auto;
+  translate: -50% 0;
+}
+
+.app-page__divider-icon {
+  display: block;
+}
+
+.app-page__divider-icon--vertical {
+  rotate: 90deg;
 }
 
 .app-page__options {
@@ -15,9 +387,8 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: none;
-  padding: 1.25rem 1.5rem 1rem;
+  padding: 1.25rem 1.5rem 2.5rem;
   background: var(--page-bg);
-  border-bottom: 1px solid var(--card-border);
 }
 
 .app-page__options::-webkit-scrollbar {
@@ -61,13 +432,75 @@
   overflow-x: hidden;
 }
 
+.app-page__diagram--layout-vertical {
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.app-page__diagram-wrap {
+  position: relative;
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+}
+
+.app-page:not(.app-page--split) .app-page__diagram-wrap {
+  width: 100%;
+  max-width: none;
+  margin-inline: 0;
+}
+
+.app-page:not(.app-page--split) .app-page__diagram-stage--single {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  height: 100%;
+}
+
 .app-page__diagram-stage--progression {
   flex: 1;
   width: 100%;
   min-width: 0;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: row;
   gap: clamp(0.25rem, 1.5vw, 0.625rem);
   align-items: stretch;
   justify-content: stretch;
+}
+
+.app-page__diagram--layout-vertical .app-page__diagram-stage--progression {
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.app-page--split .app-page__diagram-stage {
+  width: 100%;
+  height: 100%;
+}
+
+.app-page--split .app-page__diagram-wrap {
+  width: 100%;
+  max-width: none;
+  margin-inline: 0;
+}
+
+.app-page--split .app-page__diagram-stage--single {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  align-self: stretch;
+}
+
+.app-page__diagram--layout-vertical .diagram-progression-board {
+  flex: 1 1 0;
+  width: 100%;
+  min-height: 0;
 }
 
 .diagram-progression-board {
@@ -77,23 +510,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-}
-
-.diagram-progression-board__fret {
-  flex: 1;
   min-height: 0;
-  min-width: 0;
-  width: 100%;
-}
-
-.diagram-progression-board__label {
-  margin: 0.35rem 0 0;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  color: var(--muted);
-  text-align: center;
-  line-height: 1.2;
-  user-select: none;
 }
 
 .diagram-chord-btn--display {
@@ -111,7 +528,7 @@
 }
 
 .app-page__inner {
-  width: min(100%, max(18rem, min(48rem, 40vw)));
+  width: var(--app-content-width);
   margin-inline: auto;
 }
 
@@ -197,6 +614,53 @@
   text-transform: uppercase;
 }
 
+.diagram-field__label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.diagram-find-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0.2rem 0.45rem;
+  border: 1px solid transparent;
+  border-radius: 0.375rem;
+  background: none;
+  font: inherit;
+  font-size: 0.6875rem;
+  font-weight: 400;
+  color: color-mix(in srgb, var(--muted) 72%, var(--card-border));
+  text-transform: lowercase;
+  letter-spacing: 0;
+  cursor: pointer;
+  transition:
+    color 0.12s ease,
+    border-color 0.12s ease,
+    background 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+.diagram-find-key:hover {
+  color: var(--muted);
+}
+
+.diagram-find-key--active {
+  color: var(--heading);
+  border-color: var(--accent-line);
+  background: var(--card-bg);
+  box-shadow: inset 0 0 0 1px var(--accent-line);
+}
+
+.diagram-find-key:focus-visible {
+  outline: none;
+  border-color: var(--accent-line);
+  box-shadow: inset 0 0 0 1px var(--accent-line);
+}
+
 .diagram-chord-grid {
   display: flex;
   flex-wrap: wrap;
@@ -240,6 +704,222 @@
 .diagram-progression-grid .diagram-chord-btn {
   font-size: 0.6875rem;
   padding-inline: 0.125rem;
+}
+
+.diagram-chords-build {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.diagram-chords-build__sub-label {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.diagram-chords-build__progression-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.diagram-chords-build__clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 0.6875rem;
+  font-weight: 400;
+  color: color-mix(in srgb, var(--muted) 72%, var(--card-border));
+  cursor: pointer;
+  text-transform: lowercase;
+}
+
+.diagram-chords-build__clear:hover {
+  color: var(--muted);
+}
+
+.diagram-chords-build__clear:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 1px var(--muted);
+  border-radius: 0.125rem;
+}
+
+.diagram-chords-build__progression-row {
+  margin-top: 0.25rem;
+}
+
+.diagram-chords-build__progression-row .diagram-progression-grid {
+  margin-bottom: 0.5rem;
+}
+
+.diagram-chords-build__progression-steps {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.375rem;
+  margin-top: 0.25rem;
+}
+
+.diagram-chords-build__progression-steps.diagram-chord-in-key {
+  display: flex;
+}
+
+.diagram-progression-step {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.diagram-progression-step__chord-wrap {
+  --progression-chord-border: 1px;
+  --progression-chord-accent-inset: 1px;
+  --progression-chord-edge: calc(
+    var(--progression-chord-border) + var(--progression-chord-accent-inset)
+  );
+  --progression-chord-font: 0.75rem;
+  --progression-chord-line-height: 1.5;
+  --progression-chord-padding-y: 0.3rem;
+  --progression-chord-padding-x: 0.125rem;
+  --progression-chord-inner-y: calc(
+    var(--progression-chord-padding-y) * 2 + var(--progression-chord-font) *
+      var(--progression-chord-line-height)
+  );
+  --progression-action-gap: 0.125rem;
+  --progression-action-size: calc(
+    var(--progression-chord-inner-y) - 2 * var(--progression-action-gap)
+  );
+  --progression-action-radius: calc(var(--progression-action-size) * 0.18);
+  --progression-action-icon: calc(var(--progression-action-size) * 0.62);
+  position: relative;
+  width: 100%;
+  overflow: visible;
+}
+
+.diagram-progression-step__chord-wrap:hover {
+  z-index: 1;
+}
+
+.diagram-progression-step__chord-wrap .diagram-chord-cell {
+  width: 100%;
+}
+
+.diagram-progression-step__chord-wrap .diagram-chord-btn {
+  border-radius: 0.375rem;
+  font-size: var(--progression-chord-font);
+  line-height: var(--progression-chord-line-height);
+  padding-block: var(--progression-chord-padding-y);
+  padding-inline: var(--progression-chord-padding-x);
+}
+
+.diagram-progression-step__hover-controls {
+  position: absolute;
+  top: calc(var(--progression-chord-edge) + var(--progression-action-gap));
+  height: var(--progression-action-size);
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: var(--progression-action-gap);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+}
+
+.diagram-progression-step__hover-controls--left {
+  left: calc(var(--progression-chord-edge) + var(--progression-action-gap));
+}
+
+.diagram-progression-step__hover-controls--right {
+  right: calc(var(--progression-chord-edge) + var(--progression-action-gap));
+}
+
+.diagram-progression-step__chord-wrap:hover
+  .diagram-progression-step__hover-controls,
+.diagram-progression-step__hover-controls:focus-within {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.diagram-progression-step__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--progression-action-size);
+  height: var(--progression-action-size);
+  padding: 0;
+  border: none;
+  border-radius: var(--progression-action-radius);
+  background: var(--card-bg);
+  color: var(--muted);
+  box-shadow: 0 0 0 1px var(--card-border);
+  cursor: pointer;
+  transition:
+    color 0.12s ease,
+    background 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+.diagram-progression-step__action-icon {
+  width: var(--progression-action-icon) !important;
+  height: var(--progression-action-icon) !important;
+}
+
+.diagram-progression-step__action:hover {
+  color: var(--text);
+  background: var(--page-bg);
+}
+
+.diagram-progression-step__action--active {
+  color: var(--accent);
+  box-shadow:
+    0 0 0 1px var(--accent),
+    inset 0 0 0 1px var(--accent);
+}
+
+.diagram-progression-step__action--danger:hover {
+  color: #c44;
+}
+
+.diagram-progression-step__action:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 1px var(--accent-line),
+    inset 0 0 0 1px var(--accent-line);
+}
+
+.diagram-progression-step__alts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.125rem;
+}
+
+.diagram-root-picker--progression {
+  margin-top: 0.5rem;
+}
+
+.diagram-root-picker {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.25rem;
+  margin-top: 0.35rem;
+  padding-top: 0.35rem;
+  border-top: 1px dashed var(--card-border);
+}
+
+.diagram-chord-btn--out-of-key {
+  opacity: 0.45;
+}
+
+.diagram-chord-btn--out-of-key:hover {
+  opacity: 0.75;
 }
 
 .diagram-chord-select-grid {
@@ -340,9 +1020,9 @@
 }
 
 .diagram-chord-playability__switch:focus-visible {
-  outline: 2px solid var(--accent-line);
-  outline-offset: 2px;
+  outline: none;
   border-radius: 0.5rem;
+  box-shadow: inset 0 0 0 2px var(--accent-line);
 }
 
 .diagram-chord-playability__switch-track {
@@ -428,21 +1108,53 @@
 }
 
 .diagram-chord-roman {
-  display: block;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   width: 100%;
   min-width: 0;
   padding: 0.3rem 0.125rem;
-  font: inherit;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--muted);
-  text-align: center;
   user-select: none;
   pointer-events: none;
 }
 
-.diagram-chord-roman--missing {
+.diagram-chord-roman__label {
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--muted);
+  text-align: center;
+}
+
+.diagram-chord-roman--missing .diagram-chord-roman__label {
   opacity: 0.45;
+}
+
+.diagram-chord-roman--scale-tone .diagram-chord-roman__label {
+  position: relative;
+  z-index: 0;
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.375rem;
+  min-height: 1.375rem;
+  padding: 0.125rem 0.2rem;
+  line-height: 1;
+}
+
+.diagram-chord-roman--scale-tone .diagram-chord-roman__label::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  left: 50%;
+  top: 50%;
+  width: max(100%, 1.375rem);
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  border-radius: 50%;
+  border: 2px solid var(--fretboard-scale-dot-stroke);
+  background: var(--card-bg);
+  box-sizing: border-box;
 }
 
 .diagram-chord-slot--empty {
@@ -492,14 +1204,9 @@
 }
 
 .diagram-chord-btn:focus-visible {
-  outline: 2px solid var(--accent-line);
-  outline-offset: 2px;
-}
-
-.diagram-chord-btn--scale-tone:not(.diagram-chord-btn--selected):not(
-    .diagram-chord-btn--selected-unplayable
-  ) {
-  border-color: var(--fretboard-scale-dot-stroke);
+  outline: none;
+  border-color: var(--accent-line);
+  box-shadow: inset 0 0 0 2px var(--accent-line);
 }
 
 .diagram-chord-btn--progression:not(.diagram-chord-btn--selected):not(
@@ -553,7 +1260,8 @@
 }
 
 .diagram-chord-btn--unplayable:focus-visible {
-  outline-color: color-mix(in srgb, var(--muted) 70%, var(--card-border));
+  border-color: color-mix(in srgb, var(--muted) 70%, var(--card-border));
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--muted) 70%, var(--card-border));
 }
 
 .diagram-chord-btn--dim {

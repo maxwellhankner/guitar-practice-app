@@ -237,28 +237,11 @@ export function chordIdToScaleKey(chordId: ChordPresetId): KeyId {
   return rootName as KeyId
 }
 
-/** Diatonic triads in `keyId` whose root is a tone of the scale variant. */
-export function diatonicChordIdsOnScale(
-  keyId: KeyId,
-  variant: ScaleVariant,
-): ChordPresetId[] {
-  const scalePcs = new Set(scalePitchClassesForKey(keyId, variant))
-  return diatonicSlotsInKey(keyId)
-    .map((slot) => slot.chordId)
-    .filter((id): id is ChordPresetId => {
-      if (id == null) {
-        return false
-      }
-      const { rootPc } = parseChordPresetId(id)
-      return scalePcs.has(rootPc)
-    })
-}
-
 const MAJOR_PENTATONIC_STEPS = [0, 2, 4, 7, 9] as const
 const MINOR_PENTATONIC_STEPS = [0, 3, 5, 7, 10] as const
-/** Full major / natural minor with one diatonic degree omitted (6 notes). */
-const MAJOR_HEXATONIC_STEPS = [0, 2, 4, 7, 9, 11] as const
-const MINOR_HEXATONIC_STEPS = [0, 3, 5, 7, 8, 10] as const
+/** Major: natural major minus the 7th. Minor: natural minor minus the 6th. */
+const MAJOR_HEXATONIC_STEPS = [0, 2, 4, 5, 7, 9] as const
+const MINOR_HEXATONIC_STEPS = [0, 2, 3, 5, 7, 10] as const
 
 export type ScaleVariant = 'full' | 'pentatonic' | 'hexatonic'
 
@@ -296,3 +279,116 @@ export function scaleNameForKey(
   }
   return isMinorKey ? `${keyId} minor hexatonic` : `${keyId} major hexatonic`
 }
+
+/** Diatonic triads in `keyId` whose scale degree is included in the variant. */
+export function diatonicChordIdsOnScale(
+  keyId: KeyId,
+  variant: ScaleVariant,
+): ChordPresetId[] {
+  const degrees = new Set(scaleDegreesInVariant(keyId, variant))
+  return diatonicSlotsInKey(keyId)
+    .filter(
+      (slot): slot is DiatonicSlot & { chordId: ChordPresetId } =>
+        slot.chordId != null && degrees.has(slot.degree),
+    )
+    .map((slot) => slot.chordId)
+}
+
+/** Scale degrees 1–7 present in a major/minor pentatonic or hexatonic variant. */
+export function scaleDegreesInVariant(
+  keyId: KeyId,
+  variant: ScaleVariant,
+): readonly number[] {
+  if (variant === 'full') {
+    return [1, 2, 3, 4, 5, 6, 7]
+  }
+  const keyRoot = keyRootPc(keyId)
+  const isMinorKey = keyId.endsWith('m')
+  const fullSteps = isMinorKey ? MINOR_SCALE_STEPS : MAJOR_SCALE_STEPS
+  const variantPcs = new Set(scalePitchClassesForKey(keyId, variant))
+  const degrees: number[] = []
+  for (let index = 0; index < 7; index++) {
+    const pc = (keyRoot + fullSteps[index]!) % 12
+    if (variantPcs.has(pc)) {
+      degrees.push(index + 1)
+    }
+  }
+  return degrees
+}
+
+export function romanNumeralForScaleDegree(
+  keyId: KeyId,
+  degree: number,
+): string | null {
+  if (degree < 1 || degree > 7) {
+    return null
+  }
+  const numerals = keyId.endsWith('m') ? MINOR_ROMAN : MAJOR_ROMAN
+  return numerals[degree - 1] ?? null
+}
+
+/** Roman numeral for a chord root on the selected scale variant (null if root not in variant). */
+export function chordRomanNumeralOnScale(
+  keyId: KeyId,
+  chordId: ChordPresetId,
+  variant: ScaleVariant,
+): string | null {
+  const keyRoot = keyRootPc(keyId)
+  const { rootPc } = parseChordPresetId(chordId)
+  const isMinorKey = keyId.endsWith('m')
+  const fullSteps = isMinorKey ? MINOR_SCALE_STEPS : MAJOR_SCALE_STEPS
+  const numerals = isMinorKey ? MINOR_ROMAN : MAJOR_ROMAN
+  const variantPcs = new Set(scalePitchClassesForKey(keyId, variant))
+
+  for (let index = 0; index < 7; index++) {
+    const pc = (keyRoot + fullSteps[index]!) % 12
+    if (pc === rootPc && variantPcs.has(pc)) {
+      return numerals[index]!
+    }
+  }
+  return null
+}
+
+function scaleRomanList(keyId: KeyId, variant: ScaleVariant): string[] {
+  return scaleDegreesInVariant(keyId, variant).map(
+    (degree) => romanNumeralForScaleDegree(keyId, degree)!,
+  )
+}
+
+function assertScaleVariantRomans(): void {
+  for (const keyId of ALL_KEY_IDS) {
+    const isMinorKey = keyId.endsWith('m')
+    const pentatonic = scaleRomanList(keyId, 'pentatonic')
+    const hexatonic = scaleRomanList(keyId, 'hexatonic')
+    const full = scaleRomanList(keyId, 'full')
+
+    if (pentatonic.length !== 5 || hexatonic.length !== 6 || full.length !== 7) {
+      throw new Error(
+        `Key ${keyId}: expected 5/6/7 scale Romans, got ${pentatonic.length}/${hexatonic.length}/${full.length}`,
+      )
+    }
+
+    if (isMinorKey) {
+      if (pentatonic.join(',') !== 'i,III,iv,v,VII') {
+        throw new Error(
+          `Key ${keyId}: minor pentatonic Romans ${pentatonic.join(',')}`,
+        )
+      }
+      if (hexatonic.join(',') !== 'i,ii°,III,iv,v,VII') {
+        throw new Error(
+          `Key ${keyId}: minor hexatonic Romans ${hexatonic.join(',')}`,
+        )
+      }
+    } else if (pentatonic.join(',') !== 'I,ii,iii,V,vi') {
+      throw new Error(
+        `Key ${keyId}: major pentatonic Romans ${pentatonic.join(',')}`,
+      )
+    } else if (hexatonic.join(',') !== 'I,ii,iii,IV,V,vi') {
+      throw new Error(
+        `Key ${keyId}: major hexatonic Romans ${hexatonic.join(',')}`,
+      )
+    }
+  }
+}
+
+assertScaleVariantRomans()

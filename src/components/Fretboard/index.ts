@@ -1,4 +1,4 @@
-export { Fretboard, type FretboardScalePattern } from './Fretboard'
+export { Fretboard, type FretboardOrientation, type FretboardScalePattern } from './Fretboard'
 export {
   scalePatternForKey,
   scalePositionsInRange,
@@ -47,6 +47,9 @@ export {
   chordRomanNumeral,
   chordIdToScaleKey,
   diatonicChordIdsOnScale,
+  scaleDegreesInVariant,
+  romanNumeralForScaleDegree,
+  chordRomanNumeralOnScale,
   type KeyId,
   type KeyDef,
   type DiatonicSlot,
@@ -68,6 +71,25 @@ export {
   type ProgressionStep,
 } from './progressions'
 export {
+  MIN_PROGRESSION_STEPS,
+  MAX_PROGRESSION_STEPS,
+  progressionChipSegment,
+  progressionChipText,
+  degreeForRootInKey,
+  diatonicRootNamesInKey,
+  isRootInKey,
+  seedProgressionFromPreset,
+  allowedChordsForBuiltProgression,
+  progressionStepRoots,
+  swapAdjacentProgressionSteps,
+  deleteProgressionStep,
+  insertProgressionStep,
+  alternateChordIdsForStep,
+  progressionAltOptionIds,
+  triadIdForStep,
+  qualityChipLabel,
+} from './progressionBuilder'
+export {
   isChordPlayable,
   allChordsPlayable,
   unplayableChordsIn,
@@ -76,6 +98,7 @@ export {
   playableProgressionsInKey,
   playableChordsInKey,
 } from './playability'
+export { keysMatchingChords } from './findKey'
 export {
   NOTE_NAMES_SHARP,
   OPEN_STRING_PITCH_CLASS,

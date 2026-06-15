@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ChordPresetId } from './Fretboard'
+import { Tooltip } from './Tooltip'
 
 const PLAYABILITY_HOVER_DELAY_MS = 500
 
@@ -15,8 +16,6 @@ type ChordPlayabilityCellProps = {
   showPlayabilityPopup: boolean
   /** Diminished triads — selectable for the diagram, excluded from KNOWN. */
   diminished?: boolean
-  /** Diatonic chord root matches the active scale in the selected key. */
-  scaleTone?: boolean
   /** Smaller styling for color-chord alternatives under diatonic columns. */
   compact?: boolean
   /** Override button text (defaults to `chordId`). */
@@ -75,7 +74,6 @@ export function ChordPlayabilityCell({
   onPlayableChange,
   showPlayabilityPopup,
   diminished = false,
-  scaleTone = false,
   compact = false,
   label,
   inProgression = false,
@@ -129,7 +127,6 @@ export function ChordPlayabilityCell({
     selectable && showPlayabilityPopup && !playable && !diminished
       ? 'diagram-chord-btn--unplayable'
       : '',
-    scaleTone ? 'diagram-chord-btn--scale-tone' : '',
     inProgression ? 'diagram-chord-btn--progression' : '',
     !selectable ? 'diagram-chord-btn--display' : '',
   ]
@@ -143,7 +140,6 @@ export function ChordPlayabilityCell({
       type="button"
       className={chordClasses}
       aria-pressed={selected}
-      title={title}
       onClick={(e) => {
         onSelect()
         e.currentTarget.blur()
@@ -152,13 +148,18 @@ export function ChordPlayabilityCell({
       {chordContent}
     </button>
   ) : (
-    <div className={chordClasses} title={title}>
-      {chordContent}
-    </div>
+    <div className={chordClasses}>{chordContent}</div>
   )
 
+  const chordControl =
+    title != null ? (
+      <Tooltip label={title}>{chordButton}</Tooltip>
+    ) : (
+      chordButton
+    )
+
   if (!selectable || !showPlayabilityPopup) {
-    return <div className="diagram-chord-cell">{chordButton}</div>
+    return <div className="diagram-chord-cell">{chordControl}</div>
   }
 
   return (
@@ -167,7 +168,7 @@ export function ChordPlayabilityCell({
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      {chordButton}
+      {chordControl}
       <div
         className={[
           'diagram-chord-playability',
@@ -182,22 +183,25 @@ export function ChordPlayabilityCell({
         onClick={(e) => e.stopPropagation()}
       >
         <LockIcon locked={!playable} />
-        <button
-          type="button"
-          role="switch"
-          className="diagram-chord-playability__switch"
-          aria-checked={playable}
-          aria-labelledby={popupId}
-          title={playable ? 'Can play — click to disable' : "Can't play — click to enable"}
-          onClick={(e) => {
-            onPlayableChange(!playable)
-            e.currentTarget.blur()
-          }}
+        <Tooltip
+          label={playable ? 'Can play — click to disable' : "Can't play — click to enable"}
         >
-          <span className="diagram-chord-playability__switch-track">
-            <span className="diagram-chord-playability__switch-thumb" />
-          </span>
-        </button>
+          <button
+            type="button"
+            role="switch"
+            className="diagram-chord-playability__switch"
+            aria-checked={playable}
+            aria-labelledby={popupId}
+            onClick={(e) => {
+              onPlayableChange(!playable)
+              e.currentTarget.blur()
+            }}
+          >
+            <span className="diagram-chord-playability__switch-track">
+              <span className="diagram-chord-playability__switch-thumb" />
+            </span>
+          </button>
+        </Tooltip>
         <span id={popupId} className="diagram-chord-playability__label">
           {playable ? 'Can play' : "Can't play"}
         </span>
