@@ -141,7 +141,6 @@
         "Fmaj7",
         "Fmaj9",
         "Fsus2",
-        "Fsus4",
         "G#",
         "G#6",
         "G#7sus4",
@@ -175,11 +174,11 @@
       ],
       "filterPlayableOnly": false,
       "displayNotes": false,
-      "fretCount": 4,
-      "scaleSelection": "full",
+      "fretCount": 22,
+      "scaleSelection": null,
       "diagramLayout": "horizontal",
-      "horizontalSplitRatio": 0.5,
-      "verticalSplitRatio": 0.6355692545572916,
+      "horizontalSplitRatio": 0.5762054338487973,
+      "verticalSplitRatio": 0.6215526439525463,
       "fretboardOrientation": "landscape",
       "panelsSwapped": false
     }

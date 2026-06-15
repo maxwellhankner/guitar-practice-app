@@ -87,6 +87,8 @@ export {
   alternateChordIdsForStep,
   progressionAltOptionIds,
   triadIdForStep,
+  transposeChordBetweenKeys,
+  transposeProgressionToKey,
   qualityChipLabel,
 } from './progressionBuilder'
 export {
@@ -105,6 +107,7 @@ export {
   noteAtFret,
 } from './tuning'
 export {
+  FRET_COUNT_OPTIONS,
   FRET_COUNT_MIN,
   FRET_COUNT_MAX,
   sanitizeFretCount,

@@ -5,6 +5,19 @@
 
 .app-page {
   --app-content-width: min(100%, max(20rem, min(52rem, 48vw)));
+  --options-text-title: 1.5625rem;
+  --options-text-label: 0.875rem;
+  --options-text-sub-label: 0.8125rem;
+  --options-text-action: 0.8125rem;
+  --options-text-body: 1rem;
+  --options-text-btn: 0.9375rem;
+  --options-text-btn-md: 0.875rem;
+  --options-text-btn-sm: 0.8125rem;
+  --options-text-btn-xs: 0.75rem;
+  --options-text-btn-compact: 0.75rem;
+  --options-text-roman: 0.875rem;
+  --options-text-micro: 0.6875rem;
+  --options-text-progression-chord: 0.875rem;
   height: 100%;
   display: grid;
   overflow: hidden;
@@ -70,9 +83,11 @@
   touch-action: none;
   overflow: visible;
   background: transparent;
-  --divider-btn-size: 1.875rem;
+  --divider-btn-size: 2.5rem;
   --divider-btn-gap: 0.375rem;
   --divider-btn-step: calc(var(--divider-btn-size) + var(--divider-btn-gap));
+  --divider-fret-font: 1.125rem;
+  --divider-icon-size: 1.3125rem;
 }
 
 .app-page__divider--horizontal {
@@ -125,6 +140,16 @@
   pointer-events: none;
 }
 
+.app-page__divider-handle svg,
+.app-page__divider-layout-toggle svg,
+.app-page__divider-orientation-toggle svg,
+.app-page__divider-swap-toggle svg,
+.app-page__divider-known-toggle svg,
+.app-page__divider-notes-toggle svg {
+  width: var(--divider-icon-size);
+  height: var(--divider-icon-size);
+}
+
 .app-page__divider-layout-toggle,
 .app-page__divider-orientation-toggle,
 .app-page__divider-swap-toggle,
@@ -175,7 +200,7 @@
   background: var(--card-bg);
   color: var(--heading);
   font-family: inherit;
-  font-size: 0.6875rem;
+  font-size: 0.8125rem;
   font-weight: 500;
   line-height: 1.25;
   text-align: left;
@@ -203,7 +228,7 @@
   appearance: none;
   -webkit-appearance: none;
   cursor: pointer;
-  font-size: 0.6875rem;
+  font-size: var(--divider-fret-font);
   font-weight: 600;
   line-height: 1;
   transition:
@@ -533,8 +558,8 @@
 }
 
 .app-page__title {
-  margin: 0 0 1rem;
-  font-size: 1.375rem;
+  margin: 0.625rem 0 2rem;
+  font-size: var(--options-text-title);
   font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1.25;
@@ -543,7 +568,7 @@
 
 .app-page__loading {
   margin: 0;
-  font-size: 0.875rem;
+  font-size: var(--options-text-body);
   color: var(--muted);
 }
 
@@ -556,7 +581,7 @@
 .diagram-field {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: 0.625rem;
 }
 
 .diagram-notes-frets {
@@ -607,8 +632,9 @@
 
 .diagram-label {
   margin: 0;
-  font-size: 0.75rem;
+  font-size: var(--options-text-label);
   font-weight: 600;
+  line-height: 1;
   color: var(--muted);
   letter-spacing: 0.02em;
   text-transform: uppercase;
@@ -616,49 +642,47 @@
 
 .diagram-field__label-row {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
   gap: 0.5rem;
+  line-height: 1;
 }
 
-.diagram-find-key {
+.diagram-find-key,
+.diagram-chords-build__clear {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.2rem;
   margin: 0;
-  padding: 0.2rem 0.45rem;
-  border: 1px solid transparent;
-  border-radius: 0.375rem;
+  padding: 0;
+  border: none;
   background: none;
   font: inherit;
-  font-size: 0.6875rem;
+  font-size: var(--options-text-action);
   font-weight: 400;
+  line-height: 1;
   color: color-mix(in srgb, var(--muted) 72%, var(--card-border));
   text-transform: lowercase;
   letter-spacing: 0;
   cursor: pointer;
-  transition:
-    color 0.12s ease,
-    border-color 0.12s ease,
-    background 0.12s ease,
-    box-shadow 0.12s ease;
+  vertical-align: baseline;
+  transition: color 0.12s ease;
 }
 
-.diagram-find-key:hover {
-  color: var(--muted);
+.diagram-find-key svg,
+.diagram-chords-build__clear svg {
+  width: 0.9em;
+  height: 0.9em;
+  flex-shrink: 0;
+}
+
+.diagram-find-key {
+  padding-inline: 0.3rem;
+  border-radius: 0.375rem;
 }
 
 .diagram-find-key--active {
-  color: var(--heading);
-  border-color: var(--accent-line);
-  background: var(--card-bg);
-  box-shadow: inset 0 0 0 1px var(--accent-line);
-}
-
-.diagram-find-key:focus-visible {
-  outline: none;
-  border-color: var(--accent-line);
-  box-shadow: inset 0 0 0 1px var(--accent-line);
+  color: var(--accent-line);
 }
 
 .diagram-chord-grid {
@@ -680,7 +704,7 @@
 }
 
 .diagram-key-select-grid .diagram-chord-btn {
-  font-size: 0.6875rem;
+  font-size: var(--options-text-btn-sm);
   padding-inline: 0.125rem;
 }
 
@@ -691,7 +715,7 @@
 }
 
 .diagram-scale-grid .diagram-chord-btn {
-  font-size: 0.6875rem;
+  font-size: var(--options-text-btn-sm);
   padding-inline: 0.125rem;
 }
 
@@ -702,7 +726,7 @@
 }
 
 .diagram-progression-grid .diagram-chord-btn {
-  font-size: 0.6875rem;
+  font-size: var(--options-text-btn-sm);
   padding-inline: 0.125rem;
 }
 
@@ -714,8 +738,9 @@
 
 .diagram-chords-build__sub-label {
   margin: 0;
-  font-size: 0.6875rem;
+  font-size: var(--options-text-sub-label);
   font-weight: 600;
+  line-height: 1;
   color: var(--muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -726,33 +751,18 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 0.5rem;
-  margin-bottom: 0.35rem;
-}
-
-.diagram-chords-build__clear {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  margin: 0;
-  padding: 0;
-  border: none;
-  background: none;
-  font: inherit;
-  font-size: 0.6875rem;
-  font-weight: 400;
-  color: color-mix(in srgb, var(--muted) 72%, var(--card-border));
-  cursor: pointer;
-  text-transform: lowercase;
-}
-
-.diagram-chords-build__clear:hover {
-  color: var(--muted);
+  margin-bottom: 0.625rem;
+  line-height: 1;
 }
 
 .diagram-chords-build__clear:focus-visible {
   outline: none;
   box-shadow: inset 0 0 0 1px var(--muted);
   border-radius: 0.125rem;
+}
+
+.diagram-chords-build__clear:hover {
+  color: var(--muted);
 }
 
 .diagram-chords-build__progression-row {
@@ -785,7 +795,7 @@
   --progression-chord-edge: calc(
     var(--progression-chord-border) + var(--progression-chord-accent-inset)
   );
-  --progression-chord-font: 0.75rem;
+  --progression-chord-font: var(--options-text-progression-chord);
   --progression-chord-line-height: 1.5;
   --progression-chord-padding-y: 0.3rem;
   --progression-chord-padding-x: 0.125rem;
@@ -953,7 +963,7 @@
 }
 
 .diagram-chord-root-column .diagram-chord-btn {
-  font-size: 0.625rem;
+  font-size: var(--options-text-btn-xs);
   padding-inline: 0.125rem;
 }
 
@@ -1063,7 +1073,7 @@
 }
 
 .diagram-chord-playability__label {
-  font-size: 0.5625rem;
+  font-size: var(--options-text-micro);
   font-weight: 600;
   letter-spacing: 0.02em;
   text-transform: uppercase;
@@ -1071,11 +1081,11 @@
 }
 
 .diagram-chord-select-grid .diagram-chord-btn {
-  font-size: 0.75rem;
+  font-size: var(--options-text-btn-md);
 }
 
 .diagram-chord-in-key .diagram-chord-btn {
-  font-size: 0.75rem;
+  font-size: var(--options-text-btn-md);
 }
 
 .diagram-chord-in-key {
@@ -1120,7 +1130,7 @@
 
 .diagram-chord-roman__label {
   font: inherit;
-  font-size: 0.75rem;
+  font-size: var(--options-text-roman);
   font-weight: 500;
   line-height: 1;
   color: var(--muted);
@@ -1181,7 +1191,7 @@
 
 .diagram-chord-btn {
   font: inherit;
-  font-size: 0.8125rem;
+  font-size: var(--options-text-btn);
   font-weight: 600;
   color: var(--heading);
   padding: 0.3rem 0.5rem;
@@ -1217,7 +1227,7 @@
 }
 
 .diagram-chord-btn--compact {
-  font-size: 0.625rem;
+  font-size: var(--options-text-btn-compact);
   padding: 0.15rem 0.2rem;
   font-weight: 600;
 }

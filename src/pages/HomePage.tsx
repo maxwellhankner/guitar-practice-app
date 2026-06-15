@@ -40,6 +40,7 @@ import {
   insertProgressionStep,
   progressionAltOptionIds,
   triadIdForStep,
+  transposeProgressionToKey,
   isRootInKey,
   MAX_PROGRESSION_STEPS,
   KEY_DEFS,
@@ -51,8 +52,7 @@ import {
   chordRomanNumeralOnScale,
   scalePatternForKey,
   startFretForFingering,
-  FRET_COUNT_MIN,
-  FRET_COUNT_MAX,
+  FRET_COUNT_OPTIONS,
   type ChordPresetId,
   type KeyId,
   type ProgressionId,
@@ -64,11 +64,6 @@ import {
   PANEL_SPLIT_MAX,
   PANEL_SPLIT_MIN,
 } from '../db/userSettingsRepository'
-
-const FRET_COUNT_OPTIONS = Array.from(
-  { length: FRET_COUNT_MAX - FRET_COUNT_MIN + 1 },
-  (_, i) => i + FRET_COUNT_MIN,
-)
 
 type BoardSelection = { kind: 'chord'; id: ChordPresetId }
 
@@ -416,12 +411,19 @@ export function HomePage() {
       findKeyChords.length > 0
         ? findKeyChords.slice(0, MAX_PROGRESSION_STEPS)
         : null
+    const transposedProgression =
+      progressionFromFindKey ??
+      (selectedKey != null &&
+      builtProgression != null &&
+      builtProgression.length > 0
+        ? transposeProgressionToKey(selectedKey, keyId, builtProgression)
+        : null)
     setFindKeyMode(false)
     setFindKeyChords([])
     setSelection(null)
     setSelectedKey(keyId)
-    if (progressionFromFindKey != null) {
-      setBuiltProgression(progressionFromFindKey)
+    if (transposedProgression != null) {
+      setBuiltProgression(transposedProgression)
     }
   }
 
@@ -584,7 +586,9 @@ export function HomePage() {
     const storedPlayable = isChordPlayable(id, disabledChords)
     const selected =
       options?.selected ??
-      (selection?.kind === 'chord' && selection.id === id)
+      (selectedKey == null &&
+        selection?.kind === 'chord' &&
+        selection.id === id)
     const title =
       options?.keyId != null
         ? `${CHORD_PRESETS[id].name}${options.roman != null ? ` · ${options.roman}` : chordRomanNumeral(options.keyId, id) != null ? ` · ${chordRomanNumeral(options.keyId, id)}` : ''} in ${KEY_DEFS[options.keyId].name}`
@@ -1124,7 +1128,7 @@ export function HomePage() {
                 ? 'app-page__divider-icon app-page__divider-icon--vertical'
                 : 'app-page__divider-icon'
             }
-            size={14}
+            size={16}
             strokeWidth={2.5}
           />
         </span>
@@ -1152,9 +1156,9 @@ export function HomePage() {
             }
           >
             {diagramLayoutVertical ? (
-              <Rows2 size={14} strokeWidth={2.5} aria-hidden />
+              <Rows2 size={16} strokeWidth={2.5} aria-hidden />
             ) : (
-              <Columns2 size={14} strokeWidth={2.5} aria-hidden />
+              <Columns2 size={16} strokeWidth={2.5} aria-hidden />
             )}
           </button>
         </Tooltip>
@@ -1179,9 +1183,9 @@ export function HomePage() {
             onClick={() => void setPanelsSwapped(!panelsSwapped)}
           >
             {diagramLayoutVertical ? (
-              <ArrowLeftRight size={14} strokeWidth={2.5} aria-hidden />
+              <ArrowLeftRight size={16} strokeWidth={2.5} aria-hidden />
             ) : (
-              <ArrowUpDown size={14} strokeWidth={2.5} aria-hidden />
+              <ArrowUpDown size={16} strokeWidth={2.5} aria-hidden />
             )}
           </button>
         </Tooltip>
@@ -1209,7 +1213,7 @@ export function HomePage() {
               )
             }
           >
-            <RotateCcwSquare size={14} strokeWidth={2.5} aria-hidden />
+            <RotateCcwSquare size={16} strokeWidth={2.5} aria-hidden />
           </button>
         </Tooltip>
         <div ref={fretPickerRef} className="app-page__divider-frets">
@@ -1290,7 +1294,7 @@ export function HomePage() {
             onPointerDown={(event) => event.stopPropagation()}
             onClick={() => void setFilterPlayableOnly(!filterPlayableOnly)}
           >
-            <ListChecks size={14} strokeWidth={2.5} aria-hidden />
+            <ListChecks size={16} strokeWidth={2.5} aria-hidden />
           </button>
         </Tooltip>
         <Tooltip
@@ -1310,7 +1314,7 @@ export function HomePage() {
             onPointerDown={(event) => event.stopPropagation()}
             onClick={() => void setDisplayNotes(!displayNotes)}
           >
-            <Music size={14} strokeWidth={2.5} aria-hidden />
+            <Music size={16} strokeWidth={2.5} aria-hidden />
           </button>
         </Tooltip>
       </div>

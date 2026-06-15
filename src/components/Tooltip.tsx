@@ -23,7 +23,9 @@ type TooltipChildProps = {
   onClick?: (event: MouseEvent<HTMLElement>) => void
   onPointerDown?: (event: PointerEvent<HTMLElement>) => void
   onPointerEnter?: (event: PointerEvent<HTMLElement>) => void
+  onPointerMove?: (event: PointerEvent<HTMLElement>) => void
   onPointerLeave?: (event: PointerEvent<HTMLElement>) => void
+  onPointerCancel?: (event: PointerEvent<HTMLElement>) => void
   onFocus?: (event: FocusEvent<HTMLElement>) => void
   onBlur?: (event: FocusEvent<HTMLElement>) => void
   'aria-describedby'?: string
@@ -34,6 +36,43 @@ type TooltipProps = {
   placement?: TooltipPlacement
   children: ReactElement<TooltipChildProps>
   disabled?: boolean
+}
+
+const lastPointer = { x: 0, y: 0 }
+let pointerTrackingInstalled = false
+
+function trackPointer(clientX: number, clientY: number) {
+  lastPointer.x = clientX
+  lastPointer.y = clientY
+}
+
+function ensurePointerTracking() {
+  if (pointerTrackingInstalled) {
+    return
+  }
+  pointerTrackingInstalled = true
+  window.addEventListener(
+    'pointermove',
+    (event) => {
+      trackPointer(event.clientX, event.clientY)
+    },
+    { passive: true },
+  )
+}
+
+function isPointerOverElement(element: HTMLElement): boolean {
+  const under = document.elementFromPoint(lastPointer.x, lastPointer.y)
+  return under != null && element.contains(under)
+}
+
+function shouldShowForAnchor(anchor: HTMLElement | null): boolean {
+  if (anchor == null || !document.hasFocus()) {
+    return false
+  }
+  if (anchor.matches(':focus-visible')) {
+    return true
+  }
+  return anchor.matches(':hover') && isPointerOverElement(anchor)
 }
 
 function positionTooltip(
@@ -77,6 +116,8 @@ export function Tooltip({
   children,
   disabled = false,
 }: TooltipProps) {
+  ensurePointerTracking()
+
   const tooltipId = useId()
   const anchorRef = useRef<HTMLElement | null>(null)
   const tipRef = useRef<HTMLDivElement>(null)
@@ -84,14 +125,6 @@ export function Tooltip({
   const [visible, setVisible] = useState(false)
   const [coords, setCoords] = useState({ x: 0, y: 0 })
   const [ready, setReady] = useState(false)
-
-  useEffect(() => {
-    return () => {
-      if (showDelayRef.current != null) {
-        window.clearTimeout(showDelayRef.current)
-      }
-    }
-  }, [])
 
   const hide = () => {
     if (showDelayRef.current != null) {
@@ -102,6 +135,54 @@ export function Tooltip({
     setReady(false)
   }
 
+  const dismiss = (clearFocus = false) => {
+    hide()
+    if (clearFocus && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur()
+    }
+  }
+
+  useEffect(() => {
+    const onWindowBlur = () => {
+      dismiss(true)
+    }
+
+    const onWindowFocus = () => {
+      dismiss(true)
+    }
+
+    const onPageHide = () => {
+      dismiss(true)
+    }
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        dismiss(true)
+      }
+    }
+
+    const onDocumentMouseOut = (event: globalThis.MouseEvent) => {
+      if (event.relatedTarget == null) {
+        dismiss()
+      }
+    }
+
+    window.addEventListener('blur', onWindowBlur)
+    window.addEventListener('focus', onWindowFocus)
+    window.addEventListener('pagehide', onPageHide)
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    document.addEventListener('mouseout', onDocumentMouseOut)
+
+    return () => {
+      window.removeEventListener('blur', onWindowBlur)
+      window.removeEventListener('focus', onWindowFocus)
+      window.removeEventListener('pagehide', onPageHide)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+      document.removeEventListener('mouseout', onDocumentMouseOut)
+      dismiss()
+    }
+  }, [])
+
   const show = () => {
     if (disabled) {
       return
@@ -111,6 +192,9 @@ export function Tooltip({
     }
     showDelayRef.current = window.setTimeout(() => {
       showDelayRef.current = null
+      if (!shouldShowForAnchor(anchorRef.current)) {
+        return
+      }
       setVisible(true)
     }, TOOLTIP_SHOW_DELAY_MS)
   }
@@ -122,6 +206,11 @@ export function Tooltip({
     const anchor = anchorRef.current
     const tip = tipRef.current
     if (anchor == null || tip == null) {
+      return
+    }
+
+    if (!shouldShowForAnchor(anchor)) {
+      hide()
       return
     }
 
@@ -150,17 +239,28 @@ export function Tooltip({
         },
         onPointerEnter: (event: PointerEvent<HTMLElement>) => {
           anchorRef.current = event.currentTarget
+          trackPointer(event.clientX, event.clientY)
           child.props.onPointerEnter?.(event)
           show()
+        },
+        onPointerMove: (event: PointerEvent<HTMLElement>) => {
+          trackPointer(event.clientX, event.clientY)
+          child.props.onPointerMove?.(event)
         },
         onPointerLeave: (event: PointerEvent<HTMLElement>) => {
           child.props.onPointerLeave?.(event)
           hide()
         },
+        onPointerCancel: (event: PointerEvent<HTMLElement>) => {
+          child.props.onPointerCancel?.(event)
+          hide()
+        },
         onFocus: (event: FocusEvent<HTMLElement>) => {
           anchorRef.current = event.currentTarget
           child.props.onFocus?.(event)
-          show()
+          if (event.target.matches(':focus-visible')) {
+            show()
+          }
         },
         onBlur: (event: FocusEvent<HTMLElement>) => {
           child.props.onBlur?.(event)

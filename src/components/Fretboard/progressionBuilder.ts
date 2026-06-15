@@ -1,13 +1,17 @@
 import {
+  CHORD_VARIANT_ORDER,
+  chordIdForRootVariant,
   chordIdsForRoot,
   parseChordPresetId,
   type ChordPresetId,
   type ChordQuality,
+  type ChordVariant,
   type RootName,
 } from './chords'
 import { colorAlternativesForDegree } from './chordColors'
 import {
   chordRomanNumeral,
+  chordIdForScaleDegree,
   diatonicSlotsInKey,
   type KeyId,
 } from './keys'
@@ -218,4 +222,80 @@ export function progressionAltOptionIds(
     }
   }
   return options
+}
+
+function rootNameForDegree(keyId: KeyId, degree: number): RootName | null {
+  const chordId = chordIdForScaleDegree(keyId, degree)
+  if (chordId == null) {
+    return null
+  }
+  return parseChordPresetId(chordId).rootName as RootName
+}
+
+function chordVariantForPresetId(chordId: ChordPresetId): ChordVariant | null {
+  const { rootName, quality } = parseChordPresetId(chordId)
+  if (CHORD_VARIANT_ORDER.includes(quality as ChordVariant)) {
+    return quality as ChordVariant
+  }
+  for (const variant of CHORD_VARIANT_ORDER) {
+    if (chordIdForRootVariant(rootName as RootName, variant) === chordId) {
+      return variant
+    }
+  }
+  return null
+}
+
+/** Map a progression step chord from one key to the same scale degree (and color) in another. */
+export function transposeChordBetweenKeys(
+  fromKey: KeyId,
+  toKey: KeyId,
+  chordId: ChordPresetId,
+): ChordPresetId {
+  if (fromKey === toKey) {
+    return chordId
+  }
+
+  const degree = degreeForRootInKey(fromKey, chordId)
+  if (degree == null) {
+    return chordId
+  }
+
+  const fromTriad = chordIdForScaleDegree(fromKey, degree)
+  if (chordId === fromTriad) {
+    return chordIdForScaleDegree(toKey, degree) ?? chordId
+  }
+
+  const colorMatch = colorAlternativesForDegree(fromKey, degree).find(
+    (color) => color.chordId === chordId,
+  )
+  if (colorMatch != null) {
+    const toColor = colorAlternativesForDegree(toKey, degree).find(
+      (color) => color.variant === colorMatch.variant,
+    )
+    if (toColor != null) {
+      return toColor.chordId
+    }
+  }
+
+  const newRoot = rootNameForDegree(toKey, degree)
+  if (newRoot == null) {
+    return chordId
+  }
+
+  const variant = chordVariantForPresetId(chordId)
+  if (variant != null) {
+    return chordIdForRootVariant(newRoot, variant)
+  }
+
+  return chordIdForScaleDegree(toKey, degree) ?? chordId
+}
+
+export function transposeProgressionToKey(
+  fromKey: KeyId,
+  toKey: KeyId,
+  steps: readonly ChordPresetId[],
+): ChordPresetId[] {
+  return steps.map((chordId) =>
+    transposeChordBetweenKeys(fromKey, toKey, chordId),
+  )
 }

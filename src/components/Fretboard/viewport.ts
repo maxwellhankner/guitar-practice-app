@@ -1,13 +1,22 @@
 import type { ChordFingering } from './types'
 
-export const FRET_COUNT_MIN = 4
-export const FRET_COUNT_MAX = 21
+export const FRET_COUNT_OPTIONS = [
+  4, 5, 6, 7, 8, 9, 10, 11, 12, 15, 18, 22,
+] as const
+
+export const FRET_COUNT_MIN = FRET_COUNT_OPTIONS[0]
+export const FRET_COUNT_MAX = FRET_COUNT_OPTIONS[FRET_COUNT_OPTIONS.length - 1]
 
 export function sanitizeFretCount(value: unknown): number {
   if (typeof value !== 'number' || !Number.isInteger(value)) {
-    return FRET_COUNT_MIN
+    return 6
   }
-  return Math.min(FRET_COUNT_MAX, Math.max(FRET_COUNT_MIN, value))
+  if ((FRET_COUNT_OPTIONS as readonly number[]).includes(value)) {
+    return value
+  }
+  return FRET_COUNT_OPTIONS.reduce((nearest, option) =>
+    Math.abs(option - value) < Math.abs(nearest - value) ? option : nearest,
+  )
 }
 
 /**
