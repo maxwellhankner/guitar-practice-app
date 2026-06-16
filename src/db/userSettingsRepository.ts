@@ -6,6 +6,9 @@ import {
   type ChordPresetId,
   type ScaleSelection,
 } from '../components/Fretboard'
+import type { FretboardOrientation } from '../components/Fretboard/types'
+
+export type { FretboardOrientation } from '../components/Fretboard/types'
 
 const SETTINGS_PATH = '/userSettings/default'
 const DOC_ID = 'default'
@@ -19,7 +22,10 @@ export const DEFAULT_HORIZONTAL_SPLIT = 0.65
 export const DEFAULT_VERTICAL_SPLIT = 0.58
 
 export type DiagramLayout = 'horizontal' | 'vertical'
-export type FretboardOrientation = 'landscape' | 'portrait'
+
+export function clampSplitRatio(value: number): number {
+  return Math.min(PANEL_SPLIT_MAX, Math.max(PANEL_SPLIT_MIN, value))
+}
 
 export type UserSettings = {
   disabledChords: ChordPresetId[]
@@ -129,7 +135,7 @@ function sanitizeSplitRatio(value: unknown, fallback: number): number {
   if (typeof value !== 'number' || !Number.isFinite(value)) {
     return fallback
   }
-  return Math.min(PANEL_SPLIT_MAX, Math.max(PANEL_SPLIT_MIN, value))
+  return clampSplitRatio(value)
 }
 
 function sanitizeChordIds(ids: unknown): ChordPresetId[] {

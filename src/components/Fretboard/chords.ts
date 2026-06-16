@@ -1,4 +1,5 @@
 import { CHORD_VOICINGS, type ChordVoicingId } from './chordVoicings'
+import { ROOT_PC } from './pitchClass'
 import type { ChordFingering } from './types'
 
 const ROOT_NAMES = [
@@ -281,27 +282,8 @@ export const CHORD_SELECTABLE_IDS = ROOT_NAMES.flatMap((rootName) =>
 
 export const CHORD_PRESET_IDS = [...CHORD_SELECTABLE_IDS] as const satisfies readonly ChordPresetId[]
 
-const ROOT_PC: Record<string, number> = {
-  C: 0,
-  'C#': 1,
-  D: 2,
-  'D#': 3,
-  E: 4,
-  F: 5,
-  'F#': 6,
-  G: 7,
-  'G#': 8,
-  A: 9,
-  'A#': 10,
-  B: 11,
-}
-
 export function isDiminishedChord(chordId: ChordPresetId): boolean {
   return /dim7?$/.test(chordId)
-}
-
-export function isChordPracticeable(_chordId: ChordPresetId): boolean {
-  return true
 }
 
 export function parseChordPresetId(chordId: ChordPresetId): {

@@ -1,4 +1,4 @@
-export { Fretboard, type FretboardOrientation, type FretboardScalePattern } from './Fretboard'
+export { Fretboard, type FretboardScalePattern } from './Fretboard'
 export {
   scalePatternForKey,
   scalePositionsInRange,
@@ -15,6 +15,7 @@ export {
 export type {
   ChordFingering,
   FingerNumber,
+  FretboardOrientation,
   StringFret,
 } from './types'
 export {
@@ -22,12 +23,9 @@ export {
   CHORD_PRESET_IDS,
   CHORD_MAJOR_IDS,
   CHORD_MINOR_IDS,
-  CHORD_DIM_IDS,
-  CHORD_SELECTABLE_IDS,
   ROOT_NAMES,
   chordIdsForRoot,
   chordPitchClasses,
-  isChordPracticeable,
   isDiminishedChord,
   parseChordPresetId,
   resolveChord,
@@ -43,7 +41,6 @@ export {
   chordIdForScaleDegree,
   diatonicSlotsInKey,
   isChordInKey,
-  chordLabelInKey,
   chordRomanNumeral,
   romanLabelForChordInKey,
   chordIdToScaleKey,
@@ -66,7 +63,6 @@ export {
   BASIC_PROGRESSION_IDS,
   COLORED_PROGRESSION_IDS,
   chordsForProgression,
-  progressionStepsInKey,
   allowedChordsForProgression,
   isProgressionResolvableInKey,
   type ProgressionId,
@@ -75,44 +71,33 @@ export {
   type ProgressionCategory,
   type ProgressionDef,
   type ProgressionStepDef,
-  type ProgressionStep,
 } from './progressions'
 export {
   MIN_PROGRESSION_STEPS,
   MAX_PROGRESSION_STEPS,
-  progressionChipSegment,
   romanLabelForProgressionStep,
-  progressionChipText,
   degreeForRootInKey,
   diatonicRootNamesInKey,
   isRootInKey,
   seedProgressionFromPreset,
   allowedChordsForBuiltProgression,
-  progressionStepRoots,
   progressionHighlightedTriadsInKey,
   swapAdjacentProgressionSteps,
   deleteProgressionStep,
   insertProgressionStep,
-  alternateChordIdsForStep,
   progressionAltOptions,
-  progressionAltOptionIds,
   type ProgressionAltOption,
   triadIdForStep,
   transposeChordBetweenKeys,
   transposeProgressionToKey,
-  qualityChipLabel,
 } from './progressionBuilder'
 export {
   isChordPlayable,
-  allChordsPlayable,
   unplayableChordsIn,
   isProgressionPlayableInKey,
   isKeyPlayable,
-  playableProgressionsInKey,
-  playableChordsInKey,
 } from './playability'
 export {
-  keysMatchingChords,
   rankKeysForChords,
   findKeyMatchBrightness,
   type KeyMatchRank,

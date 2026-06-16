@@ -1,5 +1,5 @@
 import { useMemo, type ReactNode } from 'react'
-import type { ChordFingering } from './types'
+import type { ChordFingering, FretboardOrientation } from './types'
 import { resolveChord, type ChordPresetId } from './chords'
 import { noteAtFret } from './tuning'
 import styles from './Fretboard.module.css'
@@ -94,8 +94,6 @@ export type FretboardScalePattern = {
   /** 0 = low E … 5 = high E; fret 0 = open string */
   positions: readonly { stringIndex: number; fret: number }[]
 }
-
-export type FretboardOrientation = 'landscape' | 'portrait'
 
 type FretboardProps = {
   fretCount?: number

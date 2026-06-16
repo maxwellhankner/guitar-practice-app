@@ -8,6 +8,7 @@ import {
   type ChordQuality,
   type RootName,
 } from './chords'
+import { ROOT_PC } from './pitchClass'
 
 const DIATONIC_QUALITIES = new Set<ChordQuality>([
   'major',
@@ -26,21 +27,6 @@ export type KeyDef = {
   label: KeyId
   name: string
   chords: readonly ChordPresetId[]
-}
-
-const ROOT_PC: Record<string, number> = {
-  C: 0,
-  'C#': 1,
-  D: 2,
-  'D#': 3,
-  E: 4,
-  F: 5,
-  'F#': 6,
-  G: 7,
-  'G#': 8,
-  A: 9,
-  'A#': 10,
-  B: 11,
 }
 
 const MAJOR_SCALE_STEPS = [0, 2, 4, 5, 7, 9, 11] as const
@@ -374,17 +360,6 @@ export function romanLabelForChordInKey(
   }
 
   return { label: rootName, kind: 'foreign' }
-}
-
-export function chordLabelInKey(
-  keyId: KeyId | null,
-  chordId: ChordPresetId,
-): string {
-  if (keyId == null) {
-    return chordId
-  }
-  const { label } = romanLabelForChordInKey(keyId, chordId)
-  return `${chordId} (${label})`
 }
 
 /** Implied key for scale overlay when no key is selected (chord root + quality). */

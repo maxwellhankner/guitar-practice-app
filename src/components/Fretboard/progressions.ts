@@ -201,14 +201,6 @@ function chordForStep(
   return triadId
 }
 
-function chordForDegree(keyId: KeyId, degree: number): ChordPresetId {
-  const chordId = chordForStep(keyId, { degree })
-  if (chordId == null) {
-    throw new Error(`Key ${keyId}: no chord for degree ${degree}`)
-  }
-  return chordId
-}
-
 export function progressionDegrees(
   progressionId: ProgressionId,
 ): readonly number[] {
@@ -261,25 +253,6 @@ export function allowedChordsForProgression(
     }
   }
   return allowed
-}
-
-export type ProgressionStep = {
-  stepIndex: number
-  degree: number
-  triadId: ChordPresetId
-}
-
-/** Ordered progression steps with diatonic triads for the key. */
-export function progressionStepsInKey(
-  keyId: KeyId,
-  progressionId: ProgressionId,
-): ProgressionStep[] {
-  const { steps } = PROGRESSIONS[progressionId]
-  return steps.map((step, stepIndex) => ({
-    stepIndex,
-    degree: step.degree,
-    triadId: chordForDegree(keyId, step.degree),
-  }))
 }
 
 /** Chords for a progression in the given key, in progression order. */

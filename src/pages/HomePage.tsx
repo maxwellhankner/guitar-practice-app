@@ -21,7 +21,6 @@ import {
   CHORD_PRESETS,
   ROOT_NAMES,
   chordIdsForRoot,
-  isChordPracticeable,
   parseChordPresetId,
   Fretboard,
   chordsForProgression,
@@ -65,16 +64,14 @@ import {
   type ScaleSelection,
 } from '../components/Fretboard'
 import { useUserSettings } from '../hooks/useUserSettings'
+import { useMobileDiagramLayout } from '../hooks/useMobileDiagramLayout'
 import {
   PANEL_SPLIT_MAX,
   PANEL_SPLIT_MIN,
+  clampSplitRatio,
 } from '../db/userSettingsRepository'
 
 type BoardSelection = { kind: 'chord'; id: ChordPresetId }
-
-function clampPanelSplit(ratio: number): number {
-  return Math.min(PANEL_SPLIT_MAX, Math.max(PANEL_SPLIT_MIN, ratio))
-}
 
 export function HomePage() {
   const baseId = useId()
@@ -119,29 +116,44 @@ export function HomePage() {
     setDiagramHidden,
   } = useUserSettings()
 
-  useEffect(() => {
+  const activeKey = useMemo(() => {
     if (selectedKey == null) {
-      setBuiltProgression(null)
-      setPendingAddAfterIndex(null)
-      void setScaleSelection(null)
-      return
-    }
-    setSelection(null)
-    setFindKeyMode(false)
-    setFindKeyChords([])
-  }, [selectedKey, setScaleSelection])
-
-  useEffect(() => {
-    if (!filterPlayableOnly) {
-      return
+      return null
     }
     if (
-      selectedKey != null &&
+      filterPlayableOnly &&
       !isKeyPlayable(selectedKey, disabledChords)
     ) {
-      setSelectedKey(null)
+      return null
     }
-  }, [selectedKey, disabledChords, filterPlayableOnly])
+    return selectedKey
+  }, [selectedKey, filterPlayableOnly, disabledChords])
+
+  const boardSelection = useMemo((): BoardSelection | null => {
+    if (selection?.kind !== 'chord' || activeKey == null) {
+      return selection
+    }
+    if (isSelectableChordInKey(activeKey, selection.id)) {
+      return selection
+    }
+    if (builtProgression != null) {
+      const allowed = allowedChordsForBuiltProgression(
+        activeKey,
+        builtProgression,
+      )
+      if (allowed.has(selection.id)) {
+        return selection
+      }
+    }
+    return null
+  }, [selection, activeKey, builtProgression])
+
+  const clearSelectedKey = () => {
+    setBuiltProgression(null)
+    setPendingAddAfterIndex(null)
+    void setScaleSelection(null)
+    setSelectedKey(null)
+  }
 
   useEffect(() => {
     if (!fretPickerOpen) {
@@ -196,48 +208,29 @@ export function HomePage() {
     }
   }, [pendingAddAfterIndex])
 
-  useEffect(() => {
-    if (
-      selectedKey == null ||
-      selection?.kind !== 'chord' ||
-      isSelectableChordInKey(selectedKey, selection.id)
-    ) {
-      return
-    }
-    if (builtProgression != null) {
-      const allowed = allowedChordsForBuiltProgression(
-        selectedKey,
-        builtProgression,
-      )
-      if (allowed.has(selection.id)) {
-        return
-      }
-    }
-    setSelection(null)
-  }, [selectedKey, selection, builtProgression])
-
   const diatonicSlots = useMemo(() => {
-    if (selectedKey == null) {
+    if (activeKey == null) {
       return null
     }
-    return diatonicSlotsInKey(selectedKey)
-  }, [selectedKey])
+    return diatonicSlotsInKey(activeKey)
+  }, [activeKey])
 
   const progressionHighlightedTriads = useMemo(() => {
     if (
-      selectedKey == null ||
+      activeKey == null ||
       builtProgression == null ||
       builtProgression.length === 0
     ) {
       return null
     }
-    return progressionHighlightedTriadsInKey(selectedKey, builtProgression)
-  }, [selectedKey, builtProgression])
+    return progressionHighlightedTriadsInKey(activeKey, builtProgression)
+  }, [activeKey, builtProgression])
 
   const hasBuiltProgression =
     builtProgression != null && builtProgression.length > 0
 
-  const diagramLayoutVertical = diagramLayout === 'vertical'
+  const effectiveDiagramLayout = useMobileDiagramLayout(diagramLayout)
+  const diagramLayoutVertical = effectiveDiagramLayout === 'vertical'
   const fretboardPortrait = fretboardOrientation === 'portrait'
   const fretMenuPlacement = diagramLayoutVertical
     ? panelsSwapped
@@ -262,12 +255,9 @@ export function HomePage() {
     ? `${diagramShare}fr auto ${panelSplitRatio}fr`
     : `${panelSplitRatio}fr auto ${diagramShare}fr`
 
-  const handleDividerPointerDown = (
+  const startDividerResize = (
     event: React.PointerEvent<HTMLElement>,
   ) => {
-    if ((event.target as HTMLElement).closest('button')) {
-      return
-    }
     event.preventDefault()
     const main = mainRef.current
     const divider = event.currentTarget.closest('.app-page__divider')
@@ -286,7 +276,7 @@ export function HomePage() {
         ? (moveEvent.clientX - rect.left) / rect.width
         : (moveEvent.clientY - rect.top) / rect.height
       const next = panelsSwapped ? 1 - raw : raw
-      currentRatio = clampPanelSplit(next)
+      currentRatio = clampSplitRatio(next)
       setLiveSplitRatio(currentRatio)
     }
 
@@ -308,6 +298,22 @@ export function HomePage() {
     divider.addEventListener('pointercancel', onPointerUp)
   }
 
+  const handleDividerPointerDown = (
+    event: React.PointerEvent<HTMLElement>,
+  ) => {
+    if ((event.target as HTMLElement).closest('button')) {
+      return
+    }
+    startDividerResize(event)
+  }
+
+  const handleDividerResizePointerDown = (
+    event: React.PointerEvent<HTMLButtonElement>,
+  ) => {
+    event.stopPropagation()
+    startDividerResize(event)
+  }
+
   const findKeyRanks = useMemo(() => {
     if (!findKeyMode || findKeyChords.length === 0) {
       return null
@@ -323,26 +329,26 @@ export function HomePage() {
   }, [findKeyRanks])
 
   const startFret = useMemo(() => {
-    if (selection?.kind !== 'chord') {
+    if (boardSelection?.kind !== 'chord') {
       return 1
     }
-    return startFretForFingering(resolveChord(selection.id), fretCount)
-  }, [selection, fretCount])
+    return startFretForFingering(resolveChord(boardSelection.id), fretCount)
+  }, [boardSelection, fretCount])
 
   const scalePattern = useMemo(() => {
-    if (selectedKey == null || scaleSelection == null) {
+    if (activeKey == null || scaleSelection == null) {
       return null
     }
     return scalePatternForKey(
-      selectedKey,
+      activeKey,
       scaleSelection,
       fretCount,
       startFret,
     )
-  }, [selectedKey, scaleSelection, fretCount, startFret])
+  }, [activeKey, scaleSelection, fretCount, startFret])
 
   const scaleContextName =
-    selectedKey != null ? KEY_DEFS[selectedKey].name : null
+    activeKey != null ? KEY_DEFS[activeKey].name : null
 
   const scaleModeTitle = (label: string) =>
     scaleContextName != null
@@ -357,44 +363,36 @@ export function HomePage() {
     scaleSelection === mode
 
   const isChordInSelectedScale = (chordId: ChordPresetId): boolean => {
-    if (selectedKey == null || scaleSelection == null) {
+    if (activeKey == null || scaleSelection == null) {
       return false
     }
     return (
-      chordRomanNumeralOnScale(selectedKey, chordId, scaleSelection) != null
+      chordRomanNumeralOnScale(activeKey, chordId, scaleSelection) != null
     )
   }
 
   const scaleRomanLabel = (chordId: ChordPresetId, fallback: string): string => {
-    if (selectedKey == null || scaleSelection == null) {
+    if (activeKey == null || scaleSelection == null) {
       return fallback
     }
     return (
-      chordRomanNumeralOnScale(selectedKey, chordId, scaleSelection) ??
+      chordRomanNumeralOnScale(activeKey, chordId, scaleSelection) ??
       fallback
     )
   }
 
-  const romanClassName = (
-    chordId: ChordPresetId | null,
-    extra?: string,
-  ): string =>
-    [
-      'diagram-chord-roman',
-      extra,
-      chordId != null && isChordInSelectedScale(chordId)
-        ? 'diagram-chord-roman--scale-tone'
-        : '',
-    ]
+  const romanClassName = (extra?: string, active = false): string =>
+    ['diagram-chord-roman', extra, active ? 'diagram-chord-roman--active' : '']
       .filter(Boolean)
       .join(' ')
 
   const renderRoman = (
-    chordId: ChordPresetId | null,
+    _chordId: ChordPresetId | null,
     text: string,
     extra?: string,
+    active = false,
   ) => (
-    <span className={romanClassName(chordId, extra)} aria-hidden>
+    <span className={romanClassName(extra, active)} aria-hidden>
       <span className="diagram-chord-roman__label">{text}</span>
     </span>
   )
@@ -420,10 +418,10 @@ export function HomePage() {
   }
 
   const seedFromPreset = (progressionId: ProgressionId) => {
-    if (selectedKey == null) {
+    if (activeKey == null) {
       return
     }
-    setBuiltProgression(seedProgressionFromPreset(selectedKey, progressionId))
+    setBuiltProgression(seedProgressionFromPreset(activeKey, progressionId))
     setPendingAddAfterIndex(null)
   }
 
@@ -453,7 +451,7 @@ export function HomePage() {
 
   const selectKey = (keyId: KeyId) => {
     if (selectedKey === keyId) {
-      setSelectedKey(null)
+      clearSelectedKey()
       return
     }
     const progressionFromFindKey =
@@ -680,7 +678,7 @@ export function HomePage() {
             ))
         }
         onPlayableChange={(next) => void setChordPlayable(id, next)}
-        showPlayabilityPopup={filterPlayableOnly && isChordPracticeable(id)}
+        showPlayabilityPopup={filterPlayableOnly}
       />
     )
   }
@@ -801,6 +799,30 @@ export function HomePage() {
         onClick={() => void setDisplayNotes(!displayNotes)}
       >
         <Music size={16} strokeWidth={2.5} aria-hidden />
+      </button>
+    </Tooltip>
+  )
+
+  const renderDividerResizeControl = (
+    tooltipPlacement: typeof dividerTooltipPlacement | 'below',
+  ) => (
+    <Tooltip placement={tooltipPlacement} label="Resize panels">
+      <button
+        type="button"
+        className="app-page__divider-handle"
+        aria-label="Resize panels"
+        onPointerDown={handleDividerResizePointerDown}
+      >
+        <Minus
+          className={
+            diagramLayoutVertical
+              ? 'app-page__divider-icon app-page__divider-icon--vertical'
+              : 'app-page__divider-icon'
+          }
+          size={16}
+          strokeWidth={2.5}
+          aria-hidden
+        />
       </button>
     </Tooltip>
   )
@@ -940,7 +962,7 @@ export function HomePage() {
               >
                 {[...KEY_MAJOR_IDS, ...KEY_MINOR_IDS].map((keyId) => {
                   const def = KEY_DEFS[keyId]
-                  const selected = selectedKey === keyId
+                  const selected = activeKey === keyId
                   const inFindKeyFlow =
                     selectedKey == null && findKeyMode
                   const playableBlocked =
@@ -995,7 +1017,7 @@ export function HomePage() {
               </div>
             </div>
 
-            {selectedKey != null ? (
+            {activeKey != null ? (
               <div className="diagram-field">
                 <p className="diagram-label" id={`${baseId}-scale-label`}>
                   Scale
@@ -1055,7 +1077,7 @@ export function HomePage() {
               <p className="diagram-label" id={`${baseId}-chord-label`}>
                 Chords
               </p>
-              {selectedKey != null && diatonicSlots != null ? (
+              {activeKey != null && diatonicSlots != null ? (
                 <div className="diagram-chords-build">
                   <div
                     className="diagram-chords-build__key-row"
@@ -1078,7 +1100,7 @@ export function HomePage() {
                             {slot.chordId != null ? (
                               <>
                                 {renderChordCell(slot.chordId, {
-                                  keyId: selectedKey,
+                                  keyId: activeKey,
                                   roman: slot.roman,
                                   selectable: true,
                                   inProgression,
@@ -1088,6 +1110,8 @@ export function HomePage() {
                                 {renderRoman(
                                   slot.chordId,
                                   scaleRomanLabel(slot.chordId, slot.roman),
+                                  undefined,
+                                  isChordInSelectedScale(slot.chordId),
                                 )}
                               </>
                             ) : (
@@ -1133,7 +1157,7 @@ export function HomePage() {
                       ) : null}
                     </div>
                     {!hasBuiltProgression
-                      ? renderProgressionSeeds(selectedKey)
+                      ? renderProgressionSeeds(activeKey)
                       : null}
                     {hasBuiltProgression ? (
                       <>
@@ -1153,14 +1177,14 @@ export function HomePage() {
                           }
                         >
                           {builtProgression.map((chordId, stepIndex) => {
-                            const triadId = triadIdForStep(selectedKey, chordId)
+                            const triadId = triadIdForStep(activeKey, chordId)
                             const romanInfo = romanLabelForProgressionStep(
-                              selectedKey,
+                              activeKey,
                               chordId,
                               triadId,
                             )
                             const altOptions = progressionAltOptions(
-                              selectedKey,
+                              activeKey,
                               chordId,
                             )
                             const canAdd =
@@ -1232,7 +1256,7 @@ export function HomePage() {
                                     </Tooltip>
                                   </div>
                                   {renderChordCell(chordId, {
-                                    keyId: selectedKey,
+                                    keyId: activeKey,
                                     roman:
                                       romanInfo.kind !== 'foreign'
                                         ? romanInfo.label
@@ -1301,7 +1325,7 @@ export function HomePage() {
                                     >
                                       {ROOT_NAMES.map((rootName) => {
                                         const inKey = isRootInKey(
-                                          selectedKey,
+                                          activeKey,
                                           rootName,
                                         )
                                         return (
@@ -1334,12 +1358,13 @@ export function HomePage() {
                                   romanInfo.kind === 'foreign'
                                     ? 'diagram-chord-roman--foreign'
                                     : undefined,
+                                  isChordInSelectedScale(chordId),
                                 )}
                                 {altOptions.length > 0 ? (
                                   <div className="diagram-progression-step__alts">
                                     {altOptions.map(({ chordId: altId, suggested }) =>
                                       renderChordCell(altId, {
-                                        keyId: selectedKey,
+                                        keyId: activeKey,
                                         compact: true,
                                         dimmed: !suggested,
                                         selected: altId === chordId,
@@ -1408,21 +1433,6 @@ export function HomePage() {
             aria-label="Resize panels"
             onPointerDown={handleDividerPointerDown}
           >
-            <span
-              className="app-page__divider-handle"
-              aria-hidden
-              onPointerDown={handleDividerPointerDown}
-            >
-              <Minus
-                className={
-                  diagramLayoutVertical
-                    ? 'app-page__divider-icon app-page__divider-icon--vertical'
-                    : 'app-page__divider-icon'
-                }
-                size={16}
-                strokeWidth={2.5}
-              />
-            </span>
             <Tooltip
               placement={dividerTooltipPlacement}
               label={
@@ -1511,6 +1521,7 @@ export function HomePage() {
             {renderFretCountControl(fretMenuPlacement, dividerTooltipPlacement)}
             {renderKnownFilterControl(dividerTooltipPlacement)}
             {renderNotesControl(dividerTooltipPlacement)}
+            {renderDividerResizeControl(dividerTooltipPlacement)}
           </div>
 
           <section
@@ -1526,7 +1537,7 @@ export function HomePage() {
             aria-label="Fretboard preview"
           >
             <div className="app-page__diagram-wrap">
-              {hasBuiltProgression && selectedKey != null ? (
+              {hasBuiltProgression && activeKey != null ? (
                 <div className="app-page__diagram-stage app-page__diagram-stage--progression">
                   {builtProgression.map((chordId, stepIndex) => {
                     const boardStartFret = startFretForFingering(
@@ -1534,17 +1545,17 @@ export function HomePage() {
                       fretCount,
                     )
                     const boardScalePattern =
-                      selectedKey != null && scaleSelection != null
+                      activeKey != null && scaleSelection != null
                         ? scalePatternForKey(
-                            selectedKey,
+                            activeKey,
                             scaleSelection,
                             fretCount,
                             boardStartFret,
                           )
                         : null
-                    const stepTriadId = triadIdForStep(selectedKey, chordId)
+                    const stepTriadId = triadIdForStep(activeKey, chordId)
                     const boardRoman = romanLabelForProgressionStep(
-                      selectedKey,
+                      activeKey,
                       chordId,
                       stepTriadId,
                     )
@@ -1574,7 +1585,7 @@ export function HomePage() {
               ) : (
                 <div className="app-page__diagram-stage app-page__diagram-stage--single">
                   <Fretboard
-                    chord={selection?.kind === 'chord' ? selection.id : null}
+                    chord={boardSelection?.kind === 'chord' ? boardSelection.id : null}
                     scalePattern={scalePattern}
                     fretCount={fretCount}
                     startFret={startFret}

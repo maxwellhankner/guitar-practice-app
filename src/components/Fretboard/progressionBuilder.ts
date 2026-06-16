@@ -4,7 +4,6 @@ import {
   chordIdsForRoot,
   parseChordPresetId,
   type ChordPresetId,
-  type ChordQuality,
   type ChordVariant,
   type RootName,
 } from './chords'
@@ -24,30 +23,6 @@ import { chordsForProgression, type ProgressionId } from './progressions'
 export const MIN_PROGRESSION_STEPS = 0
 export const MAX_PROGRESSION_STEPS = 8
 
-/** Short quality label for the progression summary chip. */
-export function qualityChipLabel(quality: ChordQuality): string {
-  if (quality === 'major' || quality === 'minor') {
-    return quality
-  }
-  return quality
-}
-
-export function progressionChipSegment(
-  keyId: KeyId | null,
-  chordId: ChordPresetId,
-): string {
-  const { rootName, quality } = parseChordPresetId(chordId)
-  const parts: string[] = []
-  if (keyId != null) {
-    const { label, kind } = romanLabelForChordInKey(keyId, chordId)
-    if (kind !== 'foreign') {
-      parts.push(label)
-    }
-  }
-  parts.push(rootName, qualityChipLabel(quality))
-  return parts.join(', ')
-}
-
 /** Roman label for a progression step; falls back to the step triad when the voicing is foreign. */
 export function romanLabelForProgressionStep(
   keyId: KeyId,
@@ -63,13 +38,6 @@ export function romanLabelForProgressionStep(
     return fallback
   }
   return primary
-}
-
-export function progressionChipText(
-  keyId: KeyId | null,
-  steps: readonly ChordPresetId[],
-): string {
-  return steps.map((id) => progressionChipSegment(keyId, id)).join(' · ')
 }
 
 /** Scale degree 1–7 whose diatonic triad shares this root, if any. */
@@ -126,14 +94,6 @@ export function allowedChordsForBuiltProgression(
   return allowed
 }
 
-export function progressionStepRoots(
-  steps: readonly ChordPresetId[],
-): Set<RootName> {
-  return new Set(
-    steps.map((id) => parseChordPresetId(id).rootName as RootName),
-  )
-}
-
 /** Diatonic triads to highlight in the key row — one per scale degree present in the progression (any voicing). */
 export function progressionHighlightedTriadsInKey(
   keyId: KeyId,
@@ -151,18 +111,6 @@ export function progressionHighlightedTriadsInKey(
     }
   }
   return highlighted
-}
-
-export function moveProgressionStep(
-  steps: readonly ChordPresetId[],
-  index: number,
-  direction: -1 | 1,
-): ChordPresetId[] {
-  const target = index + direction
-  if (target < 0 || target >= steps.length) {
-    return [...steps]
-  }
-  return swapAdjacentProgressionSteps(steps, Math.min(index, target))
 }
 
 export function swapAdjacentProgressionSteps(
@@ -220,19 +168,6 @@ export function triadIdForStep(
   return slot?.chordId ?? chordId
 }
 
-export function alternateChordIdsForStep(
-  keyId: KeyId,
-  chordId: ChordPresetId,
-): ChordPresetId[] {
-  const degree = degreeForRootInKey(keyId, chordId)
-  if (degree != null) {
-    return colorAlternativesForDegree(keyId, degree).map((c) => c.chordId)
-  }
-  const { rootName } = parseChordPresetId(chordId)
-  const triad = triadIdForStep(keyId, chordId)
-  return chordIdsForRoot(rootName as RootName).filter((id) => id !== triad)
-}
-
 export type ProgressionAltOption = {
   chordId: ChordPresetId
   /** Curated diatonic triad / color voicings — shown first and at full opacity. */
@@ -280,16 +215,6 @@ export function progressionAltOptions(
   }
 
   return options
-}
-
-/** Same-root voicing ids for progression step alts — never includes `activeChordId`. */
-export function progressionAltOptionIds(
-  keyId: KeyId,
-  activeChordId: ChordPresetId,
-): ChordPresetId[] {
-  return progressionAltOptions(keyId, activeChordId).map(
-    (option) => option.chordId,
-  )
 }
 
 function rootNameForDegree(keyId: KeyId, degree: number): RootName | null {

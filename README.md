@@ -11,7 +11,15 @@ npm install
 npm run dev
 ```
 
-`npm run dev` starts the Vite app and a local json-server for user settings (`db/db.json`). The hosted demo does not use the API; settings do not persist there.
+`npm run dev` starts the Vite app and a local json-server for user settings. Copy `db/db.example.json` to `db/db.json` before the first run. The hosted demo does not use the API; settings do not persist there.
+
+See [development.md](development.md) for the roadmap.
+
+## Scripts
+
+- `npm run dev` — app + local settings API
+- `npm run build` — production build
+- `npm run lint` — ESLint
 
 ## Deploy
 

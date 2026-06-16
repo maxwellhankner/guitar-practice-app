@@ -433,12 +433,3 @@ export function rankKeysForChords(
     })
     .map(({ keyId, score }) => ({ keyId, score }))
 }
-
-/** @deprecated Use {@link rankKeysForChords} — strict 100% diatonic root match only. */
-export function keysMatchingChords(
-  chordIds: readonly ChordPresetId[],
-): KeyId[] {
-  return rankKeysForChords(chordIds)
-    .filter((rank) => rank.score >= 100)
-    .map((rank) => rank.keyId)
-}

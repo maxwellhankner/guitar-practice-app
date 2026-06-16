@@ -108,12 +108,7 @@ export function ChordPlayabilityCell({
 
   useEffect(() => () => clearHoverTimer(), [])
 
-  useEffect(() => {
-    if (!showPlayabilityPopup) {
-      clearHoverTimer()
-      setPopupVisible(false)
-    }
-  }, [showPlayabilityPopup])
+  const popupShown = showPlayabilityPopup && popupVisible
 
   const chordClasses = [
     'diagram-chord-btn',
@@ -178,7 +173,7 @@ export function ChordPlayabilityCell({
         className={[
           'diagram-chord-playability',
           'diagram-chord-playability--above',
-          popupVisible ? 'diagram-chord-playability--visible' : '',
+          popupShown ? 'diagram-chord-playability--visible' : '',
         ]
           .filter(Boolean)
           .join(' ')}

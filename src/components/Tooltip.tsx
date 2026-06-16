@@ -1,15 +1,11 @@
 import {
-  cloneElement,
   isValidElement,
   useEffect,
   useId,
   useLayoutEffect,
   useRef,
   useState,
-  type FocusEvent,
-  type MouseEvent,
-  type PointerEvent,
-  type ReactElement,
+  type ReactNode,
 } from 'react'
 import { createPortal } from 'react-dom'
 
@@ -19,22 +15,10 @@ export const TOOLTIP_SHOW_DELAY_MS = 1000
 
 export type TooltipPlacement = 'below' | 'above' | 'left' | 'right'
 
-type TooltipChildProps = {
-  onClick?: (event: MouseEvent<HTMLElement>) => void
-  onPointerDown?: (event: PointerEvent<HTMLElement>) => void
-  onPointerEnter?: (event: PointerEvent<HTMLElement>) => void
-  onPointerMove?: (event: PointerEvent<HTMLElement>) => void
-  onPointerLeave?: (event: PointerEvent<HTMLElement>) => void
-  onPointerCancel?: (event: PointerEvent<HTMLElement>) => void
-  onFocus?: (event: FocusEvent<HTMLElement>) => void
-  onBlur?: (event: FocusEvent<HTMLElement>) => void
-  'aria-describedby'?: string
-}
-
 type TooltipProps = {
   label: string
   placement?: TooltipPlacement
-  children: ReactElement<TooltipChildProps>
+  children: ReactNode
   disabled?: boolean
 }
 
@@ -181,6 +165,8 @@ export function Tooltip({
       document.removeEventListener('mouseout', onDocumentMouseOut)
       dismiss()
     }
+    // Listeners are registered once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- stable window/document handlers
   }, [])
 
   const show = () => {
@@ -224,50 +210,41 @@ export function Tooltip({
     return children
   }
 
-  const child = children
+  const setAnchorFromEvent = (target: EventTarget | null) => {
+    if (target instanceof HTMLElement) {
+      anchorRef.current = target
+    }
+  }
 
   return (
     <>
-      {cloneElement(child, {
-        onPointerDown: (event: PointerEvent<HTMLElement>) => {
-          child.props.onPointerDown?.(event)
-          hide()
-        },
-        onClick: (event: MouseEvent<HTMLElement>) => {
-          child.props.onClick?.(event)
-          hide()
-        },
-        onPointerEnter: (event: PointerEvent<HTMLElement>) => {
-          anchorRef.current = event.currentTarget
+      <span
+        className="app-tooltip-anchor"
+        onPointerDown={() => hide()}
+        onClick={() => hide()}
+        onPointerEnter={(event) => {
+          setAnchorFromEvent(event.currentTarget.firstElementChild)
           trackPointer(event.clientX, event.clientY)
-          child.props.onPointerEnter?.(event)
           show()
-        },
-        onPointerMove: (event: PointerEvent<HTMLElement>) => {
+        }}
+        onPointerMove={(event) => {
           trackPointer(event.clientX, event.clientY)
-          child.props.onPointerMove?.(event)
-        },
-        onPointerLeave: (event: PointerEvent<HTMLElement>) => {
-          child.props.onPointerLeave?.(event)
-          hide()
-        },
-        onPointerCancel: (event: PointerEvent<HTMLElement>) => {
-          child.props.onPointerCancel?.(event)
-          hide()
-        },
-        onFocus: (event: FocusEvent<HTMLElement>) => {
-          anchorRef.current = event.currentTarget
-          child.props.onFocus?.(event)
-          if (event.target.matches(':focus-visible')) {
+        }}
+        onPointerLeave={() => hide()}
+        onPointerCancel={() => hide()}
+        onFocusCapture={(event) => {
+          setAnchorFromEvent(event.target)
+          if (
+            event.target instanceof HTMLElement &&
+            event.target.matches(':focus-visible')
+          ) {
             show()
           }
-        },
-        onBlur: (event: FocusEvent<HTMLElement>) => {
-          child.props.onBlur?.(event)
-          hide()
-        },
-        'aria-describedby': visible ? tooltipId : undefined,
-      })}
+        }}
+        onBlurCapture={() => hide()}
+      >
+        {children}
+      </span>
       {visible
         ? createPortal(
             <div

@@ -3,8 +3,7 @@ import type { ChordPresetId, ScaleSelection } from '../components/Fretboard'
 import {
   DEFAULT_HORIZONTAL_SPLIT,
   DEFAULT_VERTICAL_SPLIT,
-  PANEL_SPLIT_MAX,
-  PANEL_SPLIT_MIN,
+  clampSplitRatio,
   fetchUserSettings,
   setChordDisabled,
   setDiagramLayout,
@@ -21,10 +20,6 @@ import {
   type FretboardOrientation,
   type UserSettings,
 } from '../db/userSettingsRepository'
-
-function clampSplitRatio(value: number): number {
-  return Math.min(PANEL_SPLIT_MAX, Math.max(PANEL_SPLIT_MIN, value))
-}
 
 export function useUserSettings() {
   const [settings, setSettings] = useState<UserSettings | null>(null)

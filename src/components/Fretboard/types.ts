@@ -1,3 +1,5 @@
+export type FretboardOrientation = 'landscape' | 'portrait'
+
 /**
  * Per-string state: low E (index 0) → high E (index 5).
  * Diagram renders top → bottom as high E, B, G, D, A, low E (tab / chord-chart style).
