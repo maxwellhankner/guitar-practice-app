@@ -1064,9 +1064,6 @@ export function HomePage() {
                   >
                     <div
                       className="diagram-chord-in-key diagram-chord-in-key--columns"
-                      style={{
-                        gridTemplateColumns: `repeat(${diatonicSlots.length}, 1fr)`,
-                      }}
                     >
                       {diatonicSlots.map((slot) => {
                         const inProgression =
@@ -1149,6 +1146,11 @@ export function HomePage() {
                           ]
                             .filter(Boolean)
                             .join(' ')}
+                          style={
+                            {
+                              '--progression-step-count': builtProgression.length,
+                            } as React.CSSProperties
+                          }
                         >
                           {builtProgression.map((chordId, stepIndex) => {
                             const triadId = triadIdForStep(selectedKey, chordId)
