@@ -56,6 +56,67 @@ const DEFAULT_SETTINGS: UserSettings = {
 
 const validChordIds = new Set<string>(CHORD_PRESET_IDS)
 
+/** json-server is dev-only; production uses in-memory defaults. */
+function isSettingsApiEnabled(): boolean {
+  return import.meta.env.DEV
+}
+
+let inMemorySettings: UserSettings | null = null
+
+function getInMemorySettings(): UserSettings {
+  if (inMemorySettings == null) {
+    inMemorySettings = migrateLegacySettings({ ...DEFAULT_SETTINGS })
+  }
+  return inMemorySettings
+}
+
+function mergeSettings(
+  current: UserSettings,
+  partial: Partial<UserSettings>,
+): UserSettings {
+  return {
+    disabledChords:
+      partial.disabledChords != null
+        ? sanitizeChordIds(partial.disabledChords)
+        : current.disabledChords,
+    filterPlayableOnly:
+      partial.filterPlayableOnly ?? current.filterPlayableOnly,
+    displayNotes: partial.displayNotes ?? current.displayNotes,
+    fretCount:
+      partial.fretCount != null
+        ? sanitizeFretCount(partial.fretCount)
+        : current.fretCount,
+    scaleSelection:
+      partial.scaleSelection !== undefined
+        ? sanitizeScaleSelection(partial.scaleSelection)
+        : current.scaleSelection,
+    diagramLayout:
+      partial.diagramLayout != null
+        ? sanitizeDiagramLayout(partial.diagramLayout)
+        : current.diagramLayout,
+    horizontalSplitRatio:
+      partial.horizontalSplitRatio != null
+        ? sanitizeSplitRatio(
+            partial.horizontalSplitRatio,
+            current.horizontalSplitRatio,
+          )
+        : current.horizontalSplitRatio,
+    verticalSplitRatio:
+      partial.verticalSplitRatio != null
+        ? sanitizeSplitRatio(
+            partial.verticalSplitRatio,
+            current.verticalSplitRatio,
+          )
+        : current.verticalSplitRatio,
+    fretboardOrientation:
+      partial.fretboardOrientation != null
+        ? sanitizeFretboardOrientation(partial.fretboardOrientation)
+        : current.fretboardOrientation,
+    panelsSwapped: partial.panelsSwapped ?? current.panelsSwapped,
+    diagramHidden: partial.diagramHidden ?? current.diagramHidden,
+  }
+}
+
 function sanitizeDiagramLayout(value: unknown): DiagramLayout {
   return value === 'vertical' ? 'vertical' : 'horizontal'
 }
@@ -231,6 +292,10 @@ async function readUserSettings(): Promise<UserSettings | null> {
 }
 
 export async function fetchUserSettings(): Promise<UserSettings> {
+  if (!isSettingsApiEnabled()) {
+    return getInMemorySettings()
+  }
+
   try {
     const stored = await readUserSettings()
     if (stored != null) {
@@ -248,46 +313,11 @@ export async function saveUserSettings(
   partial: Partial<UserSettings>,
 ): Promise<UserSettings> {
   const current = await fetchUserSettings()
-  const next: UserSettings = {
-    disabledChords:
-      partial.disabledChords != null
-        ? sanitizeChordIds(partial.disabledChords)
-        : current.disabledChords,
-    filterPlayableOnly:
-      partial.filterPlayableOnly ?? current.filterPlayableOnly,
-    displayNotes: partial.displayNotes ?? current.displayNotes,
-    fretCount:
-      partial.fretCount != null
-        ? sanitizeFretCount(partial.fretCount)
-        : current.fretCount,
-    scaleSelection:
-      partial.scaleSelection !== undefined
-        ? sanitizeScaleSelection(partial.scaleSelection)
-        : current.scaleSelection,
-    diagramLayout:
-      partial.diagramLayout != null
-        ? sanitizeDiagramLayout(partial.diagramLayout)
-        : current.diagramLayout,
-    horizontalSplitRatio:
-      partial.horizontalSplitRatio != null
-        ? sanitizeSplitRatio(
-            partial.horizontalSplitRatio,
-            current.horizontalSplitRatio,
-          )
-        : current.horizontalSplitRatio,
-    verticalSplitRatio:
-      partial.verticalSplitRatio != null
-        ? sanitizeSplitRatio(
-            partial.verticalSplitRatio,
-            current.verticalSplitRatio,
-          )
-        : current.verticalSplitRatio,
-    fretboardOrientation:
-      partial.fretboardOrientation != null
-        ? sanitizeFretboardOrientation(partial.fretboardOrientation)
-        : current.fretboardOrientation,
-    panelsSwapped: partial.panelsSwapped ?? current.panelsSwapped,
-    diagramHidden: partial.diagramHidden ?? current.diagramHidden,
+  const next = mergeSettings(current, partial)
+
+  if (!isSettingsApiEnabled()) {
+    inMemorySettings = next
+    return next
   }
 
   try {

@@ -16,3 +16,5 @@ npm run dev
 ## Deploy
 
 Pushes to `main` deploy via GitHub Actions (see `.github/workflows/deploy-pages.yml`).
+
+In repo **Settings → Pages**, set source to **GitHub Actions** (not “Deploy from a branch / root”).
