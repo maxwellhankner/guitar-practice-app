@@ -16,6 +16,7 @@ import {
   setVerticalSplitRatio,
   setFretboardOrientation,
   setPanelsSwapped,
+  setDiagramHidden,
   type DiagramLayout,
   type FretboardOrientation,
   type UserSettings,
@@ -116,6 +117,14 @@ export function useUserSettings() {
     setSettings(next)
   }, [])
 
+  const setDiagramHiddenState = useCallback(async (value: boolean) => {
+    setSettings((prev) =>
+      prev != null ? { ...prev, diagramHidden: value } : prev,
+    )
+    const next = await setDiagramHidden(value)
+    setSettings(next)
+  }, [])
+
   return {
     ready: settings != null,
     settings,
@@ -129,6 +138,7 @@ export function useUserSettings() {
     verticalSplitRatio: settings?.verticalSplitRatio ?? DEFAULT_VERTICAL_SPLIT,
     fretboardOrientation: settings?.fretboardOrientation ?? 'landscape',
     panelsSwapped: settings?.panelsSwapped ?? false,
+    diagramHidden: settings?.diagramHidden ?? false,
     setChordPlayable,
     setFilterPlayableOnly: setFilterPlayableOnlyState,
     setDisplayNotes: setDisplayNotesState,
@@ -139,5 +149,6 @@ export function useUserSettings() {
     setVerticalSplitRatio: setVerticalSplitRatioState,
     setFretboardOrientation: setFretboardOrientationState,
     setPanelsSwapped: setPanelsSwappedState,
+    setDiagramHidden: setDiagramHiddenState,
   }
 }

@@ -45,6 +45,7 @@ export {
   isChordInKey,
   chordLabelInKey,
   chordRomanNumeral,
+  romanLabelForChordInKey,
   chordIdToScaleKey,
   diatonicChordIdsOnScale,
   scaleDegreesInVariant,
@@ -62,18 +63,25 @@ export {
 export {
   PROGRESSIONS,
   PROGRESSION_IDS,
+  BASIC_PROGRESSION_IDS,
+  COLORED_PROGRESSION_IDS,
   chordsForProgression,
   progressionStepsInKey,
   allowedChordsForProgression,
   isProgressionResolvableInKey,
   type ProgressionId,
+  type BasicProgressionId,
+  type ColoredProgressionId,
+  type ProgressionCategory,
   type ProgressionDef,
+  type ProgressionStepDef,
   type ProgressionStep,
 } from './progressions'
 export {
   MIN_PROGRESSION_STEPS,
   MAX_PROGRESSION_STEPS,
   progressionChipSegment,
+  romanLabelForProgressionStep,
   progressionChipText,
   degreeForRootInKey,
   diatonicRootNamesInKey,
@@ -81,11 +89,14 @@ export {
   seedProgressionFromPreset,
   allowedChordsForBuiltProgression,
   progressionStepRoots,
+  progressionHighlightedTriadsInKey,
   swapAdjacentProgressionSteps,
   deleteProgressionStep,
   insertProgressionStep,
   alternateChordIdsForStep,
+  progressionAltOptions,
   progressionAltOptionIds,
+  type ProgressionAltOption,
   triadIdForStep,
   transposeChordBetweenKeys,
   transposeProgressionToKey,
@@ -100,7 +111,12 @@ export {
   playableProgressionsInKey,
   playableChordsInKey,
 } from './playability'
-export { keysMatchingChords } from './findKey'
+export {
+  keysMatchingChords,
+  rankKeysForChords,
+  findKeyMatchBrightness,
+  type KeyMatchRank,
+} from './findKey'
 export {
   NOTE_NAMES_SHARP,
   OPEN_STRING_PITCH_CLASS,

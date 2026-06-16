@@ -3,10 +3,12 @@ import {
   ArrowLeftRight,
   ArrowUpDown,
   Columns2,
+  Guitar,
   ListChecks,
   Minus,
   Music,
   Plus,
+  SquareX,
   RotateCcw,
   Rows2,
   RotateCcwSquare,
@@ -29,16 +31,18 @@ import {
   isChordPlayable,
   isKeyPlayable,
   isProgressionPlayableInKey,
-  keysMatchingChords,
-  chordRomanNumeral,
+  rankKeysForChords,
+  findKeyMatchBrightness,
+  romanLabelForChordInKey,
+  romanLabelForProgressionStep,
   unplayableChordsIn,
   seedProgressionFromPreset,
   allowedChordsForBuiltProgression,
-  progressionStepRoots,
+  progressionHighlightedTriadsInKey,
   swapAdjacentProgressionSteps,
   deleteProgressionStep,
   insertProgressionStep,
-  progressionAltOptionIds,
+  progressionAltOptions,
   triadIdForStep,
   transposeProgressionToKey,
   isRootInKey,
@@ -47,7 +51,8 @@ import {
   KEY_MAJOR_IDS,
   KEY_MINOR_IDS,
   PROGRESSIONS,
-  PROGRESSION_IDS,
+  BASIC_PROGRESSION_IDS,
+  COLORED_PROGRESSION_IDS,
   resolveChord,
   chordRomanNumeralOnScale,
   scalePatternForKey,
@@ -87,6 +92,7 @@ export function HomePage() {
   const [fretPickerOpen, setFretPickerOpen] = useState(false)
   const mainRef = useRef<HTMLElement>(null)
   const fretPickerRef = useRef<HTMLDivElement>(null)
+  const addProgressionPickerRef = useRef<HTMLDivElement>(null)
   const {
     ready: settingsReady,
     disabledChords,
@@ -99,6 +105,7 @@ export function HomePage() {
     verticalSplitRatio,
     fretboardOrientation,
     panelsSwapped,
+    diagramHidden,
     setChordPlayable,
     setFilterPlayableOnly,
     setDisplayNotes,
@@ -109,6 +116,7 @@ export function HomePage() {
     setVerticalSplitRatio,
     setFretboardOrientation,
     setPanelsSwapped,
+    setDiagramHidden,
   } = useUserSettings()
 
   useEffect(() => {
@@ -159,6 +167,36 @@ export function HomePage() {
   }, [fretPickerOpen])
 
   useEffect(() => {
+    if (pendingAddAfterIndex == null) {
+      return
+    }
+    const onPointerDown = (event: PointerEvent) => {
+      if (addProgressionPickerRef.current?.contains(event.target as Node)) {
+        return
+      }
+      if (
+        (event.target as HTMLElement).closest(
+          '[aria-label="Add chord to the right"]',
+        )
+      ) {
+        return
+      }
+      setPendingAddAfterIndex(null)
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setPendingAddAfterIndex(null)
+      }
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [pendingAddAfterIndex])
+
+  useEffect(() => {
     if (
       selectedKey == null ||
       selection?.kind !== 'chord' ||
@@ -185,12 +223,16 @@ export function HomePage() {
     return diatonicSlotsInKey(selectedKey)
   }, [selectedKey])
 
-  const progressionRootsInKey = useMemo(() => {
-    if (builtProgression == null || builtProgression.length === 0) {
+  const progressionHighlightedTriads = useMemo(() => {
+    if (
+      selectedKey == null ||
+      builtProgression == null ||
+      builtProgression.length === 0
+    ) {
       return null
     }
-    return progressionStepRoots(builtProgression)
-  }, [builtProgression])
+    return progressionHighlightedTriadsInKey(selectedKey, builtProgression)
+  }, [selectedKey, builtProgression])
 
   const hasBuiltProgression =
     builtProgression != null && builtProgression.length > 0
@@ -266,12 +308,19 @@ export function HomePage() {
     divider.addEventListener('pointercancel', onPointerUp)
   }
 
-  const matchingFindKeys = useMemo((): ReadonlySet<KeyId> => {
+  const findKeyRanks = useMemo(() => {
     if (!findKeyMode || findKeyChords.length === 0) {
-      return new Set()
+      return null
     }
-    return new Set(keysMatchingChords(findKeyChords))
+    return rankKeysForChords(findKeyChords)
   }, [findKeyMode, findKeyChords])
+
+  const findKeyScoreById = useMemo(() => {
+    if (findKeyRanks == null) {
+      return null
+    }
+    return new Map(findKeyRanks.map((rank) => [rank.keyId, rank.score]))
+  }, [findKeyRanks])
 
   const startFret = useMemo(() => {
     if (selection?.kind !== 'chord') {
@@ -434,30 +483,7 @@ export function HomePage() {
   }
 
   const handleKeyRowChordClick = (chordId: ChordPresetId) => {
-    const rootName = parseChordPresetId(chordId).rootName as RootName
     setPendingAddAfterIndex(null)
-
-    const stepIndex =
-      builtProgression?.findIndex(
-        (id) => parseChordPresetId(id).rootName === rootName,
-      ) ?? -1
-
-    if (stepIndex >= 0) {
-      setBuiltProgression((cur) => {
-        if (cur == null) {
-          return cur
-        }
-        const next = cur.filter((_, i) => i !== stepIndex)
-        return next.length === 0 ? null : next
-      })
-      setSelection((sel) =>
-        sel?.kind === 'chord' &&
-        parseChordPresetId(sel.id).rootName === rootName
-          ? null
-          : sel,
-      )
-      return
-    }
 
     if (
       builtProgression != null &&
@@ -523,8 +549,18 @@ export function HomePage() {
     ) {
       return
     }
-    const chordId = rootName as ChordPresetId
-    if (!isRootInKey(selectedKey, rootName)) {
+    let chordId = rootName as ChordPresetId
+    if (isRootInKey(selectedKey, rootName)) {
+      for (const slot of diatonicSlotsInKey(selectedKey)) {
+        if (
+          slot.chordId != null &&
+          parseChordPresetId(slot.chordId).rootName === rootName
+        ) {
+          chordId = slot.chordId
+          break
+        }
+      }
+    } else {
       setSelectedKey(rootName as KeyId)
     }
     setBuiltProgression((cur) => {
@@ -536,37 +572,61 @@ export function HomePage() {
     setPendingAddAfterIndex(null)
   }
 
+  const renderProgressionSeedButton = (
+    keyId: KeyId,
+    progressionId: ProgressionId,
+    colored = false,
+  ) => {
+    const def = PROGRESSIONS[progressionId]
+    const unresolved = !isProgressionResolvableInKey(keyId, progressionId)
+    const blocked =
+      filterPlayableOnly &&
+      !unresolved &&
+      !isProgressionPlayableInKey(keyId, progressionId, disabledChords)
+    const disabled = unresolved || blocked
+    const blockedReason = progressionDisabledReason(keyId, progressionId)
+    const seedChords = unresolved
+      ? null
+      : chordsForProgression(keyId, progressionId)
+          .map((id) => CHORD_PRESETS[id].name)
+          .join(' · ')
+    const tooltipLabel =
+      blockedReason ??
+      (seedChords != null
+        ? `${seedChords} in ${KEY_DEFS[keyId].name}`
+        : `Seed ${def.label} in ${KEY_DEFS[keyId].name}`)
+
+    return (
+      <Tooltip key={progressionId} label={tooltipLabel}>
+        <button
+          type="button"
+          className={[
+            'diagram-chord-btn',
+            colored ? 'diagram-progression-seeds__colored' : '',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+          disabled={disabled}
+          onClick={() => seedFromPreset(progressionId)}
+        >
+          {def.label}
+        </button>
+      </Tooltip>
+    )
+  }
+
   const renderProgressionSeeds = (keyId: KeyId) => (
     <div
-      className="diagram-chord-grid diagram-progression-grid"
+      className="diagram-chord-grid diagram-progression-grid diagram-progression-seeds"
       role="group"
       aria-label="Progression seeds"
     >
-      {PROGRESSION_IDS.map((progressionId) => {
-        const def = PROGRESSIONS[progressionId]
-        const unresolved = !isProgressionResolvableInKey(keyId, progressionId)
-        const blocked =
-          filterPlayableOnly &&
-          !unresolved &&
-          !isProgressionPlayableInKey(keyId, progressionId, disabledChords)
-        const disabled = unresolved || blocked
-        const blockedReason = progressionDisabledReason(keyId, progressionId)
-        return (
-          <Tooltip
-            key={progressionId}
-            label={blockedReason ?? `Seed ${def.label} in ${KEY_DEFS[keyId].name}`}
-          >
-            <button
-              type="button"
-              className="diagram-chord-btn"
-              disabled={disabled}
-              onClick={() => seedFromPreset(progressionId)}
-            >
-              {def.label}
-            </button>
-          </Tooltip>
-        )
-      })}
+      {BASIC_PROGRESSION_IDS.map((progressionId) =>
+        renderProgressionSeedButton(keyId, progressionId),
+      )}
+      {COLORED_PROGRESSION_IDS.map((progressionId) =>
+        renderProgressionSeedButton(keyId, progressionId, true),
+      )}
     </div>
   )
 
@@ -580,6 +640,7 @@ export function HomePage() {
       inProgression?: boolean
       selectable?: boolean
       selected?: boolean
+      dimmed?: boolean
       onSelect?: () => void
     },
   ) => {
@@ -591,7 +652,10 @@ export function HomePage() {
         selection.id === id)
     const title =
       options?.keyId != null
-        ? `${CHORD_PRESETS[id].name}${options.roman != null ? ` · ${options.roman}` : chordRomanNumeral(options.keyId, id) != null ? ` · ${chordRomanNumeral(options.keyId, id)}` : ''} in ${KEY_DEFS[options.keyId].name}`
+        ? `${CHORD_PRESETS[id].name}${options.roman != null ? ` · ${options.roman}` : (() => {
+            const { label, kind } = romanLabelForChordInKey(options.keyId, id)
+            return kind !== 'foreign' ? ` · ${label}` : ''
+          })()} in ${KEY_DEFS[options.keyId].name}`
         : CHORD_PRESETS[id].name
 
     return (
@@ -603,6 +667,7 @@ export function HomePage() {
         title={title}
         label={options?.label}
         compact={options?.compact}
+        dimmed={options?.dimmed}
         inProgression={options?.inProgression}
         selectable={options?.selectable}
         onSelect={
@@ -620,6 +685,161 @@ export function HomePage() {
     )
   }
 
+  const showDiagramPanel = !diagramHidden
+  const optionsToolbarTooltipPlacement = 'below' as const
+
+  const renderFretCountControl = (
+    fretMenuClass: string,
+    tooltipPlacement: typeof dividerTooltipPlacement | 'below',
+  ) => (
+    <div ref={fretPickerRef} className="app-page__divider-frets">
+      <Tooltip
+        placement={tooltipPlacement}
+        label="Fret count"
+        disabled={fretPickerOpen}
+      >
+        <button
+          type="button"
+          className="app-page__divider-frets-toggle"
+          aria-label={`Fret count: ${fretCount}`}
+          aria-expanded={fretPickerOpen}
+          aria-haspopup="listbox"
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={() => setFretPickerOpen((open) => !open)}
+        >
+          <span className="app-page__divider-frets-value" aria-hidden>
+            {fretCount}
+          </span>
+        </button>
+      </Tooltip>
+      {fretPickerOpen ? (
+        <div
+          className={`app-page__divider-frets-menu ${fretMenuClass}`}
+          role="listbox"
+          aria-label="Fret count"
+        >
+          {FRET_COUNT_OPTIONS.map((n) => {
+            const selected = fretCount === n
+            return (
+              <button
+                key={n}
+                type="button"
+                role="option"
+                aria-selected={selected}
+                className={[
+                  'app-page__divider-frets-option',
+                  selected ? 'app-page__divider-frets-option--selected' : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={() => {
+                  void setFretCount(n)
+                  setFretPickerOpen(false)
+                }}
+              >
+                {n}
+              </button>
+            )
+          })}
+        </div>
+      ) : null}
+    </div>
+  )
+
+  const renderKnownFilterControl = (
+    tooltipPlacement: typeof dividerTooltipPlacement | 'below',
+  ) => (
+    <Tooltip
+      placement={tooltipPlacement}
+      label={
+        filterPlayableOnly
+          ? 'Show all keys, progressions, and chords'
+          : 'Only show chords you know'
+      }
+    >
+      <button
+        type="button"
+        className={[
+          'app-page__divider-known-toggle',
+          filterPlayableOnly ? 'app-page__divider-tool--active' : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
+        aria-label={
+          filterPlayableOnly
+            ? 'Show all keys, progressions, and chords'
+            : 'Only show chords you know'
+        }
+        aria-pressed={filterPlayableOnly}
+        onPointerDown={(event) => event.stopPropagation()}
+        onClick={() => void setFilterPlayableOnly(!filterPlayableOnly)}
+      >
+        <ListChecks size={16} strokeWidth={2.5} aria-hidden />
+      </button>
+    </Tooltip>
+  )
+
+  const renderNotesControl = (
+    tooltipPlacement: typeof dividerTooltipPlacement | 'below',
+  ) => (
+    <Tooltip
+      placement={tooltipPlacement}
+      label={displayNotes ? 'Hide note names' : 'Show note names'}
+    >
+      <button
+        type="button"
+        className={[
+          'app-page__divider-notes-toggle',
+          displayNotes ? 'app-page__divider-tool--active' : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
+        aria-label={displayNotes ? 'Hide note names' : 'Show note names'}
+        aria-pressed={displayNotes}
+        onPointerDown={(event) => event.stopPropagation()}
+        onClick={() => void setDisplayNotes(!displayNotes)}
+      >
+        <Music size={16} strokeWidth={2.5} aria-hidden />
+      </button>
+    </Tooltip>
+  )
+
+  const renderHideDiagramControl = (
+    tooltipPlacement: typeof dividerTooltipPlacement | 'below',
+  ) => (
+    <Tooltip placement={tooltipPlacement} label="Hide guitar diagram">
+      <button
+        type="button"
+        className="app-page__divider-diagram-toggle"
+        aria-label="Hide guitar diagram"
+        onPointerDown={(event) => event.stopPropagation()}
+        onClick={() => {
+          setFretPickerOpen(false)
+          void setDiagramHidden(true)
+        }}
+      >
+        <SquareX size={16} strokeWidth={2.5} aria-hidden />
+      </button>
+    </Tooltip>
+  )
+
+  const renderShowDiagramControl = (
+    tooltipPlacement: typeof dividerTooltipPlacement | 'below',
+  ) => (
+    <Tooltip placement={tooltipPlacement} label="Show guitar diagram">
+      <button
+        type="button"
+        className="app-page__divider-diagram-toggle"
+        aria-label="Show guitar diagram"
+        onPointerDown={(event) => event.stopPropagation()}
+        onClick={() => void setDiagramHidden(false)}
+      >
+        <Guitar size={16} strokeWidth={2.5} aria-hidden />
+      </button>
+    </Tooltip>
+  )
+
   if (!settingsReady) {
     return (
       <main className="app-page">
@@ -636,21 +856,26 @@ export function HomePage() {
     <main
       ref={mainRef}
       className={[
-        diagramLayoutVertical ? 'app-page app-page--split' : 'app-page',
-        panelsSwapped ? 'app-page--panels-swapped' : '',
+        showDiagramPanel && diagramLayoutVertical
+          ? 'app-page app-page--split'
+          : 'app-page',
+        showDiagramPanel && panelsSwapped ? 'app-page--panels-swapped' : '',
+        diagramHidden ? 'app-page--diagram-hidden' : '',
       ]
         .filter(Boolean)
         .join(' ')}
       style={
-        diagramLayoutVertical
-          ? {
-              gridTemplateColumns: gridSplitTemplate,
-              gridTemplateRows: 'minmax(0, 1fr)',
-            }
-          : {
-              gridTemplateRows: gridSplitTemplate,
-              gridTemplateColumns: 'minmax(0, 1fr)',
-            }
+        showDiagramPanel
+          ? diagramLayoutVertical
+            ? {
+                gridTemplateColumns: gridSplitTemplate,
+                gridTemplateRows: 'minmax(0, 1fr)',
+              }
+            : {
+                gridTemplateRows: gridSplitTemplate,
+                gridTemplateColumns: 'minmax(0, 1fr)',
+              }
+          : undefined
       }
     >
       <section
@@ -658,9 +883,25 @@ export function HomePage() {
         aria-labelledby={`${baseId}-heading`}
       >
         <div className="app-page__inner">
-          <h1 className="app-page__title" id={`${baseId}-heading`}>
-            Practice Guitar App
-          </h1>
+          {diagramHidden ? (
+            <div className="app-page__title-row">
+              <h1 className="app-page__title" id={`${baseId}-heading`}>
+                Practice Guitar App
+              </h1>
+              <div
+                className="app-page__title-toolbar"
+                role="toolbar"
+                aria-label="Diagram tools"
+              >
+                {renderKnownFilterControl(optionsToolbarTooltipPlacement)}
+                {renderShowDiagramControl(optionsToolbarTooltipPlacement)}
+              </div>
+            </div>
+          ) : (
+            <h1 className="app-page__title" id={`${baseId}-heading`}>
+              Practice Guitar App
+            </h1>
+          )}
           <div className="diagram-controls">
             <div className="diagram-field">
               <div className="diagram-field__label-row">
@@ -705,22 +946,28 @@ export function HomePage() {
                   const playableBlocked =
                     filterPlayableOnly &&
                     !isKeyPlayable(keyId, disabledChords)
-                  const findKeyMatch =
-                    inFindKeyFlow &&
-                    findKeyChords.length > 0 &&
-                    matchingFindKeys.has(keyId)
+                  const findKeyScore =
+                    inFindKeyFlow && findKeyScoreById != null
+                      ? findKeyScoreById.get(keyId)
+                      : undefined
+                  const findKeyBrightness =
+                    findKeyScore != null
+                      ? findKeyMatchBrightness(findKeyScore)
+                      : null
                   const disabled =
                     playableBlocked ||
                     (inFindKeyFlow &&
-                      (findKeyChords.length === 0 || !findKeyMatch))
+                      (findKeyChords.length === 0 || findKeyBrightness == null))
                   const keyTitle =
                     inFindKeyFlow && findKeyChords.length === 0
                       ? 'Select chords below to find matching keys'
-                      : inFindKeyFlow && !findKeyMatch
-                        ? 'Does not match selected chords'
-                        : playableBlocked
-                          ? 'No progressions playable with your enabled chords'
-                          : def.name
+                      : inFindKeyFlow && findKeyScore != null
+                        ? `${def.name} — ${findKeyScore}% match`
+                        : inFindKeyFlow && findKeyBrightness == null
+                          ? 'Does not match selected chords'
+                          : playableBlocked
+                            ? 'No progressions playable with your enabled chords'
+                            : def.name
                   return (
                     <Tooltip key={keyId} label={keyTitle}>
                       <button
@@ -733,6 +980,11 @@ export function HomePage() {
                           .join(' ')}
                         aria-pressed={selected}
                         disabled={disabled}
+                        style={
+                          findKeyBrightness != null
+                            ? { opacity: findKeyBrightness }
+                            : undefined
+                        }
                         onClick={() => selectKey(keyId)}
                       >
                         {def.label}
@@ -819,10 +1071,8 @@ export function HomePage() {
                       {diatonicSlots.map((slot) => {
                         const inProgression =
                           slot.chordId != null &&
-                          progressionRootsInKey != null &&
-                          progressionRootsInKey.has(
-                            parseChordPresetId(slot.chordId).rootName as RootName,
-                          )
+                          progressionHighlightedTriads != null &&
+                          progressionHighlightedTriads.has(slot.chordId)
                         return (
                           <div
                             key={`degree-${slot.degree}`}
@@ -890,13 +1140,24 @@ export function HomePage() {
                       : null}
                     {hasBuiltProgression ? (
                       <>
-                        <div className="diagram-chord-in-key diagram-chords-build__progression-steps">
+                        <div
+                          className={[
+                            'diagram-chord-in-key diagram-chords-build__progression-steps',
+                            builtProgression.length > 6
+                              ? 'diagram-chords-build__progression-steps--compact-alts'
+                              : '',
+                          ]
+                            .filter(Boolean)
+                            .join(' ')}
+                        >
                           {builtProgression.map((chordId, stepIndex) => {
                             const triadId = triadIdForStep(selectedKey, chordId)
-                            const roman =
-                              chordRomanNumeral(selectedKey, chordId) ??
-                              chordRomanNumeral(selectedKey, triadId)
-                            const altOptionIds = progressionAltOptionIds(
+                            const romanInfo = romanLabelForProgressionStep(
+                              selectedKey,
+                              chordId,
+                              triadId,
+                            )
+                            const altOptions = progressionAltOptions(
                               selectedKey,
                               chordId,
                             )
@@ -913,7 +1174,21 @@ export function HomePage() {
                                 key={`progression-step-${stepIndex}-${chordId}`}
                                 className="diagram-chord-in-key__column diagram-chord-in-key__column--editable diagram-progression-step"
                               >
-                                <div className="diagram-progression-step__chord-wrap">
+                                <div
+                                  ref={
+                                    pickingRoot
+                                      ? addProgressionPickerRef
+                                      : undefined
+                                  }
+                                  className={[
+                                    'diagram-progression-step__chord-wrap',
+                                    pickingRoot
+                                      ? 'diagram-progression-step__chord-wrap--add-open'
+                                      : '',
+                                  ]
+                                    .filter(Boolean)
+                                    .join(' ')}
+                                >
                                   <div
                                     className="diagram-progression-step__hover-controls diagram-progression-step__hover-controls--left"
                                   >
@@ -956,7 +1231,10 @@ export function HomePage() {
                                   </div>
                                   {renderChordCell(chordId, {
                                     keyId: selectedKey,
-                                    roman: roman ?? undefined,
+                                    roman:
+                                      romanInfo.kind !== 'foreign'
+                                        ? romanInfo.label
+                                        : undefined,
                                     inProgression: true,
                                     selectable: false,
                                   })}
@@ -964,7 +1242,10 @@ export function HomePage() {
                                     className="diagram-progression-step__hover-controls diagram-progression-step__hover-controls--right"
                                   >
                                     {canAdd ? (
-                                      <Tooltip label="Add chord to the right">
+                                      <Tooltip
+                                        label="Add chord to the right"
+                                        disabled={pickingRoot}
+                                      >
                                         <button
                                           type="button"
                                           className={
@@ -974,6 +1255,7 @@ export function HomePage() {
                                           }
                                           aria-label="Add chord to the right"
                                           aria-expanded={pickingRoot}
+                                          aria-haspopup="listbox"
                                           onClick={() =>
                                             setPendingAddAfterIndex((cur) =>
                                               cur === stepIndex ? null : stepIndex,
@@ -1009,21 +1291,56 @@ export function HomePage() {
                                       </Tooltip>
                                     ) : null}
                                   </div>
+                                  {pickingRoot ? (
+                                    <div
+                                      className="diagram-progression-add-menu"
+                                      role="listbox"
+                                      aria-label="Choose root for new chord"
+                                    >
+                                      {ROOT_NAMES.map((rootName) => {
+                                        const inKey = isRootInKey(
+                                          selectedKey,
+                                          rootName,
+                                        )
+                                        return (
+                                          <button
+                                            key={rootName}
+                                            type="button"
+                                            role="option"
+                                            className={[
+                                              'diagram-progression-add-menu__option',
+                                              inKey
+                                                ? ''
+                                                : 'diagram-progression-add-menu__option--out-of-key',
+                                            ]
+                                              .filter(Boolean)
+                                              .join(' ')}
+                                            onClick={() =>
+                                              handleAddRoot(stepIndex, rootName)
+                                            }
+                                          >
+                                            {rootName}
+                                          </button>
+                                        )
+                                      })}
+                                    </div>
+                                  ) : null}
                                 </div>
                                 {renderRoman(
                                   chordId,
-                                  scaleRomanLabel(
-                                    chordId,
-                                    roman ??
-                                      parseChordPresetId(chordId).rootName,
-                                  ),
+                                  scaleRomanLabel(chordId, romanInfo.label),
+                                  romanInfo.kind === 'foreign'
+                                    ? 'diagram-chord-roman--foreign'
+                                    : undefined,
                                 )}
-                                {altOptionIds.length > 0 ? (
+                                {altOptions.length > 0 ? (
                                   <div className="diagram-progression-step__alts">
-                                    {altOptionIds.map((altId) =>
+                                    {altOptions.map(({ chordId: altId, suggested }) =>
                                       renderChordCell(altId, {
                                         keyId: selectedKey,
                                         compact: true,
+                                        dimmed: !suggested,
+                                        selected: altId === chordId,
                                         onSelect: () =>
                                           updateProgressionStep(
                                             stepIndex,
@@ -1037,36 +1354,6 @@ export function HomePage() {
                             )
                           })}
                         </div>
-                        {pendingAddAfterIndex != null ? (
-                          <div
-                            className="diagram-root-picker diagram-root-picker--progression"
-                            role="group"
-                            aria-label="Choose root for new chord"
-                          >
-                            {ROOT_NAMES.map((rootName) => {
-                              const inKey = isRootInKey(selectedKey, rootName)
-                              return (
-                                <button
-                                  key={rootName}
-                                  type="button"
-                                  className={
-                                    inKey
-                                      ? 'diagram-chord-btn diagram-chord-btn--compact'
-                                      : 'diagram-chord-btn diagram-chord-btn--compact diagram-chord-btn--out-of-key'
-                                  }
-                                  onClick={() =>
-                                    handleAddRoot(
-                                      pendingAddAfterIndex,
-                                      rootName,
-                                    )
-                                  }
-                                >
-                                  {rootName}
-                                </button>
-                              )
-                            })}
-                          </div>
-                        ) : null}
                       </>
                     ) : null}
                   </div>
@@ -1103,288 +1390,202 @@ export function HomePage() {
         </div>
       </section>
 
-      <div
-        className={
-          diagramLayoutVertical
-            ? 'app-page__divider app-page__divider--vertical'
-            : 'app-page__divider app-page__divider--horizontal'
-        }
-        role="separator"
-        aria-orientation={diagramLayoutVertical ? 'vertical' : 'horizontal'}
-        aria-valuenow={Math.round(panelSplitRatio * 100)}
-        aria-valuemin={Math.round(PANEL_SPLIT_MIN * 100)}
-        aria-valuemax={Math.round(PANEL_SPLIT_MAX * 100)}
-        aria-label="Resize panels"
-        onPointerDown={handleDividerPointerDown}
-      >
-        <span
-          className="app-page__divider-handle"
-          aria-hidden
-          onPointerDown={handleDividerPointerDown}
-        >
-          <Minus
+      {showDiagramPanel ? (
+        <>
+          <div
             className={
               diagramLayoutVertical
-                ? 'app-page__divider-icon app-page__divider-icon--vertical'
-                : 'app-page__divider-icon'
+                ? 'app-page__divider app-page__divider--vertical'
+                : 'app-page__divider app-page__divider--horizontal'
             }
-            size={16}
-            strokeWidth={2.5}
-          />
-        </span>
-        <Tooltip
-          placement={dividerTooltipPlacement}
-          label={
-            diagramLayoutVertical
-              ? 'Arrange diagrams in a row'
-              : 'Stack diagrams vertically'
-          }
-        >
-          <button
-            type="button"
-            className="app-page__divider-layout-toggle"
-            aria-label={
-              diagramLayoutVertical
-                ? 'Arrange diagrams in a row'
-                : 'Stack diagrams vertically'
-            }
-            onPointerDown={(event) => event.stopPropagation()}
-            onClick={() =>
-              void setDiagramLayout(
-                diagramLayout === 'horizontal' ? 'vertical' : 'horizontal',
-              )
-            }
+            role="separator"
+            aria-orientation={diagramLayoutVertical ? 'vertical' : 'horizontal'}
+            aria-valuenow={Math.round(panelSplitRatio * 100)}
+            aria-valuemin={Math.round(PANEL_SPLIT_MIN * 100)}
+            aria-valuemax={Math.round(PANEL_SPLIT_MAX * 100)}
+            aria-label="Resize panels"
+            onPointerDown={handleDividerPointerDown}
           >
-            {diagramLayoutVertical ? (
-              <Rows2 size={16} strokeWidth={2.5} aria-hidden />
-            ) : (
-              <Columns2 size={16} strokeWidth={2.5} aria-hidden />
-            )}
-          </button>
-        </Tooltip>
-        <Tooltip
-          placement={dividerTooltipPlacement}
-          label={
-            diagramLayoutVertical
-              ? 'Swap left and right panels'
-              : 'Swap top and bottom panels'
-          }
-        >
-          <button
-            type="button"
-            className="app-page__divider-swap-toggle"
-            aria-label={
-              diagramLayoutVertical
-                ? 'Swap left and right panels'
-                : 'Swap top and bottom panels'
-            }
-            aria-pressed={panelsSwapped}
-            onPointerDown={(event) => event.stopPropagation()}
-            onClick={() => void setPanelsSwapped(!panelsSwapped)}
-          >
-            {diagramLayoutVertical ? (
-              <ArrowLeftRight size={16} strokeWidth={2.5} aria-hidden />
-            ) : (
-              <ArrowUpDown size={16} strokeWidth={2.5} aria-hidden />
-            )}
-          </button>
-        </Tooltip>
-        <Tooltip
-          placement={dividerTooltipPlacement}
-          label={
-            fretboardPortrait
-              ? 'Standard fretboard orientation'
-              : 'Rotate fretboard vertically'
-          }
-        >
-          <button
-            type="button"
-            className="app-page__divider-orientation-toggle"
-            aria-label={
-              fretboardPortrait
-                ? 'Standard fretboard orientation'
-                : 'Rotate fretboard vertically'
-            }
-            aria-pressed={fretboardPortrait}
-            onPointerDown={(event) => event.stopPropagation()}
-            onClick={() =>
-              void setFretboardOrientation(
-                fretboardPortrait ? 'landscape' : 'portrait',
-              )
-            }
-          >
-            <RotateCcwSquare size={16} strokeWidth={2.5} aria-hidden />
-          </button>
-        </Tooltip>
-        <div ref={fretPickerRef} className="app-page__divider-frets">
-          <Tooltip
-            placement={dividerTooltipPlacement}
-            label="Fret count"
-            disabled={fretPickerOpen}
-          >
-            <button
-              type="button"
-              className="app-page__divider-frets-toggle"
-              aria-label={`Fret count: ${fretCount}`}
-              aria-expanded={fretPickerOpen}
-              aria-haspopup="listbox"
-              onPointerDown={(event) => event.stopPropagation()}
-              onClick={() => setFretPickerOpen((open) => !open)}
+            <span
+              className="app-page__divider-handle"
+              aria-hidden
+              onPointerDown={handleDividerPointerDown}
             >
-              <span className="app-page__divider-frets-value" aria-hidden>
-                {fretCount}
-              </span>
-            </button>
-          </Tooltip>
-          {fretPickerOpen ? (
-            <div
-              className={`app-page__divider-frets-menu ${fretMenuPlacement}`}
-              role="listbox"
-              aria-label="Fret count"
-            >
-              {FRET_COUNT_OPTIONS.map((n) => {
-                const selected = fretCount === n
-                return (
-                  <button
-                    key={n}
-                    type="button"
-                    role="option"
-                    aria-selected={selected}
-                    className={[
-                      'app-page__divider-frets-option',
-                      selected ? 'app-page__divider-frets-option--selected' : '',
-                    ]
-                      .filter(Boolean)
-                      .join(' ')}
-                    onPointerDown={(event) => event.stopPropagation()}
-                    onClick={() => {
-                      void setFretCount(n)
-                      setFretPickerOpen(false)
-                    }}
-                  >
-                    {n}
-                  </button>
-                )
-              })}
-            </div>
-          ) : null}
-        </div>
-        <Tooltip
-          placement={dividerTooltipPlacement}
-          label={
-            filterPlayableOnly
-              ? 'Show all keys, progressions, and chords'
-              : 'Only show chords you know'
-          }
-        >
-          <button
-            type="button"
-            className={[
-              'app-page__divider-known-toggle',
-              filterPlayableOnly ? 'app-page__divider-tool--active' : '',
-            ]
-              .filter(Boolean)
-              .join(' ')}
-            aria-label={
-              filterPlayableOnly
-                ? 'Show all keys, progressions, and chords'
-                : 'Only show chords you know'
-            }
-            aria-pressed={filterPlayableOnly}
-            onPointerDown={(event) => event.stopPropagation()}
-            onClick={() => void setFilterPlayableOnly(!filterPlayableOnly)}
-          >
-            <ListChecks size={16} strokeWidth={2.5} aria-hidden />
-          </button>
-        </Tooltip>
-        <Tooltip
-          placement={dividerTooltipPlacement}
-          label={displayNotes ? 'Hide note names' : 'Show note names'}
-        >
-          <button
-            type="button"
-            className={[
-              'app-page__divider-notes-toggle',
-              displayNotes ? 'app-page__divider-tool--active' : '',
-            ]
-              .filter(Boolean)
-              .join(' ')}
-            aria-label={displayNotes ? 'Hide note names' : 'Show note names'}
-            aria-pressed={displayNotes}
-            onPointerDown={(event) => event.stopPropagation()}
-            onClick={() => void setDisplayNotes(!displayNotes)}
-          >
-            <Music size={16} strokeWidth={2.5} aria-hidden />
-          </button>
-        </Tooltip>
-      </div>
-
-      <section
-        className={[
-          'app-page__diagram',
-          hasBuiltProgression ? 'app-page__diagram--progression' : '',
-          diagramLayoutVertical
-            ? 'app-page__diagram--layout-vertical'
-            : 'app-page__diagram--layout-horizontal',
-        ]
-          .filter(Boolean)
-          .join(' ')}
-        aria-label="Fretboard preview"
-      >
-        <div className="app-page__diagram-wrap">
-          {hasBuiltProgression && selectedKey != null ? (
-            <div className="app-page__diagram-stage app-page__diagram-stage--progression">
-              {builtProgression.map((chordId, stepIndex) => {
-                const boardStartFret = startFretForFingering(
-                  resolveChord(chordId),
-                  fretCount,
-                )
-                const boardScalePattern =
-                  selectedKey != null && scaleSelection != null
-                    ? scalePatternForKey(
-                        selectedKey,
-                        scaleSelection,
-                        fretCount,
-                        boardStartFret,
-                      )
-                    : null
-                const roman = chordRomanNumeral(selectedKey, chordId)
-                const boardTitle =
-                  roman != null ? `${chordId} · ${roman}` : chordId
-                return (
-                  <div
-                    key={`progression-board-${stepIndex}-${chordId}`}
-                    className="diagram-progression-board"
-                  >
-                    <Fretboard
-                      chord={chordId}
-                      scalePattern={boardScalePattern}
-                      fretCount={fretCount}
-                      startFret={boardStartFret}
-                      displayNotes={displayNotes}
-                      orientation={fretboardOrientation}
-                      title={boardTitle}
-                      fitContainer
-                    />
-                  </div>
-                )
-              })}
-            </div>
-          ) : (
-            <div className="app-page__diagram-stage app-page__diagram-stage--single">
-              <Fretboard
-                chord={selection?.kind === 'chord' ? selection.id : null}
-                scalePattern={scalePattern}
-                fretCount={fretCount}
-                startFret={startFret}
-                displayNotes={displayNotes}
-                orientation={fretboardOrientation}
-                fitContainer
+              <Minus
+                className={
+                  diagramLayoutVertical
+                    ? 'app-page__divider-icon app-page__divider-icon--vertical'
+                    : 'app-page__divider-icon'
+                }
+                size={16}
+                strokeWidth={2.5}
               />
+            </span>
+            <Tooltip
+              placement={dividerTooltipPlacement}
+              label={
+                diagramLayoutVertical
+                  ? 'Arrange diagrams in a row'
+                  : 'Stack diagrams vertically'
+              }
+            >
+              <button
+                type="button"
+                className="app-page__divider-layout-toggle"
+                aria-label={
+                  diagramLayoutVertical
+                    ? 'Arrange diagrams in a row'
+                    : 'Stack diagrams vertically'
+                }
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={() =>
+                  void setDiagramLayout(
+                    diagramLayout === 'horizontal' ? 'vertical' : 'horizontal',
+                  )
+                }
+              >
+                {diagramLayoutVertical ? (
+                  <Rows2 size={16} strokeWidth={2.5} aria-hidden />
+                ) : (
+                  <Columns2 size={16} strokeWidth={2.5} aria-hidden />
+                )}
+              </button>
+            </Tooltip>
+            <Tooltip
+              placement={dividerTooltipPlacement}
+              label={
+                diagramLayoutVertical
+                  ? 'Swap left and right panels'
+                  : 'Swap top and bottom panels'
+              }
+            >
+              <button
+                type="button"
+                className="app-page__divider-swap-toggle"
+                aria-label={
+                  diagramLayoutVertical
+                    ? 'Swap left and right panels'
+                    : 'Swap top and bottom panels'
+                }
+                aria-pressed={panelsSwapped}
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={() => void setPanelsSwapped(!panelsSwapped)}
+              >
+                {diagramLayoutVertical ? (
+                  <ArrowLeftRight size={16} strokeWidth={2.5} aria-hidden />
+                ) : (
+                  <ArrowUpDown size={16} strokeWidth={2.5} aria-hidden />
+                )}
+              </button>
+            </Tooltip>
+            {renderHideDiagramControl(dividerTooltipPlacement)}
+            <Tooltip
+              placement={dividerTooltipPlacement}
+              label={
+                fretboardPortrait
+                  ? 'Standard fretboard orientation'
+                  : 'Rotate fretboard vertically'
+              }
+            >
+              <button
+                type="button"
+                className="app-page__divider-orientation-toggle"
+                aria-label={
+                  fretboardPortrait
+                    ? 'Standard fretboard orientation'
+                    : 'Rotate fretboard vertically'
+                }
+                aria-pressed={fretboardPortrait}
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={() =>
+                  void setFretboardOrientation(
+                    fretboardPortrait ? 'landscape' : 'portrait',
+                  )
+                }
+              >
+                <RotateCcwSquare size={16} strokeWidth={2.5} aria-hidden />
+              </button>
+            </Tooltip>
+            {renderFretCountControl(fretMenuPlacement, dividerTooltipPlacement)}
+            {renderKnownFilterControl(dividerTooltipPlacement)}
+            {renderNotesControl(dividerTooltipPlacement)}
+          </div>
+
+          <section
+            className={[
+              'app-page__diagram',
+              hasBuiltProgression ? 'app-page__diagram--progression' : '',
+              diagramLayoutVertical
+                ? 'app-page__diagram--layout-vertical'
+                : 'app-page__diagram--layout-horizontal',
+            ]
+              .filter(Boolean)
+              .join(' ')}
+            aria-label="Fretboard preview"
+          >
+            <div className="app-page__diagram-wrap">
+              {hasBuiltProgression && selectedKey != null ? (
+                <div className="app-page__diagram-stage app-page__diagram-stage--progression">
+                  {builtProgression.map((chordId, stepIndex) => {
+                    const boardStartFret = startFretForFingering(
+                      resolveChord(chordId),
+                      fretCount,
+                    )
+                    const boardScalePattern =
+                      selectedKey != null && scaleSelection != null
+                        ? scalePatternForKey(
+                            selectedKey,
+                            scaleSelection,
+                            fretCount,
+                            boardStartFret,
+                          )
+                        : null
+                    const stepTriadId = triadIdForStep(selectedKey, chordId)
+                    const boardRoman = romanLabelForProgressionStep(
+                      selectedKey,
+                      chordId,
+                      stepTriadId,
+                    )
+                    const boardTitle =
+                      boardRoman.kind !== 'foreign'
+                        ? `${chordId} · ${boardRoman.label}`
+                        : chordId
+                    return (
+                      <div
+                        key={`progression-board-${stepIndex}-${chordId}`}
+                        className="diagram-progression-board"
+                      >
+                        <Fretboard
+                          chord={chordId}
+                          scalePattern={boardScalePattern}
+                          fretCount={fretCount}
+                          startFret={boardStartFret}
+                          displayNotes={displayNotes}
+                          orientation={fretboardOrientation}
+                          title={boardTitle}
+                          fitContainer
+                        />
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="app-page__diagram-stage app-page__diagram-stage--single">
+                  <Fretboard
+                    chord={selection?.kind === 'chord' ? selection.id : null}
+                    scalePattern={scalePattern}
+                    fretCount={fretCount}
+                    startFret={startFret}
+                    displayNotes={displayNotes}
+                    orientation={fretboardOrientation}
+                    fitContainer
+                  />
+                </div>
+              )}
             </div>
-          )}
-        </div>
-      </section>
+          </section>
+        </>
+      ) : null}
     </main>
   )
 }

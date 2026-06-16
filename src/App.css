@@ -76,6 +76,66 @@
   grid-column: 1;
 }
 
+.app-page--diagram-hidden {
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.app-page--diagram-hidden .app-page__options {
+  display: flex;
+  flex-direction: column;
+  grid-row: 1;
+  grid-column: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.app-page__title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0.625rem 0 2rem;
+  min-height: calc(var(--options-text-title) * 1.25);
+}
+
+.app-page__title-row .app-page__title {
+  margin: 0;
+}
+
+.app-page__title-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+  --divider-btn-size: 1.625rem;
+  --divider-icon-size: 0.9375rem;
+}
+
+.app-page__title-toolbar .app-page__divider-known-toggle,
+.app-page__title-toolbar .app-page__divider-diagram-toggle {
+  position: static;
+  translate: none;
+  top: auto;
+  right: auto;
+  left: auto;
+  bottom: auto;
+  width: var(--divider-btn-size);
+  height: var(--divider-btn-size);
+}
+
+.app-page__title-toolbar .app-page__divider-known-toggle svg,
+.app-page__title-toolbar .app-page__divider-diagram-toggle svg {
+  width: var(--divider-icon-size);
+  height: var(--divider-icon-size);
+}
+
+.app-page--diagram-hidden .app-page__options .app-page__inner {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
 .app-page__divider {
   position: relative;
   z-index: 3;
@@ -106,6 +166,7 @@
 .app-page__divider-layout-toggle,
 .app-page__divider-orientation-toggle,
 .app-page__divider-swap-toggle,
+.app-page__divider-diagram-toggle,
 .app-page__divider-known-toggle,
 .app-page__divider-notes-toggle {
   position: absolute;
@@ -144,6 +205,7 @@
 .app-page__divider-layout-toggle svg,
 .app-page__divider-orientation-toggle svg,
 .app-page__divider-swap-toggle svg,
+.app-page__divider-diagram-toggle svg,
 .app-page__divider-known-toggle svg,
 .app-page__divider-notes-toggle svg {
   width: var(--divider-icon-size);
@@ -153,6 +215,7 @@
 .app-page__divider-layout-toggle,
 .app-page__divider-orientation-toggle,
 .app-page__divider-swap-toggle,
+.app-page__divider-diagram-toggle,
 .app-page__divider-known-toggle,
 .app-page__divider-notes-toggle {
   z-index: 1;
@@ -169,6 +232,7 @@
 .app-page__divider-layout-toggle:hover,
 .app-page__divider-orientation-toggle:hover,
 .app-page__divider-swap-toggle:hover,
+.app-page__divider-diagram-toggle:hover,
 .app-page__divider-known-toggle:hover,
 .app-page__divider-notes-toggle:hover {
   color: var(--heading);
@@ -178,6 +242,7 @@
 .app-page__divider-layout-toggle:focus-visible,
 .app-page__divider-orientation-toggle:focus-visible,
 .app-page__divider-swap-toggle:focus-visible,
+.app-page__divider-diagram-toggle:focus-visible,
 .app-page__divider-known-toggle:focus-visible,
 .app-page__divider-notes-toggle:focus-visible {
   outline: none;
@@ -323,30 +388,37 @@
   translate: 0 -50%;
 }
 
-.app-page__divider--horizontal .app-page__divider-orientation-toggle {
+.app-page__divider--horizontal .app-page__divider-diagram-toggle {
   top: 50%;
   right: calc(0.5rem + 2 * var(--divider-btn-step));
   left: auto;
   translate: 0 -50%;
 }
 
-.app-page__divider--horizontal .app-page__divider-frets {
+.app-page__divider--horizontal .app-page__divider-orientation-toggle {
   top: 50%;
   right: calc(0.5rem + 3 * var(--divider-btn-step));
   left: auto;
   translate: 0 -50%;
 }
 
-.app-page__divider--horizontal .app-page__divider-known-toggle {
+.app-page__divider--horizontal .app-page__divider-frets {
   top: 50%;
   right: calc(0.5rem + 4 * var(--divider-btn-step));
   left: auto;
   translate: 0 -50%;
 }
 
-.app-page__divider--horizontal .app-page__divider-notes-toggle {
+.app-page__divider--horizontal .app-page__divider-known-toggle {
   top: 50%;
   right: calc(0.5rem + 5 * var(--divider-btn-step));
+  left: auto;
+  translate: 0 -50%;
+}
+
+.app-page__divider--horizontal .app-page__divider-notes-toggle {
+  top: 50%;
+  right: calc(0.5rem + 6 * var(--divider-btn-step));
   left: auto;
   translate: 0 -50%;
 }
@@ -367,7 +439,7 @@
   translate: -50% 0;
 }
 
-.app-page__divider--vertical .app-page__divider-orientation-toggle {
+.app-page__divider--vertical .app-page__divider-diagram-toggle {
   top: calc(0.5rem + 2 * var(--divider-btn-step));
   bottom: auto;
   left: 50%;
@@ -375,7 +447,7 @@
   translate: -50% 0;
 }
 
-.app-page__divider--vertical .app-page__divider-frets {
+.app-page__divider--vertical .app-page__divider-orientation-toggle {
   top: calc(0.5rem + 3 * var(--divider-btn-step));
   bottom: auto;
   left: 50%;
@@ -383,7 +455,7 @@
   translate: -50% 0;
 }
 
-.app-page__divider--vertical .app-page__divider-known-toggle {
+.app-page__divider--vertical .app-page__divider-frets {
   top: calc(0.5rem + 4 * var(--divider-btn-step));
   bottom: auto;
   left: 50%;
@@ -391,8 +463,16 @@
   translate: -50% 0;
 }
 
-.app-page__divider--vertical .app-page__divider-notes-toggle {
+.app-page__divider--vertical .app-page__divider-known-toggle {
   top: calc(0.5rem + 5 * var(--divider-btn-step));
+  bottom: auto;
+  left: 50%;
+  right: auto;
+  translate: -50% 0;
+}
+
+.app-page__divider--vertical .app-page__divider-notes-toggle {
+  top: calc(0.5rem + 6 * var(--divider-btn-step));
   bottom: auto;
   left: 50%;
   right: auto;
@@ -719,10 +799,14 @@
   padding-inline: 0.125rem;
 }
 
-.diagram-progression-grid {
+.diagram-progression-seeds {
   display: grid;
   grid-template-columns: repeat(8, 1fr);
   gap: 0.375rem;
+}
+
+.diagram-progression-seeds__colored {
+  grid-column: span 2;
 }
 
 .diagram-progression-grid .diagram-chord-btn {
@@ -911,8 +995,83 @@
   gap: 0.125rem;
 }
 
-.diagram-root-picker--progression {
-  margin-top: 0.5rem;
+.diagram-chords-build__progression-steps--compact-alts
+  .diagram-progression-step__alts {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.diagram-progression-step__chord-wrap--add-open {
+  z-index: 2;
+}
+
+.diagram-progression-step__chord-wrap--add-open
+  .diagram-progression-step__hover-controls {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.diagram-progression-add-menu {
+  --progression-add-btn-size: 2.25rem;
+  --progression-add-btn-gap: 0.25rem;
+  position: absolute;
+  z-index: 4;
+  bottom: calc(100% + var(--progression-add-btn-gap));
+  left: 50%;
+  translate: -50% 0;
+  display: grid;
+  grid-template-columns: repeat(4, var(--progression-add-btn-size));
+  grid-auto-rows: var(--progression-add-btn-size);
+  gap: var(--progression-add-btn-gap);
+  padding: 0.375rem;
+  border: 1px solid var(--card-border);
+  border-radius: 0.625rem;
+  background: var(--page-bg);
+  box-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.12);
+}
+
+.diagram-progression-add-menu__option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--progression-add-btn-size);
+  height: var(--progression-add-btn-size);
+  padding: 0;
+  border: 1px solid var(--card-border);
+  border-radius: 0.375rem;
+  background: var(--card-bg);
+  color: var(--muted);
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: var(--options-text-btn-compact);
+  font-weight: 600;
+  line-height: 1;
+  transition:
+    color 0.12s ease,
+    background 0.12s ease,
+    border-color 0.12s ease,
+    box-shadow 0.12s ease,
+    opacity 0.12s ease;
+}
+
+.diagram-progression-add-menu__option:hover {
+  color: var(--heading);
+  background: var(--page-bg);
+}
+
+.diagram-progression-add-menu__option:focus-visible {
+  outline: none;
+  border-color: var(--accent-line);
+  box-shadow: inset 0 0 0 1px var(--accent-line);
+}
+
+.diagram-progression-add-menu__option--out-of-key {
+  opacity: 0.45;
+}
+
+.diagram-progression-add-menu__option--out-of-key:hover {
+  opacity: 0.75;
 }
 
 .diagram-root-picker {
@@ -1139,6 +1298,10 @@
 
 .diagram-chord-roman--missing .diagram-chord-roman__label {
   opacity: 0.45;
+}
+
+.diagram-chord-roman--foreign .diagram-chord-roman__label {
+  color: color-mix(in srgb, #c45c5c 50%, var(--muted));
 }
 
 .diagram-chord-roman--scale-tone .diagram-chord-roman__label {

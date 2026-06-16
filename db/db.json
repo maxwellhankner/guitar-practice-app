@@ -174,13 +174,14 @@
       ],
       "filterPlayableOnly": false,
       "displayNotes": false,
-      "fretCount": 22,
+      "fretCount": 5,
       "scaleSelection": null,
       "diagramLayout": "horizontal",
-      "horizontalSplitRatio": 0.5762054338487973,
+      "horizontalSplitRatio": 0.6220193436847599,
       "verticalSplitRatio": 0.6215526439525463,
       "fretboardOrientation": "landscape",
-      "panelsSwapped": false
+      "panelsSwapped": false,
+      "diagramHidden": false
     }
   ],
   "$schema": "./node_modules/json-server/schema.json"

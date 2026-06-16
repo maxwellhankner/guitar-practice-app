@@ -16,6 +16,8 @@ type ChordPlayabilityCellProps = {
   showPlayabilityPopup: boolean
   /** Diminished triads — selectable for the diagram, excluded from KNOWN. */
   diminished?: boolean
+  /** Lower emphasis (e.g. non-suggested progression alts) while still selectable. */
+  dimmed?: boolean
   /** Smaller styling for color-chord alternatives under diatonic columns. */
   compact?: boolean
   /** Override button text (defaults to `chordId`). */
@@ -74,6 +76,7 @@ export function ChordPlayabilityCell({
   onPlayableChange,
   showPlayabilityPopup,
   diminished = false,
+  dimmed = false,
   compact = false,
   label,
   inProgression = false,
@@ -123,7 +126,9 @@ export function ChordPlayabilityCell({
     (diminished || (showPlayabilityPopup && !playable))
       ? 'diagram-chord-btn--selected-unplayable'
       : '',
-    selectable && diminished && !selected ? 'diagram-chord-btn--dim' : '',
+    selectable && (dimmed || (diminished && !selected))
+      ? 'diagram-chord-btn--dim'
+      : '',
     selectable && showPlayabilityPopup && !playable && !diminished
       ? 'diagram-chord-btn--unplayable'
       : '',

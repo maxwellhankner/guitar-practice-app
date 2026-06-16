@@ -34,6 +34,8 @@ export type UserSettings = {
   verticalSplitRatio: number
   fretboardOrientation: FretboardOrientation
   panelsSwapped: boolean
+  /** When true, the fretboard diagram panel is hidden; tools move to the options header. */
+  diagramHidden: boolean
 }
 
 type UserSettingsRecord = UserSettings & { id: string }
@@ -49,6 +51,7 @@ const DEFAULT_SETTINGS: UserSettings = {
   verticalSplitRatio: DEFAULT_VERTICAL_SPLIT,
   fretboardOrientation: 'landscape',
   panelsSwapped: false,
+  diagramHidden: false,
 }
 
 const validChordIds = new Set<string>(CHORD_PRESET_IDS)
@@ -104,6 +107,10 @@ function fromRecord(record: UserSettingsRecord): UserSettings {
       typeof record.panelsSwapped === 'boolean'
         ? record.panelsSwapped
         : DEFAULT_SETTINGS.panelsSwapped,
+    diagramHidden:
+      typeof record.diagramHidden === 'boolean'
+        ? record.diagramHidden
+        : DEFAULT_SETTINGS.diagramHidden,
   }
 }
 
@@ -170,6 +177,10 @@ function loadLegacyFakeDbSettings(): UserSettings | null {
         typeof data.panelsSwapped === 'boolean'
           ? data.panelsSwapped
           : DEFAULT_SETTINGS.panelsSwapped,
+      diagramHidden:
+        typeof data.diagramHidden === 'boolean'
+          ? data.diagramHidden
+          : DEFAULT_SETTINGS.diagramHidden,
     }
   } catch {
     return null
@@ -276,6 +287,7 @@ export async function saveUserSettings(
         ? sanitizeFretboardOrientation(partial.fretboardOrientation)
         : current.fretboardOrientation,
     panelsSwapped: partial.panelsSwapped ?? current.panelsSwapped,
+    diagramHidden: partial.diagramHidden ?? current.diagramHidden,
   }
 
   try {
@@ -353,4 +365,8 @@ export async function setFretboardOrientation(
 
 export async function setPanelsSwapped(value: boolean): Promise<UserSettings> {
   return saveUserSettings({ panelsSwapped: value })
+}
+
+export async function setDiagramHidden(value: boolean): Promise<UserSettings> {
+  return saveUserSettings({ diagramHidden: value })
 }

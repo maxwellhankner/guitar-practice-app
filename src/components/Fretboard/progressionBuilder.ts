@@ -10,15 +10,19 @@ import {
 } from './chords'
 import { colorAlternativesForDegree } from './chordColors'
 import {
-  chordRomanNumeral,
   chordIdForScaleDegree,
   diatonicSlotsInKey,
+  majorBorrowKindForRootPc,
+  romanLabelForChordInKey,
+  rootNameForPc,
+  rootPcForMajorBorrowInKey,
   type KeyId,
+  type RomanLabelForChord,
 } from './keys'
 import { chordsForProgression, type ProgressionId } from './progressions'
 
 export const MIN_PROGRESSION_STEPS = 0
-export const MAX_PROGRESSION_STEPS = 4
+export const MAX_PROGRESSION_STEPS = 8
 
 /** Short quality label for the progression summary chip. */
 export function qualityChipLabel(quality: ChordQuality): string {
@@ -33,13 +37,32 @@ export function progressionChipSegment(
   chordId: ChordPresetId,
 ): string {
   const { rootName, quality } = parseChordPresetId(chordId)
-  const roman = keyId != null ? chordRomanNumeral(keyId, chordId) : null
   const parts: string[] = []
-  if (roman != null) {
-    parts.push(roman)
+  if (keyId != null) {
+    const { label, kind } = romanLabelForChordInKey(keyId, chordId)
+    if (kind !== 'foreign') {
+      parts.push(label)
+    }
   }
   parts.push(rootName, qualityChipLabel(quality))
   return parts.join(', ')
+}
+
+/** Roman label for a progression step; falls back to the step triad when the voicing is foreign. */
+export function romanLabelForProgressionStep(
+  keyId: KeyId,
+  chordId: ChordPresetId,
+  triadId: ChordPresetId,
+): RomanLabelForChord {
+  const primary = romanLabelForChordInKey(keyId, chordId)
+  if (primary.kind !== 'foreign') {
+    return primary
+  }
+  const fallback = romanLabelForChordInKey(keyId, triadId)
+  if (fallback.kind !== 'foreign') {
+    return fallback
+  }
+  return primary
 }
 
 export function progressionChipText(
@@ -89,29 +112,15 @@ export function seedProgressionFromPreset(
 }
 
 export function allowedChordsForBuiltProgression(
-  keyId: KeyId,
+  _keyId: KeyId,
   steps: readonly ChordPresetId[],
 ): ReadonlySet<ChordPresetId> {
   const allowed = new Set<ChordPresetId>()
   for (const chordId of steps) {
     allowed.add(chordId)
-    const degree = degreeForRootInKey(keyId, chordId)
-    if (degree != null) {
-      const triadId = diatonicSlotsInKey(keyId).find(
-        (s) => s.degree === degree,
-      )?.chordId
-      if (triadId != null) {
-        allowed.add(triadId)
-      }
-      for (const color of colorAlternativesForDegree(keyId, degree)) {
-        allowed.add(color.chordId)
-      }
-    } else {
-      for (const id of chordIdsForRoot(
-        parseChordPresetId(chordId).rootName as RootName,
-      )) {
-        allowed.add(id)
-      }
+    const { rootName } = parseChordPresetId(chordId)
+    for (const id of chordIdsForRoot(rootName as RootName)) {
+      allowed.add(id)
     }
   }
   return allowed
@@ -123,6 +132,25 @@ export function progressionStepRoots(
   return new Set(
     steps.map((id) => parseChordPresetId(id).rootName as RootName),
   )
+}
+
+/** Diatonic triads to highlight in the key row — one per scale degree present in the progression (any voicing). */
+export function progressionHighlightedTriadsInKey(
+  keyId: KeyId,
+  steps: readonly ChordPresetId[],
+): Set<ChordPresetId> {
+  const highlighted = new Set<ChordPresetId>()
+  for (const stepId of steps) {
+    const degree = degreeForRootInKey(keyId, stepId)
+    if (degree == null) {
+      continue
+    }
+    const triadId = chordIdForScaleDegree(keyId, degree)
+    if (triadId != null) {
+      highlighted.add(triadId)
+    }
+  }
+  return highlighted
 }
 
 export function moveProgressionStep(
@@ -205,23 +233,63 @@ export function alternateChordIdsForStep(
   return chordIdsForRoot(rootName as RootName).filter((id) => id !== triad)
 }
 
-/** Triad first (when not the active voicing), then other alts — never includes `activeChordId`. */
+export type ProgressionAltOption = {
+  chordId: ChordPresetId
+  /** Curated diatonic triad / color voicings — shown first and at full opacity. */
+  suggested: boolean
+}
+
+/** All same-root voicings except `activeChordId`: suggested first (triad, then colors), then the rest dimmed. */
+export function progressionAltOptions(
+  keyId: KeyId,
+  activeChordId: ChordPresetId,
+): ProgressionAltOption[] {
+  const { rootName } = parseChordPresetId(activeChordId)
+  const triadId = triadIdForStep(keyId, activeChordId)
+  const allForRoot = chordIdsForRoot(rootName as RootName).filter(
+    (id) => id !== activeChordId,
+  )
+
+  const suggestedIds: ChordPresetId[] = []
+  if (activeChordId !== triadId) {
+    suggestedIds.push(triadId)
+  }
+
+  const degree = degreeForRootInKey(keyId, activeChordId)
+  if (degree != null) {
+    for (const color of colorAlternativesForDegree(keyId, degree)) {
+      if (
+        color.chordId !== activeChordId &&
+        !suggestedIds.includes(color.chordId)
+      ) {
+        suggestedIds.push(color.chordId)
+      }
+    }
+  }
+
+  const suggestedSet = new Set(suggestedIds)
+  const options: ProgressionAltOption[] = suggestedIds.map((chordId) => ({
+    chordId,
+    suggested: true,
+  }))
+
+  for (const chordId of allForRoot) {
+    if (!suggestedSet.has(chordId)) {
+      options.push({ chordId, suggested: false })
+    }
+  }
+
+  return options
+}
+
+/** Same-root voicing ids for progression step alts — never includes `activeChordId`. */
 export function progressionAltOptionIds(
   keyId: KeyId,
   activeChordId: ChordPresetId,
 ): ChordPresetId[] {
-  const triadId = triadIdForStep(keyId, activeChordId)
-  const colorIds = alternateChordIdsForStep(keyId, activeChordId)
-  const options: ChordPresetId[] = []
-  if (activeChordId !== triadId) {
-    options.push(triadId)
-  }
-  for (const id of colorIds) {
-    if (id !== activeChordId && id !== triadId) {
-      options.push(id)
-    }
-  }
-  return options
+  return progressionAltOptions(keyId, activeChordId).map(
+    (option) => option.chordId,
+  )
 }
 
 function rootNameForDegree(keyId: KeyId, degree: number): RootName | null {
@@ -257,6 +325,17 @@ export function transposeChordBetweenKeys(
 
   const degree = degreeForRootInKey(fromKey, chordId)
   if (degree == null) {
+    const { rootPc } = parseChordPresetId(chordId)
+    const borrow = majorBorrowKindForRootPc(fromKey, rootPc)
+    if (borrow != null && !toKey.endsWith('m')) {
+      const newRoot = rootNameForPc(rootPcForMajorBorrowInKey(toKey, borrow))
+      if (newRoot != null) {
+        const variant = chordVariantForPresetId(chordId)
+        if (variant != null) {
+          return chordIdForRootVariant(newRoot, variant)
+        }
+      }
+    }
     return chordId
   }
 

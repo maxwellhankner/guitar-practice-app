@@ -6,6 +6,7 @@ import {
   parseChordPresetId,
   type ChordPresetId,
   type ChordQuality,
+  type RootName,
 } from './chords'
 
 const DIATONIC_QUALITIES = new Set<ChordQuality>([
@@ -56,6 +57,47 @@ function keyRootPc(keyId: KeyId): number {
     throw new Error(`Unknown key root: ${rootName}`)
   }
   return pc
+}
+
+/** Modal-interchange borrow from parallel minor in a major key. */
+export type MajorBorrowKind = 'bIII' | 'bVI' | 'bVII'
+
+const MAJOR_BORROW_OFFSET: Record<MajorBorrowKind, number> = {
+  bIII: 3,
+  bVI: 8,
+  bVII: 10,
+}
+
+export function rootNameForPc(pc: number): RootName | null {
+  for (const [name, value] of Object.entries(ROOT_PC)) {
+    if (value === pc) {
+      return name as RootName
+    }
+  }
+  return null
+}
+
+export function majorBorrowKindForRootPc(
+  keyId: KeyId,
+  rootPc: number,
+): MajorBorrowKind | null {
+  if (keyId.endsWith('m')) {
+    return null
+  }
+  const tonicPc = keyRootPc(keyId)
+  for (const kind of ['bIII', 'bVI', 'bVII'] as const) {
+    if ((tonicPc + MAJOR_BORROW_OFFSET[kind]) % 12 === rootPc) {
+      return kind
+    }
+  }
+  return null
+}
+
+export function rootPcForMajorBorrowInKey(
+  keyId: KeyId,
+  kind: MajorBorrowKind,
+): number {
+  return (keyRootPc(keyId) + MAJOR_BORROW_OFFSET[kind]) % 12
 }
 
 const CHORD_PITCH_CLASSES = Object.fromEntries(
@@ -217,6 +259,123 @@ export function chordRomanNumeral(
   return null
 }
 
+export type RomanLabelKind = 'diatonic' | 'chromatic' | 'foreign'
+
+export type RomanLabelForChord = {
+  label: string
+  kind: RomanLabelKind
+}
+
+function scaleStepsForKey(keyId: KeyId): readonly number[] {
+  return keyId.endsWith('m') ? MINOR_SCALE_STEPS : MAJOR_SCALE_STEPS
+}
+
+function romanBaseForDegree(keyId: KeyId, degree: number): string {
+  const numerals = keyId.endsWith('m') ? MINOR_ROMAN : MAJOR_ROMAN
+  return numerals[degree - 1]!
+}
+
+function degreeForRootPcInKey(keyId: KeyId, rootPc: number): number | null {
+  const keyRoot = keyRootPc(keyId)
+  const steps = scaleStepsForKey(keyId)
+  for (let degree = 1; degree <= 7; degree++) {
+    if ((keyRoot + steps[degree - 1]!) % 12 === rootPc) {
+      return degree
+    }
+  }
+  return null
+}
+
+function isMajorRomanQuality(quality: ChordQuality): boolean {
+  return (
+    quality === 'major' ||
+    quality === 'maj7' ||
+    quality === 'maj6' ||
+    quality === 'add9' ||
+    quality === 'maj9' ||
+    quality === 'sus2' ||
+    quality === 'sus4' ||
+    quality === 'dom7' ||
+    quality === 'dom9' ||
+    quality === 'dom7sus4'
+  )
+}
+
+function applyQualityToRoman(base: string, quality: ChordQuality): string {
+  if (base.includes('°')) {
+    return base
+  }
+  if (isMajorRomanQuality(quality)) {
+    return base.toUpperCase()
+  }
+  return base.toLowerCase()
+}
+
+function chromaticAccidentalRoman(
+  keyId: KeyId,
+  rootPc: number,
+  quality: ChordQuality,
+): string | null {
+  const keyRoot = keyRootPc(keyId)
+  const steps = scaleStepsForKey(keyId)
+  const isMinorKey = keyId.endsWith('m')
+
+  for (let degree = 1; degree <= 7; degree++) {
+    const naturalPc = (keyRoot + steps[degree - 1]!) % 12
+    const flatPc = (naturalPc + 11) % 12
+    const sharpPc = (naturalPc + 1) % 12
+
+    if (rootPc === sharpPc) {
+      return `#${applyQualityToRoman(romanBaseForDegree(keyId, degree), quality)}`
+    }
+    if (rootPc === flatPc) {
+      let base = romanBaseForDegree(keyId, degree)
+      if (!isMinorKey && degree === 7) {
+        base = 'VII'
+      }
+      return `b${applyQualityToRoman(base, quality)}`
+    }
+  }
+
+  return null
+}
+
+/** Roman numeral for a chord in a key — diatonic, borrowed (bVII), altered (#IV), or root name. */
+export function romanLabelForChordInKey(
+  keyId: KeyId,
+  chordId: ChordPresetId,
+): RomanLabelForChord {
+  const diatonic = chordRomanNumeral(keyId, chordId)
+  if (diatonic != null) {
+    return { label: diatonic, kind: 'diatonic' }
+  }
+
+  const { rootName, rootPc, quality } = parseChordPresetId(chordId)
+
+  const rootDegree = degreeForRootPcInKey(keyId, rootPc)
+  if (rootDegree != null) {
+    return {
+      label: applyQualityToRoman(
+        romanBaseForDegree(keyId, rootDegree),
+        quality,
+      ),
+      kind: 'chromatic',
+    }
+  }
+
+  const borrow = majorBorrowKindForRootPc(keyId, rootPc)
+  if (borrow != null) {
+    return { label: borrow, kind: 'chromatic' }
+  }
+
+  const accidental = chromaticAccidentalRoman(keyId, rootPc, quality)
+  if (accidental != null) {
+    return { label: accidental, kind: 'chromatic' }
+  }
+
+  return { label: rootName, kind: 'foreign' }
+}
+
 export function chordLabelInKey(
   keyId: KeyId | null,
   chordId: ChordPresetId,
@@ -224,8 +383,8 @@ export function chordLabelInKey(
   if (keyId == null) {
     return chordId
   }
-  const roman = chordRomanNumeral(keyId, chordId)
-  return roman != null ? `${chordId} (${roman})` : chordId
+  const { label } = romanLabelForChordInKey(keyId, chordId)
+  return `${chordId} (${label})`
 }
 
 /** Implied key for scale overlay when no key is selected (chord root + quality). */
