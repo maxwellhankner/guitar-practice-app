@@ -65,29 +65,28 @@ Central **settings menu** (gear or similar) for prefs that aren’t everyday con
 - Play-along (when built): volume, strum style, metronome click volume
 - Export / import settings JSON (backup before backend)
 
-Persist with user state (localStorage → API).
+Persist with user state (baked site snapshot → API when accounts exist).
 
 ---
 
 ## State & backend
 
-**Today:** GitHub Pages static deploy; dev-only json-server for settings (`db/db.json`).
+**Today:** GitHub Pages loads `src/data/siteState.json` (baked defaults). Dev edits persist to `db/db.json` via json-server. Run `npm run publish-state` before deploy to update the live snapshot. Visitors get full in-session UI; changes reset on refresh.
 
 **Goals:**
 
-- Persist **user state** in production — known chords, layout, prefs (localStorage first, then API)
 - **Backend** — auth optional at first; REST or similar for songs, settings, library
 - **Hosting** — app + API (e.g. Railway, Fly, Render, or VPS); keep static frontend option if useful
-- Migrate song library and saves from local-only to synced storage when backend lands
+- Migrate song library and saves from baked snapshot to synced storage when backend lands
 
 ---
 
 ## Suggested order
 
-1. Mobile polish + localStorage for settings on the live site  
-2. Settings menu + color picker (CSS vars → saved prefs)  
+1. Mobile polish  
+2. Settings menu + color picker (CSS vars → saved prefs in dev DB)  
 3. Play-along (step highlight → audio → tempo/loop)  
 4. Better find-key UX + capo  
 5. Alternative fingerings / positions  
-6. Full-song progression model + save locally  
+6. Full-song progression model + save in dev DB / publish to site snapshot  
 7. Backend + song library + sync  
