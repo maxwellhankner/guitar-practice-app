@@ -1,0 +1,74 @@
+:root {
+  --accent-line: #9a7324;
+  --accent: var(--accent-line);
+}
+
+:root[data-accent='red'] {
+  --accent-line: #b91c1c;
+}
+
+:root[data-accent='orange'] {
+  --accent-line: #c2410c;
+}
+
+:root[data-accent='green'] {
+  --accent-line: #15803d;
+}
+
+:root[data-accent='teal'] {
+  --accent-line: #0f766e;
+}
+
+:root[data-accent='blue'] {
+  --accent-line: #1d4ed8;
+}
+
+:root[data-accent='indigo'] {
+  --accent-line: #4338ca;
+}
+
+:root[data-accent='violet'] {
+  --accent-line: #6d28d9;
+}
+
+:root[data-accent='pink'] {
+  --accent-line: #be185d;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --accent-line: #d4a94a;
+  }
+
+  :root[data-accent='red'] {
+    --accent-line: #f87171;
+  }
+
+  :root[data-accent='orange'] {
+    --accent-line: #fb923c;
+  }
+
+  :root[data-accent='green'] {
+    --accent-line: #4ade80;
+  }
+
+  :root[data-accent='teal'] {
+    --accent-line: #2dd4bf;
+  }
+
+  :root[data-accent='blue'] {
+    --accent-line: #60a5fa;
+  }
+
+  :root[data-accent='indigo'] {
+    --accent-line: #818cf8;
+  }
+
+  :root[data-accent='violet'] {
+    --accent-line: #a78bfa;
+  }
+
+  :root[data-accent='pink'] {
+    --accent-line: #f472b6;
+  }
+}

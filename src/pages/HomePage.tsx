@@ -66,6 +66,10 @@ import {
 import { useUserSettings } from '../hooks/useUserSettings'
 import { useMobileDiagramLayout } from '../hooks/useMobileDiagramLayout'
 import {
+  ACCENT_COLOR_OPTIONS,
+  accentColorLabel,
+} from '../theme/accentColors'
+import {
   PANEL_SPLIT_MAX,
   PANEL_SPLIT_MIN,
   clampSplitRatio,
@@ -87,8 +91,10 @@ export function HomePage() {
   const [findKeyChords, setFindKeyChords] = useState<ChordPresetId[]>([])
   const [liveSplitRatio, setLiveSplitRatio] = useState<number | null>(null)
   const [fretPickerOpen, setFretPickerOpen] = useState(false)
+  const [accentPickerOpen, setAccentPickerOpen] = useState(false)
   const mainRef = useRef<HTMLElement>(null)
   const fretPickerRef = useRef<HTMLDivElement>(null)
+  const accentPickerRef = useRef<HTMLDivElement>(null)
   const addProgressionPickerRef = useRef<HTMLDivElement>(null)
   const {
     ready: settingsReady,
@@ -114,6 +120,8 @@ export function HomePage() {
     setFretboardOrientation,
     setPanelsSwapped,
     setDiagramHidden,
+    accentColorId,
+    setAccentColorId,
   } = useUserSettings()
 
   const activeKey = useMemo(() => {
@@ -179,6 +187,29 @@ export function HomePage() {
   }, [fretPickerOpen])
 
   useEffect(() => {
+    if (!accentPickerOpen) {
+      return
+    }
+    const onPointerDown = (event: PointerEvent) => {
+      if (accentPickerRef.current?.contains(event.target as Node)) {
+        return
+      }
+      setAccentPickerOpen(false)
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setAccentPickerOpen(false)
+      }
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [accentPickerOpen])
+
+  useEffect(() => {
     if (pendingAddAfterIndex == null) {
       return
     }
@@ -239,6 +270,10 @@ export function HomePage() {
     : panelsSwapped
       ? 'app-page__divider-frets-menu--above'
       : 'app-page__divider-frets-menu--below'
+  const accentMenuPlacement = fretMenuPlacement.replace(
+    'frets-menu',
+    'accent-menu',
+  )
   const dividerTooltipPlacement = diagramLayoutVertical
     ? panelsSwapped
       ? 'left'
@@ -703,7 +738,10 @@ export function HomePage() {
           aria-expanded={fretPickerOpen}
           aria-haspopup="listbox"
           onPointerDown={(event) => event.stopPropagation()}
-          onClick={() => setFretPickerOpen((open) => !open)}
+          onClick={() => {
+            setAccentPickerOpen(false)
+            setFretPickerOpen((open) => !open)
+          }}
         >
           <span className="app-page__divider-frets-value" aria-hidden>
             {fretCount}
@@ -737,6 +775,76 @@ export function HomePage() {
                 }}
               >
                 {n}
+              </button>
+            )
+          })}
+        </div>
+      ) : null}
+    </div>
+  )
+
+  const renderAccentColorControl = (
+    accentMenuClass: string,
+    tooltipPlacement: typeof dividerTooltipPlacement | 'below',
+  ) => (
+    <div ref={accentPickerRef} className="app-page__divider-accent">
+      <Tooltip
+        placement={tooltipPlacement}
+        label="Accent color"
+        disabled={accentPickerOpen}
+      >
+        <button
+          type="button"
+          className="app-page__divider-accent-toggle"
+          aria-label={`Accent color: ${accentColorLabel(accentColorId)}`}
+          aria-expanded={accentPickerOpen}
+          aria-haspopup="listbox"
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={() => {
+            setFretPickerOpen(false)
+            setAccentPickerOpen((open) => !open)
+          }}
+        >
+          <span
+            className="app-page__divider-accent-swatch"
+            style={{ backgroundColor: 'var(--accent-line)' }}
+            aria-hidden
+          />
+        </button>
+      </Tooltip>
+      {accentPickerOpen ? (
+        <div
+          className={`app-page__divider-accent-menu ${accentMenuClass}`}
+          role="listbox"
+          aria-label="Accent color"
+        >
+          {ACCENT_COLOR_OPTIONS.map((option) => {
+            const selected = accentColorId === option.id
+            return (
+              <button
+                key={option.id}
+                type="button"
+                role="option"
+                aria-selected={selected}
+                aria-label={option.label}
+                title={option.label}
+                className={[
+                  'app-page__divider-accent-option',
+                  selected ? 'app-page__divider-accent-option--selected' : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={() => {
+                  void setAccentColorId(option.id)
+                  setAccentPickerOpen(false)
+                }}
+              >
+                <span
+                  className="app-page__divider-accent-option-swatch"
+                  style={{ backgroundColor: option.swatch }}
+                  aria-hidden
+                />
               </button>
             )
           })}
@@ -1519,6 +1627,7 @@ export function HomePage() {
               </button>
             </Tooltip>
             {renderFretCountControl(fretMenuPlacement, dividerTooltipPlacement)}
+            {renderAccentColorControl(accentMenuPlacement, dividerTooltipPlacement)}
             {renderKnownFilterControl(dividerTooltipPlacement)}
             {renderNotesControl(dividerTooltipPlacement)}
             {renderDividerResizeControl(dividerTooltipPlacement)}

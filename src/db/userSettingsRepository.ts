@@ -7,8 +7,14 @@ import {
   type ScaleSelection,
 } from '../components/Fretboard'
 import type { FretboardOrientation } from '../components/Fretboard/types'
+import {
+  DEFAULT_ACCENT_COLOR_ID,
+  sanitizeAccentColorId,
+  type AccentColorId,
+} from '../theme/accentColors'
 
 export type { FretboardOrientation } from '../components/Fretboard/types'
+export type { AccentColorId } from '../theme/accentColors'
 
 const SETTINGS_PATH = '/userSettings/default'
 const DOC_ID = 'default'
@@ -42,6 +48,8 @@ export type UserSettings = {
   panelsSwapped: boolean
   /** When true, the fretboard diagram panel is hidden; tools move to the options header. */
   diagramHidden: boolean
+  /** Rainbow accent used for selections, borders, and highlights. */
+  accentColorId: AccentColorId
 }
 
 type UserSettingsRecord = UserSettings & { id: string }
@@ -58,6 +66,7 @@ const DEFAULT_SETTINGS: UserSettings = {
   fretboardOrientation: 'landscape',
   panelsSwapped: false,
   diagramHidden: false,
+  accentColorId: DEFAULT_ACCENT_COLOR_ID,
 }
 
 const validChordIds = new Set<string>(CHORD_PRESET_IDS)
@@ -120,6 +129,10 @@ function mergeSettings(
         : current.fretboardOrientation,
     panelsSwapped: partial.panelsSwapped ?? current.panelsSwapped,
     diagramHidden: partial.diagramHidden ?? current.diagramHidden,
+    accentColorId:
+      partial.accentColorId != null
+        ? sanitizeAccentColorId(partial.accentColorId)
+        : current.accentColorId,
   }
 }
 
@@ -178,6 +191,7 @@ function fromRecord(record: UserSettingsRecord): UserSettings {
       typeof record.diagramHidden === 'boolean'
         ? record.diagramHidden
         : DEFAULT_SETTINGS.diagramHidden,
+    accentColorId: sanitizeAccentColorId(record.accentColorId),
   }
 }
 
@@ -248,6 +262,7 @@ function loadLegacyFakeDbSettings(): UserSettings | null {
         typeof data.diagramHidden === 'boolean'
           ? data.diagramHidden
           : DEFAULT_SETTINGS.diagramHidden,
+      accentColorId: sanitizeAccentColorId(data.accentColorId),
     }
   } catch {
     return null
@@ -405,4 +420,10 @@ export async function setPanelsSwapped(value: boolean): Promise<UserSettings> {
 
 export async function setDiagramHidden(value: boolean): Promise<UserSettings> {
   return saveUserSettings({ diagramHidden: value })
+}
+
+export async function setAccentColorId(
+  value: AccentColorId,
+): Promise<UserSettings> {
+  return saveUserSettings({ accentColorId: sanitizeAccentColorId(value) })
 }

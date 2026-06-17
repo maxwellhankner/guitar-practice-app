@@ -9,11 +9,11 @@
   --fb-string: #6a6a6a;
   --fb-string-muted: #4a4a4a;
   --fb-dot: #f4efe6;
-  --fb-dot-stroke: var(--fretboard-dot-stroke, #f5f0e6);
+  --fb-dot-stroke: var(--fretboard-dot-stroke, var(--accent-line));
   --fb-scale-dot-stroke: var(--fretboard-scale-dot-stroke, #8a8480);
   --fb-marker: var(--heading, #14120f);
   --fb-fret-label: var(--muted, #5c574f);
-  --fb-cell-note: rgb(212, 169, 74);
+  --fb-cell-note: var(--accent-line);
   /** Open-string names (left) + chromatic labels in cells */
   --fb-note-font-size: 8px;
   --fb-inlay: rgba(255, 248, 235, 0.52);
@@ -239,7 +239,7 @@
 }
 
 .captionTitle {
-  fill: var(--fb-fret-label);
+  fill: var(--accent-line);
   font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
   font-size: 10px;
   font-weight: 600;
@@ -255,9 +255,8 @@
     --fb-string: #565656;
     --fb-string-muted: #3a3a3a;
     --fb-dot: #2c2824;
-    --fb-dot-stroke: var(--fretboard-dot-stroke, #e8e0d4);
+    --fb-dot-stroke: var(--fretboard-dot-stroke, var(--accent-line));
     --fb-scale-dot-stroke: var(--fretboard-scale-dot-stroke, #7a756e);
-    --fb-cell-note: rgb(212, 169, 74);
     --fb-inlay: rgba(255, 245, 228, 0.42);
     --fb-inlay-edge: rgba(255, 255, 255, 0.12);
   }

@@ -174,14 +174,15 @@
       ],
       "filterPlayableOnly": false,
       "displayNotes": false,
-      "fretCount": 22,
-      "scaleSelection": null,
+      "fretCount": 5,
+      "scaleSelection": "full",
       "diagramLayout": "horizontal",
-      "horizontalSplitRatio": 0.6240021835624284,
-      "verticalSplitRatio": 0.5324933087384259,
+      "horizontalSplitRatio": 0.5282309607104413,
+      "verticalSplitRatio": 0.6674296061197916,
       "fretboardOrientation": "landscape",
       "panelsSwapped": false,
-      "diagramHidden": false
+      "diagramHidden": false,
+      "accentColorId": "gold"
     }
   ],
   "$schema": "./node_modules/json-server/schema.json"

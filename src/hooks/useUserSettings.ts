@@ -5,6 +5,7 @@ import {
   DEFAULT_VERTICAL_SPLIT,
   clampSplitRatio,
   fetchUserSettings,
+  setAccentColorId,
   setChordDisabled,
   setDiagramLayout,
   setDisplayNotes,
@@ -16,10 +17,13 @@ import {
   setFretboardOrientation,
   setPanelsSwapped,
   setDiagramHidden,
+  type AccentColorId,
   type DiagramLayout,
   type FretboardOrientation,
   type UserSettings,
 } from '../db/userSettingsRepository'
+import { DEFAULT_ACCENT_COLOR_ID } from '../theme/accentColors'
+import { useAccentTheme } from './useAccentTheme'
 
 export function useUserSettings() {
   const [settings, setSettings] = useState<UserSettings | null>(null)
@@ -120,6 +124,16 @@ export function useUserSettings() {
     setSettings(next)
   }, [])
 
+  const setAccentColorIdState = useCallback(async (value: AccentColorId) => {
+    setSettings((prev) =>
+      prev != null ? { ...prev, accentColorId: value } : prev,
+    )
+    const next = await setAccentColorId(value)
+    setSettings(next)
+  }, [])
+
+  useAccentTheme(settings?.accentColorId)
+
   return {
     ready: settings != null,
     settings,
@@ -134,6 +148,7 @@ export function useUserSettings() {
     fretboardOrientation: settings?.fretboardOrientation ?? 'landscape',
     panelsSwapped: settings?.panelsSwapped ?? false,
     diagramHidden: settings?.diagramHidden ?? false,
+    accentColorId: settings?.accentColorId ?? DEFAULT_ACCENT_COLOR_ID,
     setChordPlayable,
     setFilterPlayableOnly: setFilterPlayableOnlyState,
     setDisplayNotes: setDisplayNotesState,
@@ -145,5 +160,6 @@ export function useUserSettings() {
     setFretboardOrientation: setFretboardOrientationState,
     setPanelsSwapped: setPanelsSwappedState,
     setDiagramHidden: setDiagramHiddenState,
+    setAccentColorId: setAccentColorIdState,
   }
 }

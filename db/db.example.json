@@ -12,7 +12,8 @@
       "verticalSplitRatio": 0.58,
       "fretboardOrientation": "landscape",
       "panelsSwapped": false,
-      "diagramHidden": false
+      "diagramHidden": false,
+      "accentColorId": "gold"
     }
   ]
 }

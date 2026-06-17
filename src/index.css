@@ -1,8 +1,7 @@
 :root {
   --heading: #14120f;
   --muted: #5c574f;
-  --accent-line: #9a7324;
-  --fretboard-dot-stroke: #f5f0e6;
+  --fretboard-dot-stroke: var(--accent-line);
   --fretboard-scale-dot-stroke: #8a8480;
   --fretboard-fret: #c5baa8;
   --page-bg: #f4f1eb;
@@ -27,8 +26,6 @@
   :root {
     --heading: #f2efe9;
     --muted: #a39e94;
-    --accent-line: #d4a94a;
-    --fretboard-dot-stroke: #e8e0d4;
     --fretboard-scale-dot-stroke: #7a756e;
     --fretboard-fret: #8a7f72;
     --page-bg: #121210;
@@ -56,4 +53,11 @@ body {
 #root {
   height: 100dvh;
   overflow: hidden;
+}
+
+/* Suppress iOS/Android tap flash; hover feedback lives in @media (hover: hover) only. */
+@media (hover: none) {
+  button {
+    -webkit-tap-highlight-color: transparent;
+  }
 }
