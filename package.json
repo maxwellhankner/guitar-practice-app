@@ -7,8 +7,9 @@
     "dev": "concurrently -n api,web -c blue,green \"npm run dev:api\" \"npm run dev:web\"",
     "dev:web": "vite",
     "dev:api": "test -f db/db.json || cp db/db.example.json db/db.json; json-server --watch db/db.json --port 3001",
-    "build": "tsc -b && vite build",
+    "build": "npm run publish-state && tsc -b && vite build",
     "publish-state": "node scripts/publish-state.mjs",
+    "seed-default-state": "node scripts/seed-default-state.mjs",
     "lint": "eslint .",
     "preview": "vite preview"
   },

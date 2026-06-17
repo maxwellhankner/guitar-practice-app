@@ -7,47 +7,60 @@ import {
   type ProgressionId,
 } from './progressions'
 
+export function isChordKnown(
+  chordId: ChordPresetId,
+  known: ReadonlySet<ChordPresetId>,
+): boolean {
+  return known.has(chordId)
+}
+
+/** @deprecated Use {@link isChordKnown}. */
 export function isChordPlayable(
   chordId: ChordPresetId,
-  disabled: ReadonlySet<ChordPresetId>,
+  known: ReadonlySet<ChordPresetId>,
 ): boolean {
-  return !disabled.has(chordId)
+  return isChordKnown(chordId, known)
 }
 
-export function allChordsPlayable(
+export function allChordsKnown(
   chordIds: readonly ChordPresetId[],
-  disabled: ReadonlySet<ChordPresetId>,
+  known: ReadonlySet<ChordPresetId>,
 ): boolean {
-  return chordIds.every((id) => isChordPlayable(id, disabled))
+  return chordIds.every((id) => isChordKnown(id, known))
 }
 
+export function unknownChordsIn(
+  chordIds: readonly ChordPresetId[],
+  known: ReadonlySet<ChordPresetId>,
+): ChordPresetId[] {
+  return chordIds.filter((id) => !isChordKnown(id, known))
+}
+
+/** @deprecated Use {@link unknownChordsIn}. */
 export function unplayableChordsIn(
   chordIds: readonly ChordPresetId[],
-  disabled: ReadonlySet<ChordPresetId>,
+  known: ReadonlySet<ChordPresetId>,
 ): ChordPresetId[] {
-  return chordIds.filter((id) => !isChordPlayable(id, disabled))
+  return unknownChordsIn(chordIds, known)
 }
 
 export function isProgressionPlayableInKey(
   keyId: KeyId,
   progressionId: ProgressionId,
-  disabled: ReadonlySet<ChordPresetId>,
+  known: ReadonlySet<ChordPresetId>,
 ): boolean {
   if (!isProgressionResolvableInKey(keyId, progressionId)) {
     return false
   }
-  return allChordsPlayable(
-    chordsForProgression(keyId, progressionId),
-    disabled,
-  )
+  return allChordsKnown(chordsForProgression(keyId, progressionId), known)
 }
 
-/** At least one progression in this key uses only playable chords. */
+/** At least one progression in this key uses only known chords. */
 export function isKeyPlayable(
   keyId: KeyId,
-  disabled: ReadonlySet<ChordPresetId>,
+  known: ReadonlySet<ChordPresetId>,
 ): boolean {
   return PROGRESSION_IDS.some((progressionId) =>
-    isProgressionPlayableInKey(keyId, progressionId, disabled),
+    isProgressionPlayableInKey(keyId, progressionId, known),
   )
 }

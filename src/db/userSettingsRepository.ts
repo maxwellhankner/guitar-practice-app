@@ -13,6 +13,7 @@ import {
   sanitizeAccentColorId,
   type AccentColorId,
 } from '../theme/accentColors'
+import { defaultKnownChords } from './defaultKnownChords'
 
 export type { FretboardOrientation } from '../components/Fretboard/types'
 export type { AccentColorId } from '../theme/accentColors'
@@ -33,8 +34,10 @@ export function clampSplitRatio(value: number): number {
 }
 
 export type UserSettings = {
-  disabledChords: ChordPresetId[]
-  /** When true, keys/progressions/chords filter to what you can play. */
+  /** Bumped when stored settings need one-time migration. */
+  settingsVersion: number
+  knownChords: ChordPresetId[]
+  /** When true, keys/progressions/chords filter to known chords. */
   filterPlayableOnly: boolean
   displayNotes: boolean
   fretCount: number
@@ -58,8 +61,18 @@ export type SiteState = {
 
 type UserSettingsRecord = UserSettings & { id: string }
 
+/** Legacy rows may still carry `disabledChords` until migrated. */
+type UserSettingsRecordInput = Omit<Partial<UserSettings>, 'knownChords'> & {
+  id: string
+  knownChords?: unknown
+  disabledChords?: unknown
+}
+
+const USER_SETTINGS_VERSION = 2
+
 const DEFAULT_SETTINGS: UserSettings = {
-  disabledChords: [],
+  settingsVersion: USER_SETTINGS_VERSION,
+  knownChords: defaultKnownChords(),
   filterPlayableOnly: false,
   displayNotes: false,
   fretCount: 6,
@@ -92,10 +105,11 @@ function mergeSettings(
   partial: Partial<UserSettings>,
 ): UserSettings {
   return {
-    disabledChords:
-      partial.disabledChords != null
-        ? sanitizeChordIds(partial.disabledChords)
-        : current.disabledChords,
+    settingsVersion: partial.settingsVersion ?? current.settingsVersion,
+    knownChords:
+      partial.knownChords != null
+        ? sanitizeChordIds(partial.knownChords)
+        : current.knownChords,
     filterPlayableOnly:
       partial.filterPlayableOnly ?? current.filterPlayableOnly,
     displayNotes: partial.displayNotes ?? current.displayNotes,
@@ -160,9 +174,26 @@ function sanitizeChordIds(ids: unknown): ChordPresetId[] {
   return ids.filter((id): id is ChordPresetId => validChordIds.has(id))
 }
 
-function fromRecord(record: UserSettingsRecord): UserSettings {
+function knownChordsFromRecord(record: UserSettingsRecordInput): ChordPresetId[] {
+  const known = sanitizeChordIds(record.knownChords)
+  if (known.length > 0) {
+    return known
+  }
+  const disabled = sanitizeChordIds(record.disabledChords)
+  if (disabled.length > 0) {
+    const disabledSet = new Set(disabled)
+    return CHORD_PRESET_IDS.filter((id) => !disabledSet.has(id))
+  }
+  return []
+}
+
+function fromRecord(record: UserSettingsRecordInput): UserSettings {
   return {
-    disabledChords: sanitizeChordIds(record.disabledChords),
+    settingsVersion:
+      typeof record.settingsVersion === 'number'
+        ? record.settingsVersion
+        : 0,
+    knownChords: knownChordsFromRecord(record),
     filterPlayableOnly:
       typeof record.filterPlayableOnly === 'boolean'
         ? record.filterPlayableOnly
@@ -197,6 +228,31 @@ function fromRecord(record: UserSettingsRecord): UserSettings {
   }
 }
 
+function applyMigrations(settings: UserSettings): {
+  settings: UserSettings
+  changed: boolean
+} {
+  if (settings.settingsVersion >= USER_SETTINGS_VERSION) {
+    return { settings, changed: false }
+  }
+
+  let next = settings
+  if (next.knownChords.length === 0) {
+    next = { ...next, knownChords: defaultKnownChords() }
+  }
+  return {
+    settings: { ...next, settingsVersion: USER_SETTINGS_VERSION },
+    changed: true,
+  }
+}
+
+async function persistUserSettingsToApi(
+  settings: UserSettings,
+): Promise<UserSettings> {
+  const record = await apiPatch<UserSettingsRecord>(SETTINGS_PATH, settings)
+  return fromRecord(record)
+}
+
 async function createUserSettings(settings: UserSettings): Promise<UserSettings> {
   const record = await apiPost<UserSettingsRecord>('/userSettings', {
     id: DOC_ID,
@@ -207,7 +263,7 @@ async function createUserSettings(settings: UserSettings): Promise<UserSettings>
 
 async function readUserSettingsFromApi(): Promise<UserSettings | null> {
   try {
-    const record = await apiGet<UserSettingsRecord>(SETTINGS_PATH)
+    const record = await apiGet<UserSettingsRecordInput>(SETTINGS_PATH)
     return fromRecord(record)
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) {
@@ -222,7 +278,11 @@ export async function fetchUserSettings(): Promise<UserSettings> {
     try {
       const stored = await readUserSettingsFromApi()
       if (stored != null) {
-        return stored
+        const { settings, changed } = applyMigrations(stored)
+        if (changed) {
+          return persistUserSettingsToApi(settings)
+        }
+        return settings
       }
       return createUserSettings(DEFAULT_SETTINGS)
     } catch {
@@ -231,7 +291,7 @@ export async function fetchUserSettings(): Promise<UserSettings> {
   }
 
   if (sessionSettings == null) {
-    sessionSettings = bakedUserSettings()
+    sessionSettings = applyMigrations(bakedUserSettings()).settings
   }
   return sessionSettings
 }
@@ -258,18 +318,18 @@ export async function saveUserSettings(
   }
 }
 
-export async function setChordDisabled(
+export async function setChordKnown(
   chordId: ChordPresetId,
-  disabled: boolean,
+  known: boolean,
 ): Promise<UserSettings> {
   const current = await fetchUserSettings()
-  const set = new Set(current.disabledChords)
-  if (disabled) {
+  const set = new Set(current.knownChords)
+  if (known) {
     set.add(chordId)
   } else {
     set.delete(chordId)
   }
-  return saveUserSettings({ disabledChords: [...set] })
+  return saveUserSettings({ knownChords: [...set] })
 }
 
 export async function setFilterPlayableOnly(

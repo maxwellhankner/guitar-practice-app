@@ -26,7 +26,6 @@ export {
   ROOT_NAMES,
   chordIdsForRoot,
   chordPitchClasses,
-  isDiminishedChord,
   parseChordPresetId,
   resolveChord,
   type ChordPresetId,
@@ -92,7 +91,9 @@ export {
   transposeProgressionToKey,
 } from './progressionBuilder'
 export {
+  isChordKnown,
   isChordPlayable,
+  unknownChordsIn,
   unplayableChordsIn,
   isProgressionPlayableInKey,
   isKeyPlayable,

@@ -6,7 +6,7 @@ import {
   clampSplitRatio,
   fetchUserSettings,
   setAccentColorId,
-  setChordDisabled,
+  setChordKnown,
   setDiagramLayout,
   setDisplayNotes,
   setFilterPlayableOnly,
@@ -40,14 +40,14 @@ export function useUserSettings() {
     }
   }, [])
 
-  const disabledChords = useMemo(
-    () => new Set(settings?.disabledChords ?? []),
-    [settings?.disabledChords],
+  const knownChords = useMemo(
+    () => new Set(settings?.knownChords ?? []),
+    [settings?.knownChords],
   )
 
-  const setChordPlayable = useCallback(
-    async (chordId: ChordPresetId, playable: boolean) => {
-      const next = await setChordDisabled(chordId, !playable)
+  const setChordKnownState = useCallback(
+    async (chordId: ChordPresetId, known: boolean) => {
+      const next = await setChordKnown(chordId, known)
       setSettings(next)
     },
     [],
@@ -137,7 +137,7 @@ export function useUserSettings() {
   return {
     ready: settings != null,
     settings,
-    disabledChords,
+    knownChords,
     filterPlayableOnly: settings?.filterPlayableOnly ?? false,
     displayNotes: settings?.displayNotes ?? false,
     fretCount: settings?.fretCount ?? 6,
@@ -149,7 +149,7 @@ export function useUserSettings() {
     panelsSwapped: settings?.panelsSwapped ?? false,
     diagramHidden: settings?.diagramHidden ?? false,
     accentColorId: settings?.accentColorId ?? DEFAULT_ACCENT_COLOR_ID,
-    setChordPlayable,
+    setChordKnown: setChordKnownState,
     setFilterPlayableOnly: setFilterPlayableOnlyState,
     setDisplayNotes: setDisplayNotesState,
     setFretCount: setFretCountState,

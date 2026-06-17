@@ -13,6 +13,7 @@ import {
   Rows2,
   RotateCcwSquare,
   Search,
+  Pencil,
   Trash2,
 } from 'lucide-react'
 import { ChordPlayabilityCell } from '../components/ChordPlayabilityCell'
@@ -27,14 +28,14 @@ import {
   diatonicSlotsInKey,
   isProgressionResolvableInKey,
   isSelectableChordInKey,
-  isChordPlayable,
+  isChordKnown,
   isKeyPlayable,
   isProgressionPlayableInKey,
   rankKeysForChords,
   findKeyMatchBrightness,
   romanLabelForChordInKey,
   romanLabelForProgressionStep,
-  unplayableChordsIn,
+  unknownChordsIn,
   seedProgressionFromPreset,
   allowedChordsForBuiltProgression,
   progressionHighlightedTriadsInKey,
@@ -89,6 +90,7 @@ export function HomePage() {
   >(null)
   const [findKeyMode, setFindKeyMode] = useState(false)
   const [findKeyChords, setFindKeyChords] = useState<ChordPresetId[]>([])
+  const [editKnownChordsMode, setEditKnownChordsMode] = useState(false)
   const [liveSplitRatio, setLiveSplitRatio] = useState<number | null>(null)
   const [fretPickerOpen, setFretPickerOpen] = useState(false)
   const [accentPickerOpen, setAccentPickerOpen] = useState(false)
@@ -98,7 +100,7 @@ export function HomePage() {
   const addProgressionPickerRef = useRef<HTMLDivElement>(null)
   const {
     ready: settingsReady,
-    disabledChords,
+    knownChords,
     filterPlayableOnly,
     displayNotes,
     fretCount,
@@ -109,7 +111,7 @@ export function HomePage() {
     fretboardOrientation,
     panelsSwapped,
     diagramHidden,
-    setChordPlayable,
+    setChordKnown,
     setFilterPlayableOnly,
     setDisplayNotes,
     setFretCount,
@@ -130,12 +132,12 @@ export function HomePage() {
     }
     if (
       filterPlayableOnly &&
-      !isKeyPlayable(selectedKey, disabledChords)
+      !isKeyPlayable(selectedKey, knownChords)
     ) {
       return null
     }
     return selectedKey
-  }, [selectedKey, filterPlayableOnly, disabledChords])
+  }, [selectedKey, filterPlayableOnly, knownChords])
 
   const boardSelection = useMemo((): BoardSelection | null => {
     if (selection?.kind !== 'chord' || activeKey == null) {
@@ -442,9 +444,9 @@ export function HomePage() {
     if (!filterPlayableOnly) {
       return null
     }
-    const missing = unplayableChordsIn(
+    const missing = unknownChordsIn(
       chordsForProgression(keyId, progressionId),
-      disabledChords,
+      knownChords,
     )
     if (missing.length === 0) {
       return null
@@ -460,8 +462,23 @@ export function HomePage() {
     setPendingAddAfterIndex(null)
   }
 
+  const toggleEditKnownChordsMode = () => {
+    setEditKnownChordsMode((on) => {
+      if (!on) {
+        setSelection(null)
+        setFindKeyMode(false)
+        setFindKeyChords([])
+        setPendingAddAfterIndex(null)
+      }
+      return !on
+    })
+  }
+
   const toggleFindKeyMode = () => {
     setFindKeyMode((on) => {
+      if (!on) {
+        setEditKnownChordsMode(false)
+      }
       if (on) {
         setFindKeyChords([])
       } else if (selection?.kind === 'chord') {
@@ -615,7 +632,7 @@ export function HomePage() {
     const blocked =
       filterPlayableOnly &&
       !unresolved &&
-      !isProgressionPlayableInKey(keyId, progressionId, disabledChords)
+      !isProgressionPlayableInKey(keyId, progressionId, knownChords)
     const disabled = unresolved || blocked
     const blockedReason = progressionDisabledReason(keyId, progressionId)
     const seedChords = unresolved
@@ -636,10 +653,12 @@ export function HomePage() {
           className={[
             'diagram-chord-btn',
             colored ? 'diagram-progression-seeds__colored' : '',
+            blocked ? 'diagram-chord-btn--unplayable' : '',
           ]
             .filter(Boolean)
             .join(' ')}
           disabled={disabled}
+          aria-disabled={disabled}
           onClick={() => seedFromPreset(progressionId)}
         >
           {def.label}
@@ -677,12 +696,14 @@ export function HomePage() {
       onSelect?: () => void
     },
   ) => {
-    const storedPlayable = isChordPlayable(id, disabledChords)
+    const chordKnown = isChordKnown(id, knownChords)
     const selected =
-      options?.selected ??
-      (selectedKey == null &&
-        selection?.kind === 'chord' &&
-        selection.id === id)
+      editKnownChordsMode
+        ? false
+        : (options?.selected ??
+          (selectedKey == null &&
+            selection?.kind === 'chord' &&
+            selection.id === id))
     const title =
       options?.keyId != null
         ? `${CHORD_PRESETS[id].name}${options.roman != null ? ` · ${options.roman}` : (() => {
@@ -695,7 +716,7 @@ export function HomePage() {
       <ChordPlayabilityCell
         key={id}
         chordId={id}
-        playable={storedPlayable}
+        known={chordKnown}
         selected={selected}
         title={title}
         label={options?.label}
@@ -712,8 +733,9 @@ export function HomePage() {
                 : { kind: 'chord', id },
             ))
         }
-        onPlayableChange={(next) => void setChordPlayable(id, next)}
-        showPlayabilityPopup={filterPlayableOnly}
+        onKnownToggle={() => void setChordKnown(id, !chordKnown)}
+        knownChordsMode={filterPlayableOnly}
+        editKnownMode={editKnownChordsMode}
       />
     )
   }
@@ -860,8 +882,8 @@ export function HomePage() {
       placement={tooltipPlacement}
       label={
         filterPlayableOnly
-          ? 'Show all keys, progressions, and chords'
-          : 'Only show chords you know'
+          ? 'Turn off known chords mode'
+          : 'Known chords mode — grey unknown chords; filter keys and progressions'
       }
     >
       <button
@@ -874,12 +896,17 @@ export function HomePage() {
           .join(' ')}
         aria-label={
           filterPlayableOnly
-            ? 'Show all keys, progressions, and chords'
-            : 'Only show chords you know'
+            ? 'Turn off known chords mode'
+            : 'Known chords mode — grey unknown chords; filter keys and progressions'
         }
         aria-pressed={filterPlayableOnly}
         onPointerDown={(event) => event.stopPropagation()}
-        onClick={() => void setFilterPlayableOnly(!filterPlayableOnly)}
+        onClick={() => {
+          if (filterPlayableOnly) {
+            setEditKnownChordsMode(false)
+          }
+          void setFilterPlayableOnly(!filterPlayableOnly)
+        }}
       >
         <ListChecks size={16} strokeWidth={2.5} aria-hidden />
       </button>
@@ -1075,7 +1102,7 @@ export function HomePage() {
                     selectedKey == null && findKeyMode
                   const playableBlocked =
                     filterPlayableOnly &&
-                    !isKeyPlayable(keyId, disabledChords)
+                    !isKeyPlayable(keyId, knownChords)
                   const findKeyScore =
                     inFindKeyFlow && findKeyScoreById != null
                       ? findKeyScoreById.get(keyId)
@@ -1096,7 +1123,7 @@ export function HomePage() {
                         : inFindKeyFlow && findKeyBrightness == null
                           ? 'Does not match selected chords'
                           : playableBlocked
-                            ? 'No progressions playable with your enabled chords'
+                            ? 'No progressions playable with your known chords'
                             : def.name
                   return (
                     <Tooltip key={keyId} label={keyTitle}>
@@ -1105,6 +1132,7 @@ export function HomePage() {
                         className={[
                           'diagram-chord-btn',
                           selected ? 'diagram-chord-btn--selected' : '',
+                          playableBlocked ? 'diagram-chord-btn--unplayable' : '',
                         ]
                           .filter(Boolean)
                           .join(' ')}
@@ -1182,9 +1210,35 @@ export function HomePage() {
             ) : null}
 
             <div className="diagram-field">
-              <p className="diagram-label" id={`${baseId}-chord-label`}>
-                Chords
-              </p>
+              <div className="diagram-field__label-row">
+                <p className="diagram-label" id={`${baseId}-chord-label`}>
+                  Chords
+                </p>
+                {filterPlayableOnly ? (
+                  <Tooltip
+                    label={
+                      editKnownChordsMode
+                        ? 'Done editing — click chords to select again'
+                        : 'Edit which chords you know'
+                    }
+                  >
+                    <button
+                      type="button"
+                      className={
+                        editKnownChordsMode
+                          ? 'diagram-edit-known diagram-edit-known--active'
+                          : 'diagram-edit-known'
+                      }
+                      aria-pressed={editKnownChordsMode}
+                      aria-label="Edit known chords"
+                      onClick={toggleEditKnownChordsMode}
+                    >
+                      <Pencil size={12} aria-hidden />
+                      edit
+                    </button>
+                  </Tooltip>
+                ) : null}
+              </div>
               {activeKey != null && diatonicSlots != null ? (
                 <div className="diagram-chords-build">
                   <div

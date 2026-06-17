@@ -13,15 +13,15 @@ npm run dev
 
 `npm run dev` starts the Vite app and a local json-server for user settings. Copy `db/db.example.json` to `db/db.json` before the first run (or let `npm run dev` create it).
 
-**Deploying authored defaults:** edit settings locally in dev (saved to `db/db.json`), then run `npm run publish-state` to copy them into `src/data/siteState.json`, commit, and push. The live site loads that baked snapshot; visitors get full in-session functionality but changes reset on refresh.
+**Deploying authored defaults:** edit settings locally in dev (saved to `db/db.json`). On `npm run build` or push to `main`, settings are copied into `src/data/siteState.json` automatically. Commit `db/db.json` when you want those changes on the live site. Visitors get full in-session functionality; changes reset on refresh.
 
 See [development.md](development.md) for the roadmap.
 
 ## Scripts
 
 - `npm run dev` — app + local settings API
-- `npm run publish-state` — copy `db/db.json` → `src/data/siteState.json` for deploy
-- `npm run build` — production build
+- `npm run publish-state` — copy `db/db.json` (or example) → `src/data/siteState.json`
+- `npm run build` — publish state, then production build
 - `npm run lint` — ESLint
 
 ## Deploy

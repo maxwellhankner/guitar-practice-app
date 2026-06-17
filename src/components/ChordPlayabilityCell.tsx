@@ -1,21 +1,17 @@
-import { useEffect, useRef, useState } from 'react'
 import type { ChordPresetId } from './Fretboard'
 import { Tooltip } from './Tooltip'
 
-const PLAYABILITY_HOVER_DELAY_MS = 500
-
 type ChordPlayabilityCellProps = {
   chordId: ChordPresetId
-  /** Stored in the database — user can play this chord. */
-  playable: boolean
+  known: boolean
   selected: boolean
   title?: string
   onSelect: () => void
-  onPlayableChange: (playable: boolean) => void
-  /** When false, no hover popup (e.g. KNOWN filtering is off). */
-  showPlayabilityPopup: boolean
-  /** Diminished triads — selectable for the diagram, excluded from KNOWN. */
-  diminished?: boolean
+  onKnownToggle: () => void
+  /** Grey unknown chords when known chords mode is on. */
+  knownChordsMode: boolean
+  /** Click toggles known/unknown instead of selecting. */
+  editKnownMode: boolean
   /** Lower emphasis (e.g. non-suggested progression alts) while still selectable. */
   dimmed?: boolean
   /** Smaller styling for color-chord alternatives under diatonic columns. */
@@ -28,120 +24,60 @@ type ChordPlayabilityCellProps = {
   selectable?: boolean
 }
 
-function LockIcon({ locked }: { locked: boolean }) {
-  return (
-    <svg
-      className={
-        locked
-          ? 'diagram-chord-playability__lock diagram-chord-playability__lock--locked'
-          : 'diagram-chord-playability__lock'
-      }
-      width="12"
-      height="12"
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden
-    >
-      {locked ? (
-        <>
-          <rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="2" />
-          <path
-            d="M8 11V8a4 4 0 0 1 8 0v3"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-          />
-        </>
-      ) : (
-        <>
-          <rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="2" />
-          <path
-            d="M8 11V8a4 4 0 0 1 7.5-2"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-          />
-        </>
-      )}
-    </svg>
-  )
-}
-
 export function ChordPlayabilityCell({
   chordId,
-  playable,
+  known,
   selected,
   title,
   onSelect,
-  onPlayableChange,
-  showPlayabilityPopup,
-  diminished = false,
+  onKnownToggle,
+  knownChordsMode,
+  editKnownMode,
   dimmed = false,
   compact = false,
   label,
   inProgression = false,
   selectable = true,
 }: ChordPlayabilityCellProps) {
-  const popupId = `chord-play-${chordId}`
-  const [popupVisible, setPopupVisible] = useState(false)
-  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  const clearHoverTimer = () => {
-    if (hoverTimerRef.current != null) {
-      clearTimeout(hoverTimerRef.current)
-      hoverTimerRef.current = null
-    }
-  }
-
-  const handleMouseEnter = () => {
-    clearHoverTimer()
-    hoverTimerRef.current = setTimeout(() => {
-      setPopupVisible(true)
-      hoverTimerRef.current = null
-    }, PLAYABILITY_HOVER_DELAY_MS)
-  }
-
-  const handleMouseLeave = () => {
-    clearHoverTimer()
-    setPopupVisible(false)
-  }
-
-  useEffect(() => () => clearHoverTimer(), [])
-
-  const popupShown = showPlayabilityPopup && popupVisible
+  const showAsUnknown = knownChordsMode && !known
+  const canInteract = editKnownMode || selectable
 
   const chordClasses = [
     'diagram-chord-btn',
     compact ? 'diagram-chord-btn--compact' : '',
-    selectable && selected && !diminished && (!showPlayabilityPopup || playable)
+    !editKnownMode && selectable && selected && (!knownChordsMode || known)
       ? 'diagram-chord-btn--selected'
       : '',
-    selectable &&
-    selected &&
-    (diminished || (showPlayabilityPopup && !playable))
+    !editKnownMode && selectable && selected && knownChordsMode && !known
       ? 'diagram-chord-btn--selected-unplayable'
       : '',
-    selectable && (dimmed || (diminished && !selected))
-      ? 'diagram-chord-btn--dim'
-      : '',
-    selectable && showPlayabilityPopup && !playable && !diminished
-      ? 'diagram-chord-btn--unplayable'
-      : '',
-    inProgression ? 'diagram-chord-btn--progression' : '',
-    !selectable ? 'diagram-chord-btn--display' : '',
+    !editKnownMode && selectable && dimmed ? 'diagram-chord-btn--dim' : '',
+    canInteract && showAsUnknown ? 'diagram-chord-btn--unplayable' : '',
+    !editKnownMode && inProgression ? 'diagram-chord-btn--progression' : '',
+    !canInteract ? 'diagram-chord-btn--display' : '',
+    editKnownMode ? 'diagram-chord-btn--edit-known' : '',
   ]
     .filter(Boolean)
     .join(' ')
 
   const chordContent = label ?? chordId
 
-  const chordButton = selectable ? (
+  const chordButton = canInteract ? (
     <button
       type="button"
       className={chordClasses}
-      aria-pressed={selected}
+      aria-pressed={!editKnownMode && selectable ? selected : undefined}
+      aria-label={
+        editKnownMode
+          ? `${chordId} — ${known ? 'known, click to mark unknown' : 'not known, click to mark known'}`
+          : undefined
+      }
       onClick={(e) => {
-        onSelect()
+        if (editKnownMode) {
+          onKnownToggle()
+        } else {
+          onSelect()
+        }
         e.currentTarget.blur()
       }}
     >
@@ -158,54 +94,5 @@ export function ChordPlayabilityCell({
       chordButton
     )
 
-  if (!selectable || !showPlayabilityPopup) {
-    return <div className="diagram-chord-cell">{chordControl}</div>
-  }
-
-  return (
-    <div
-      className="diagram-chord-cell"
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-    >
-      {chordControl}
-      <div
-        className={[
-          'diagram-chord-playability',
-          'diagram-chord-playability--above',
-          popupShown ? 'diagram-chord-playability--visible' : '',
-        ]
-          .filter(Boolean)
-          .join(' ')}
-        role="group"
-        aria-label={`${chordId} playability`}
-        onPointerDown={(e) => e.stopPropagation()}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <LockIcon locked={!playable} />
-        <Tooltip
-          label={playable ? 'Can play — click to disable' : "Can't play — click to enable"}
-        >
-          <button
-            type="button"
-            role="switch"
-            className="diagram-chord-playability__switch"
-            aria-checked={playable}
-            aria-labelledby={popupId}
-            onClick={(e) => {
-              onPlayableChange(!playable)
-              e.currentTarget.blur()
-            }}
-          >
-            <span className="diagram-chord-playability__switch-track">
-              <span className="diagram-chord-playability__switch-thumb" />
-            </span>
-          </button>
-        </Tooltip>
-        <span id={popupId} className="diagram-chord-playability__label">
-          {playable ? 'Can play' : "Can't play"}
-        </span>
-      </div>
-    </div>
-  )
+  return <div className="diagram-chord-cell">{chordControl}</div>
 }
