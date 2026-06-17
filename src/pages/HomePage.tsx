@@ -1043,7 +1043,7 @@ export function HomePage() {
           {diagramHidden ? (
             <div className="app-page__title-row">
               <h1 className="app-page__title" id={`${baseId}-heading`}>
-                Practice Guitar App
+                Guitar Practice App
               </h1>
               <div
                 className="app-page__title-toolbar"
@@ -1056,7 +1056,7 @@ export function HomePage() {
             </div>
           ) : (
             <h1 className="app-page__title" id={`${baseId}-heading`}>
-              Practice Guitar App
+              Guitar Practice App
             </h1>
           )}
           <div className="diagram-controls">
