@@ -157,7 +157,7 @@
         "G#sus2",
         "G#sus4"
       ],
-      "filterPlayableOnly": true,
+      "filterPlayableOnly": false,
       "displayNotes": false,
       "fretCount": 6,
       "scaleSelection": null,
