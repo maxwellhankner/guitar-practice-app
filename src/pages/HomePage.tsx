@@ -15,6 +15,7 @@ import {
   RotateCcwSquare,
   Search,
   Pencil,
+  Share2,
   Trash2,
 } from 'lucide-react'
 import { ChordPlayabilityCell } from '../components/ChordPlayabilityCell'
@@ -80,6 +81,19 @@ import {
 
 type BoardSelection = { kind: 'chord'; id: ChordPresetId }
 
+/** A–D / Am–Dm vs D#–G# / D#m–G#m on mobile key grids. */
+const KEY_MOBILE_GROUP_SIZE = 6
+
+const SCALE_MENU_OPTIONS: {
+  value: ScaleSelection
+  label: string
+}[] = [
+  { value: null, label: 'Off' },
+  { value: 'pentatonic', label: 'Pentatonic' },
+  { value: 'hexatonic', label: 'Hexatonic' },
+  { value: 'full', label: 'Full Scale' },
+]
+
 function progressionEqual(
   a: ChordPresetId[] | null,
   b: ChordPresetId[] | null,
@@ -137,9 +151,11 @@ export function HomePage() {
   const [liveSplitRatio, setLiveSplitRatio] = useState<number | null>(null)
   const [fretPickerOpen, setFretPickerOpen] = useState(false)
   const [accentPickerOpen, setAccentPickerOpen] = useState(false)
+  const [scalePickerOpen, setScalePickerOpen] = useState(false)
   const mainRef = useRef<HTMLElement>(null)
   const fretPickerRef = useRef<HTMLDivElement>(null)
   const accentPickerRef = useRef<HTMLDivElement>(null)
+  const scalePickerRef = useRef<HTMLDivElement>(null)
   const addProgressionPickerRef = useRef<HTMLDivElement>(null)
   const practiceHydratedRef = useRef(false)
   const lastSyncedPracticeRef = useRef<PracticeSelectionSnapshot | null>(null)
@@ -240,7 +256,6 @@ export function HomePage() {
         selectedKey: local.selectedKey,
         selectedChord: local.selectedChord,
         builtProgression: local.builtProgression,
-        ...(local.selectedKey == null ? { scaleSelection: null } : {}),
       }).finally(() => {
         if (
           pendingPracticePersistRef.current != null &&
@@ -352,6 +367,29 @@ export function HomePage() {
   }, [accentPickerOpen])
 
   useEffect(() => {
+    if (!scalePickerOpen) {
+      return
+    }
+    const onPointerDown = (event: PointerEvent) => {
+      if (scalePickerRef.current?.contains(event.target as Node)) {
+        return
+      }
+      setScalePickerOpen(false)
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setScalePickerOpen(false)
+      }
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [scalePickerOpen])
+
+  useEffect(() => {
     if (pendingAddAfterIndex == null) {
       return
     }
@@ -406,17 +444,13 @@ export function HomePage() {
   const isMobileViewport = useIsMobileViewport()
   const diagramLayoutVertical = effectiveDiagramLayout === 'vertical'
   const fretboardPortrait = fretboardOrientation === 'portrait'
-  const fretMenuPlacement = diagramLayoutVertical
+  const pickerPopupPlacement = diagramLayoutVertical
     ? panelsSwapped
-      ? 'app-page__divider-frets-menu--left'
-      : 'app-page__divider-frets-menu--right'
+      ? 'app-page__divider-popup--left'
+      : 'app-page__divider-popup--right'
     : panelsSwapped
-      ? 'app-page__divider-frets-menu--above'
-      : 'app-page__divider-frets-menu--below'
-  const accentMenuPlacement = fretMenuPlacement.replace(
-    'frets-menu',
-    'accent-menu',
-  )
+      ? 'app-page__divider-popup--above'
+      : 'app-page__divider-popup--below'
   const dividerTooltipPlacement = diagramLayoutVertical
     ? panelsSwapped
       ? 'left'
@@ -522,16 +556,16 @@ export function HomePage() {
     activeKey != null ? KEY_DEFS[activeKey].name : null
 
   const scaleModeTitle = (label: string) =>
-    scaleContextName != null
+    activeKey != null && scaleContextName != null
       ? `${label} scale in ${scaleContextName}`
-      : 'Select a key to show scale on the fretboard'
+      : `${label} scale`
 
-  const toggleScaleSelection = (mode: Exclude<ScaleSelection, null>) => {
-    void setScaleSelection(scaleSelection === mode ? null : mode)
+  const scaleSelectionLabel = (value: ScaleSelection): string => {
+    if (value == null) {
+      return 'Off'
+    }
+    return SCALE_MENU_OPTIONS.find((option) => option.value === value)?.label ?? value
   }
-
-  const isScaleSelected = (mode: Exclude<ScaleSelection, null>) =>
-    scaleSelection === mode
 
   const isChordInSelectedScale = (chordId: ChordPresetId): boolean => {
     if (activeKey == null || scaleSelection == null) {
@@ -949,7 +983,7 @@ export function HomePage() {
   const showDiagramPanel = !diagramHidden
 
   const renderFretCountControl = (
-    fretMenuClass: string,
+    popupPlacement: string,
     tooltipPlacement: typeof dividerTooltipPlacement | 'below',
   ) => (
     <div ref={fretPickerRef} className="app-page__divider-frets">
@@ -967,6 +1001,7 @@ export function HomePage() {
           onPointerDown={(event) => event.stopPropagation()}
           onClick={() => {
             setAccentPickerOpen(false)
+            setScalePickerOpen(false)
             setFretPickerOpen((open) => !open)
           }}
         >
@@ -977,7 +1012,7 @@ export function HomePage() {
       </Tooltip>
       {fretPickerOpen ? (
         <div
-          className={`app-page__divider-frets-menu ${fretMenuClass}`}
+          className={`app-page__divider-frets-menu ${popupPlacement}`}
           role="listbox"
           aria-label="Fret count"
         >
@@ -1011,7 +1046,7 @@ export function HomePage() {
   )
 
   const renderAccentColorControl = (
-    accentMenuClass: string,
+    popupPlacement: string,
     tooltipPlacement: typeof dividerTooltipPlacement | 'below',
   ) => (
     <div ref={accentPickerRef} className="app-page__divider-accent">
@@ -1029,6 +1064,7 @@ export function HomePage() {
           onPointerDown={(event) => event.stopPropagation()}
           onClick={() => {
             setFretPickerOpen(false)
+            setScalePickerOpen(false)
             setAccentPickerOpen((open) => !open)
           }}
         >
@@ -1041,7 +1077,7 @@ export function HomePage() {
       </Tooltip>
       {accentPickerOpen ? (
         <div
-          className={`app-page__divider-accent-menu ${accentMenuClass}`}
+          className={`app-page__divider-accent-menu ${popupPlacement}`}
           role="listbox"
           aria-label="Accent color"
         >
@@ -1079,6 +1115,84 @@ export function HomePage() {
       ) : null}
     </div>
   )
+
+  const renderScaleControl = (
+    popupPlacement: string,
+    tooltipPlacement: typeof dividerTooltipPlacement | 'below',
+  ) => {
+    const scaleTooltip =
+      scaleSelection != null
+        ? `Scale: ${scaleSelectionLabel(scaleSelection)}`
+        : 'Scale overlay'
+
+    return (
+      <div ref={scalePickerRef} className="app-page__divider-scale">
+        <Tooltip
+          placement={tooltipPlacement}
+          label={scaleTooltip}
+          disabled={scalePickerOpen}
+        >
+          <button
+            type="button"
+            className={[
+              'app-page__divider-scale-toggle',
+              scaleSelection != null ? 'app-page__divider-tool--active' : '',
+            ]
+              .filter(Boolean)
+              .join(' ')}
+            aria-label={scaleTooltip}
+            aria-expanded={scalePickerOpen}
+            aria-haspopup="listbox"
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={() => {
+              setFretPickerOpen(false)
+              setAccentPickerOpen(false)
+              setScalePickerOpen((open) => !open)
+            }}
+          >
+            <Share2 size={16} strokeWidth={2.5} aria-hidden />
+          </button>
+        </Tooltip>
+        {scalePickerOpen ? (
+          <div
+            className={`app-page__divider-scale-menu ${popupPlacement}`}
+            role="listbox"
+            aria-label="Scale overlay"
+          >
+            {SCALE_MENU_OPTIONS.map((option) => {
+              const selected = scaleSelection === option.value
+              const optionTitle =
+                option.value == null
+                  ? 'No scale overlay'
+                  : scaleModeTitle(option.label)
+              return (
+                <button
+                  key={option.label}
+                  type="button"
+                  role="option"
+                  aria-selected={selected}
+                  title={optionTitle}
+                  className={[
+                    'app-page__divider-scale-option',
+                    selected ? 'app-page__divider-scale-option--selected' : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onClick={() => {
+                    void setScaleSelection(option.value)
+                    setScalePickerOpen(false)
+                  }}
+                >
+                  {option.label}
+                </button>
+              )
+            })}
+          </div>
+        ) : null}
+      </div>
+    )
+  }
 
   const renderKnownFilterControl = (
     tooltipPlacement: typeof dividerTooltipPlacement | 'below',
@@ -1233,16 +1347,11 @@ export function HomePage() {
       ? 'left'
       : 'above'
     : dividerTooltipPlacement
-  const menuFretMenuPlacement = diagramHidden
+  const menuPickerPopupPlacement = diagramHidden
     ? usesVerticalSplitLayout
-      ? 'app-page__divider-frets-menu--left'
-      : 'app-page__divider-frets-menu--above'
-    : fretMenuPlacement
-  const menuAccentMenuPlacement = diagramHidden
-    ? usesVerticalSplitLayout
-      ? 'app-page__divider-accent-menu--left'
-      : 'app-page__divider-accent-menu--above'
-    : accentMenuPlacement
+      ? 'app-page__divider-popup--left'
+      : 'app-page__divider-popup--above'
+    : pickerPopupPlacement
 
   const renderMenuBar = () => (
     <div
@@ -1356,11 +1465,12 @@ export function HomePage() {
           <RotateCcwSquare size={16} strokeWidth={2.5} aria-hidden />
         </button>
       </Tooltip>
-      {renderFretCountControl(menuFretMenuPlacement, menuBarTooltipPlacement)}
+      {renderFretCountControl(menuPickerPopupPlacement, menuBarTooltipPlacement)}
       {renderAccentColorControl(
-        menuAccentMenuPlacement,
+        menuPickerPopupPlacement,
         menuBarTooltipPlacement,
       )}
+      {renderScaleControl(menuPickerPopupPlacement, menuBarTooltipPlacement)}
       {renderKnownFilterControl(menuBarTooltipPlacement)}
       {renderNotesControl(menuBarTooltipPlacement)}
     </div>
@@ -1446,71 +1556,43 @@ export function HomePage() {
                 role="group"
                 aria-labelledby={`${baseId}-key-label`}
               >
-                <div className="diagram-chord-grid diagram-key-select-grid">
-                  {KEY_MAJOR_IDS.map(renderKeyButton)}
-                </div>
-                <hr className="diagram-select-stack-divider" aria-hidden />
-                <div className="diagram-chord-grid diagram-key-select-grid">
-                  {KEY_MINOR_IDS.map(renderKeyButton)}
-                </div>
+                {isMobileViewport ? (
+                  <>
+                    <div className="diagram-chord-grid diagram-key-select-grid">
+                      {KEY_MAJOR_IDS.slice(0, KEY_MOBILE_GROUP_SIZE).map(
+                        renderKeyButton,
+                      )}
+                    </div>
+                    <div className="diagram-chord-grid diagram-key-select-grid">
+                      {KEY_MINOR_IDS.slice(0, KEY_MOBILE_GROUP_SIZE).map(
+                        renderKeyButton,
+                      )}
+                    </div>
+                    <hr className="diagram-select-stack-divider" aria-hidden />
+                    <div className="diagram-chord-grid diagram-key-select-grid">
+                      {KEY_MAJOR_IDS.slice(KEY_MOBILE_GROUP_SIZE).map(
+                        renderKeyButton,
+                      )}
+                    </div>
+                    <div className="diagram-chord-grid diagram-key-select-grid">
+                      {KEY_MINOR_IDS.slice(KEY_MOBILE_GROUP_SIZE).map(
+                        renderKeyButton,
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="diagram-chord-grid diagram-key-select-grid">
+                      {KEY_MAJOR_IDS.map(renderKeyButton)}
+                    </div>
+                    <hr className="diagram-select-stack-divider" aria-hidden />
+                    <div className="diagram-chord-grid diagram-key-select-grid">
+                      {KEY_MINOR_IDS.map(renderKeyButton)}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
-
-            {activeKey != null ? (
-              <div className="diagram-field">
-                <p className="diagram-label" id={`${baseId}-scale-label`}>
-                  Scale
-                </p>
-                <div
-                  className="diagram-chord-grid diagram-scale-grid"
-                  role="group"
-                  aria-labelledby={`${baseId}-scale-label`}
-                >
-                  <Tooltip label={scaleModeTitle('Pentatonic')}>
-                    <button
-                      type="button"
-                      className={
-                        isScaleSelected('pentatonic')
-                          ? 'diagram-chord-btn diagram-chord-btn--selected'
-                          : 'diagram-chord-btn'
-                      }
-                      aria-pressed={isScaleSelected('pentatonic')}
-                      onClick={() => toggleScaleSelection('pentatonic')}
-                    >
-                      Pentatonic
-                    </button>
-                  </Tooltip>
-                  <Tooltip label={scaleModeTitle('Hexatonic')}>
-                    <button
-                      type="button"
-                      className={
-                        isScaleSelected('hexatonic')
-                          ? 'diagram-chord-btn diagram-chord-btn--selected'
-                          : 'diagram-chord-btn'
-                      }
-                      aria-pressed={isScaleSelected('hexatonic')}
-                      onClick={() => toggleScaleSelection('hexatonic')}
-                    >
-                      Hexatonic
-                    </button>
-                  </Tooltip>
-                  <Tooltip label={scaleModeTitle('Full')}>
-                    <button
-                      type="button"
-                      className={
-                        isScaleSelected('full')
-                          ? 'diagram-chord-btn diagram-chord-btn--selected'
-                          : 'diagram-chord-btn'
-                      }
-                      aria-pressed={isScaleSelected('full')}
-                      onClick={() => toggleScaleSelection('full')}
-                    >
-                      Full Scale
-                    </button>
-                  </Tooltip>
-                </div>
-              </div>
-            ) : null}
 
             <div className="diagram-field">
               <div className="diagram-field__label-row">

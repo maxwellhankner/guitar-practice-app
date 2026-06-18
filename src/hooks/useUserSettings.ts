@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { ChordPresetId, KeyId, ScaleSelection } from '../components/Fretboard'
+import type { ChordPresetId, ScaleSelection } from '../components/Fretboard'
 import {
   DEFAULT_HORIZONTAL_SPLIT,
   DEFAULT_VERTICAL_SPLIT,
@@ -21,6 +21,7 @@ import {
   type AccentColorId,
   type DiagramLayout,
   type FretboardOrientation,
+  type PracticeSelection,
   type UserSettings,
 } from '../db/userSettingsRepository'
 import { DEFAULT_ACCENT_COLOR_ID } from '../theme/accentColors'
@@ -137,12 +138,7 @@ export function useUserSettings() {
   }, [])
 
   const setPracticeSelectionState = useCallback(
-    async (partial: {
-      selectedKey?: KeyId | null
-      selectedChord?: ChordPresetId | null
-      builtProgression?: ChordPresetId[] | null
-      scaleSelection?: ScaleSelection
-    }) => {
+    async (partial: PracticeSelection) => {
       setSettings((prev) => (prev != null ? { ...prev, ...partial } : prev))
       const next = await setPracticeSelection(partial)
       setSettings(next)

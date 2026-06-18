@@ -6,7 +6,7 @@
     "fretCount": 6,
     "scaleSelection": null,
     "diagramLayout": "horizontal",
-    "horizontalSplitRatio": 0.5800886369752422,
+    "horizontalSplitRatio": 0.6606271864908504,
     "verticalSplitRatio": 0.6093366093366094,
     "fretboardOrientation": "landscape",
     "panelsSwapped": false,
@@ -55,17 +55,8 @@
       "Fm",
       "C"
     ],
-    "selectedKey": "G",
-    "selectedChord": "Em",
-    "builtProgression": [
-      "Gadd9",
-      "D",
-      "Em7",
-      "Cadd9",
-      "Bsus2",
-      "Asus2",
-      "A",
-      "Em7"
-    ]
+    "selectedKey": null,
+    "selectedChord": null,
+    "builtProgression": null
   }
 }

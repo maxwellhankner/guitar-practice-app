@@ -460,8 +460,6 @@ export type PracticeSelection = {
   selectedKey?: KeyId | null
   selectedChord?: ChordPresetId | null
   builtProgression?: ChordPresetId[] | null
-  /** Cleared with the key when deselecting practice state. */
-  scaleSelection?: ScaleSelection
 }
 
 export async function setPracticeSelection(
