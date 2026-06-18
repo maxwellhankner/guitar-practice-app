@@ -1,0 +1,24 @@
+{
+  "name": "Practice Guitar App",
+  "short_name": "Practice Guitar",
+  "description": "Interactive fretboard for exploring keys, chord progressions, and voicings.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#121210",
+  "icons": [
+    {
+      "src": "practice-guitar-icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "practice-guitar-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

@@ -43,7 +43,6 @@
       "E7",
       "Em7",
       "Eadd9",
-      "F",
       "Gsus4",
       "G7",
       "G7sus4",
@@ -52,11 +51,12 @@
       "G6",
       "Gsus2",
       "G",
-      "Fm",
-      "C"
+      "C",
+      "F",
+      "Fm"
     ],
     "selectedKey": null,
-    "selectedChord": "G7sus4",
+    "selectedChord": null,
     "builtProgression": null
   }
 }
