@@ -337,8 +337,8 @@ export const CHORD_VOICINGS = {
     fingers: [null, null, null, 2, 3, 1],
   },
   "Ddim": {
-    strings: ['x', 5, 6, 7, 6, 'x'],
-    fingers: [null, 1, 2, 4, 3, null],
+    strings: ['x', 'x', 0, 1, 3, 1],
+    fingers: [null, null, null, 1, 3, 1],
   },
   "Ddim7": {
     strings: ['x', 'x', 0, 1, 0, 1],
@@ -385,8 +385,8 @@ export const CHORD_VOICINGS = {
     fingers: [null, null, null, 2, 1, null],
   },
   "Dmaj9": {
-    strings: ['x', 'x', 0, 2, 4, 2],
-    fingers: [null, null, null, 1, 3, 2],
+    strings: ['x', 'x', 0, 2, 2, 0],
+    fingers: [null, null, null, 2, 1, null],
   },
   "Dm9": {
     strings: ['x', 'x', 0, 2, 1, 0],
@@ -669,8 +669,8 @@ export const CHORD_VOICINGS = {
     fingers: [2, null, null, null, 3, 4],
   },
   "Gsus4": {
-    strings: [3, 3, 0, 0, 3, 3],
-    fingers: [1, 2, null, null, 3, 4],
+    strings: [3, 'x', 0, 0, 1, 3],
+    fingers: [3, null, null, null, 1, 4],
   },
   "G7": {
     strings: [3, 2, 0, 0, 0, 1],
@@ -678,7 +678,7 @@ export const CHORD_VOICINGS = {
   },
   "G7sus4": {
     strings: [3, 3, 0, 0, 1, 1],
-    fingers: [2, 3, null, null, 1, 1],
+    fingers: [3, 4, null, null, 1, 1],
   },
   "Gmaj7": {
     strings: [3, 2, 0, 0, 0, 2],
