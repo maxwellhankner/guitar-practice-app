@@ -69,6 +69,7 @@ import {
 import { useUserSettings } from '../hooks/useUserSettings'
 import { useMobileDiagramLayout } from '../hooks/useMobileDiagramLayout'
 import { useIsMobileViewport } from '../hooks/useIsMobileViewport'
+import { progressionDiagramArrangement, progressionBoardMaxHeight } from '../hooks/progressionDiagramArrangement'
 import {
   ACCENT_COLOR_OPTIONS,
   accentColorLabel,
@@ -444,6 +445,15 @@ export function HomePage() {
   const isMobileViewport = useIsMobileViewport()
   const diagramLayoutVertical = effectiveDiagramLayout === 'vertical'
   const fretboardPortrait = fretboardOrientation === 'portrait'
+  const progressionArrangement = progressionDiagramArrangement(
+    isMobileViewport,
+    diagramLayoutVertical,
+    fretboardPortrait,
+  )
+  const progressionBoardMaxHeightCss =
+    hasBuiltProgression && activeKey != null
+      ? progressionBoardMaxHeight(builtProgression.length, progressionArrangement)
+      : undefined
   const pickerPopupPlacement = diagramLayoutVertical
     ? panelsSwapped
       ? 'app-page__divider-popup--left'
@@ -1980,7 +1990,21 @@ export function HomePage() {
           >
             <div className="app-page__diagram-wrap">
               {hasBuiltProgression && activeKey != null ? (
-                <div className="app-page__diagram-stage app-page__diagram-stage--progression">
+                <div
+                  className="app-page__diagram-stage app-page__diagram-stage--progression"
+                  data-arrangement={progressionArrangement}
+                  style={
+                    {
+                      '--progression-step-count': builtProgression.length,
+                      ...(progressionBoardMaxHeightCss != null
+                        ? {
+                            '--progression-board-max-height':
+                              progressionBoardMaxHeightCss,
+                          }
+                        : {}),
+                    } as React.CSSProperties
+                  }
+                >
                   {builtProgression.map((chordId, stepIndex) => {
                     const boardStartFret = startFretForFingering(
                       resolveChord(chordId),

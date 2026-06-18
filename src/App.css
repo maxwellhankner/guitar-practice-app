@@ -661,16 +661,67 @@
   min-width: 0;
   min-height: 0;
   height: 100%;
-  display: flex;
-  flex-direction: row;
+  display: grid;
   gap: clamp(0.25rem, 1.5vw, 0.625rem);
-  align-items: stretch;
+  align-content: stretch;
   justify-content: stretch;
 }
 
-.app-page__diagram--layout-vertical .app-page__diagram-stage--progression {
-  flex-direction: column;
+.app-page__diagram-stage--progression[data-arrangement='row'] {
+  grid-template-columns: repeat(var(--progression-step-count, 1), minmax(0, 1fr));
+  grid-template-rows: minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.app-page__diagram-stage--progression[data-arrangement='column'] {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: none;
+  grid-auto-rows: minmax(0, 1fr);
+  align-content: stretch;
+  overflow-x: hidden;
   overflow-y: auto;
+}
+
+.app-page__diagram-stage--progression[data-arrangement='column']
+  .diagram-progression-board {
+  height: 100%;
+  min-height: 0;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.app-page__diagram-stage--progression[data-arrangement='grid'] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: none;
+  grid-auto-rows: minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.app-page__diagram-stage--progression[data-arrangement='grid']:has(
+    .diagram-progression-board:only-child
+  ) {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.app-page__diagram-stage--progression[data-arrangement='grid']
+  .diagram-progression-board:last-child:nth-child(odd):not(:only-child) {
+  grid-column: 1 / -1;
+  max-width: 50%;
+  justify-self: center;
+}
+
+.app-page__diagram-stage--progression[data-arrangement='row']
+  .diagram-progression-board {
+  height: 100%;
+  min-height: 0;
+}
+
+.app-page__diagram-stage--progression[data-arrangement='grid']
+  .diagram-progression-board {
+  height: 100%;
+  min-height: 0;
+  max-height: none;
+  overflow: hidden;
 }
 
 .app-page--split .app-page__diagram-stage {
@@ -693,20 +744,15 @@
   align-self: stretch;
 }
 
-.app-page__diagram--layout-vertical .diagram-progression-board {
-  flex: 1 1 0;
-  width: 100%;
-  min-height: 0;
-}
-
 .diagram-progression-board {
-  flex: 1 1 0;
   min-width: 0;
-  height: 100%;
+  min-height: 0;
+  width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-height: 0;
+  justify-content: center;
+  overflow: hidden;
 }
 
 .diagram-chord-btn--display {
@@ -1583,39 +1629,60 @@
     }
 
     .app-page--split .app-page__diagram--layout-vertical .app-page__diagram-stage--progression {
-      flex-direction: column;
       overflow: hidden;
-      justify-content: stretch;
-      align-items: stretch;
       min-height: 0;
     }
 
-    .app-page--split .app-page__diagram--layout-vertical .diagram-progression-board {
-      flex: 1 1 0;
-      width: 100%;
-      min-width: 0;
-      min-height: 0;
-      height: auto;
-      justify-content: center;
-      align-items: stretch;
-      overflow: hidden;
-    }
-
-    .app-page--split .app-page__diagram--layout-horizontal .app-page__diagram-stage--progression {
-      flex-direction: row;
-      overflow: hidden;
-      justify-content: stretch;
-      align-items: stretch;
-      min-height: 0;
-    }
-
-    .app-page--split .app-page__diagram--layout-horizontal .diagram-progression-board {
-      flex: 1 1 0;
+    .app-page--split
+      .app-page__diagram--layout-vertical
+      .app-page__diagram-stage--progression[data-arrangement='row']
+      .diagram-progression-board,
+    .app-page--split
+      .app-page__diagram--layout-vertical
+      .app-page__diagram-stage--progression[data-arrangement='grid']
+      .diagram-progression-board {
       min-width: 0;
       min-height: 0;
       height: 100%;
       justify-content: center;
       align-items: stretch;
+      overflow: hidden;
+    }
+
+    .app-page--split
+      .app-page__diagram--layout-vertical
+      .app-page__diagram-stage--progression[data-arrangement='column']
+      .diagram-progression-board {
+      height: 100%;
+      overflow: hidden;
+    }
+
+    .app-page--split .app-page__diagram--layout-horizontal .app-page__diagram-stage--progression {
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    .app-page--split
+      .app-page__diagram--layout-horizontal
+      .app-page__diagram-stage--progression[data-arrangement='row']
+      .diagram-progression-board,
+    .app-page--split
+      .app-page__diagram--layout-horizontal
+      .app-page__diagram-stage--progression[data-arrangement='grid']
+      .diagram-progression-board {
+      min-width: 0;
+      min-height: 0;
+      height: 100%;
+      justify-content: center;
+      align-items: stretch;
+      overflow: hidden;
+    }
+
+    .app-page--split
+      .app-page__diagram--layout-horizontal
+      .app-page__diagram-stage--progression[data-arrangement='column']
+      .diagram-progression-board {
+      height: 100%;
       overflow: hidden;
     }
 
@@ -1633,7 +1700,7 @@
     .app-page--split .app-page__diagram--progression .app-page__diagram-stage--progression {
       flex: 1 1 auto;
       min-height: 0;
-      height: auto;
+      height: 100%;
     }
   }
 
@@ -1658,36 +1725,16 @@
   }
 
   .app-page__diagram-stage--progression {
-    align-items: stretch;
+    align-content: stretch;
   }
 
-  .app-page__diagram--layout-horizontal .app-page__diagram-stage--progression {
-    overflow-x: auto;
-    overflow-y: hidden;
-  }
-
-  .app-page__diagram--layout-vertical .app-page__diagram-stage--progression {
-    justify-content: flex-start;
-    overflow-x: hidden;
-    overflow-y: auto;
-  }
-
-  .app-page__diagram--layout-horizontal .diagram-progression-board {
-    flex: 1 1 0;
+  .diagram-progression-board {
     min-width: 0;
-    height: 100%;
+    min-height: 0;
+    width: 100%;
     justify-content: center;
     align-items: stretch;
     overflow: hidden;
-  }
-
-  .app-page__diagram--layout-vertical .diagram-progression-board {
-    flex: 0 0 auto;
-    width: 100%;
-    height: auto;
-    min-height: 0;
-    justify-content: center;
-    align-items: stretch;
   }
 
   .app-page__divider {

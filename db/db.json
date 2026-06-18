@@ -159,12 +159,12 @@
       ],
       "filterPlayableOnly": false,
       "displayNotes": false,
-      "fretCount": 6,
+      "fretCount": 5,
       "scaleSelection": null,
-      "diagramLayout": "horizontal",
-      "horizontalSplitRatio": 0.6606271864908504,
-      "verticalSplitRatio": 0.6093366093366094,
-      "fretboardOrientation": "landscape",
+      "diagramLayout": "vertical",
+      "horizontalSplitRatio": 0.5,
+      "verticalSplitRatio": 0.598089599609375,
+      "fretboardOrientation": "portrait",
       "panelsSwapped": false,
       "diagramHidden": false,
       "accentColorId": "gold",
@@ -211,9 +211,14 @@
         "F",
         "Fm"
       ],
-      "selectedKey": null,
+      "selectedKey": "C",
       "selectedChord": null,
-      "builtProgression": null
+      "builtProgression": [
+        "C",
+        "G",
+        "Am",
+        "F"
+      ]
     }
   ],
   "$schema": "./node_modules/json-server/schema.json"

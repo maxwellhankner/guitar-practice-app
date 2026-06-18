@@ -110,6 +110,90 @@
   width: auto;
 }
 
+/* Column + horizontal frets: fill row, cap height when the panel is wide. */
+:global(.app-page__diagram-stage--progression[data-arrangement='column'])
+  .wrapFit:not(.wrapPortrait) {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  height: 100%;
+  flex: 1 1 auto;
+  align-self: stretch;
+  min-height: 0;
+  min-width: 0;
+}
+
+:global(.app-page__diagram-stage--progression[data-arrangement='column'])
+  .wrapFit:not(.wrapPortrait)
+  .svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+/* Grid + horizontal frets: fit inside cell with height cap. */
+:global(.app-page__diagram-stage--progression[data-arrangement='grid'])
+  .wrapFit:not(.wrapPortrait) {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  height: 100%;
+  max-height: var(--progression-board-max-height, 25%);
+  flex: 0 0 auto;
+  align-self: center;
+  min-height: 0;
+  min-width: 0;
+}
+
+:global(.app-page__diagram-stage--progression[data-arrangement='grid'])
+  .wrapFit:not(.wrapPortrait)
+  .svg {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+}
+
+:global(.app-page__diagram-stage--progression[data-arrangement='column'])
+  .wrapPortrait.wrapFit {
+  width: auto;
+  height: auto;
+  flex: 0 0 auto;
+  align-self: center;
+  max-width: 100%;
+}
+
+:global(.app-page__diagram-stage--progression[data-arrangement='column'])
+  .wrapPortrait.wrapFit
+  .svg {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+}
+
+/* Progression grid + vertical frets: scale to fit each cell. */
+:global(.app-page__diagram-stage--progression[data-arrangement='grid']) .wrapPortrait.wrapFit {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  min-height: 0;
+  flex: 1 1 auto;
+  align-self: stretch;
+}
+
+:global(.app-page__diagram-stage--progression[data-arrangement='grid'])
+  .wrapPortrait.wrapFit
+  .svg {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+}
+
 .svg {
   display: block;
   height: 100%;
@@ -283,10 +367,9 @@
     max-height: 100%;
   }
 
-  /* Progression row: size each board from column width. */
-  :global(.app-page__diagram--layout-horizontal)
-    :global(.app-page__diagram-stage--progression)
-    .wrapFit {
+  /* Progression row on mobile: width-driven horizontal frets. */
+  :global(.app-page__diagram-stage--progression[data-arrangement='row'])
+    .wrapFit:not(.wrapPortrait) {
     width: 100%;
     height: auto;
     max-width: 100%;
@@ -297,58 +380,39 @@
     align-self: center;
   }
 
-  :global(.app-page__diagram--layout-horizontal)
-    :global(.app-page__diagram-stage--progression)
-    .wrapFit
-    .svg {
-    width: 100%;
-    height: auto;
-    max-width: 100%;
-    max-height: 100%;
-  }
-
-  /* Progression column: intrinsic height per board, panel scrolls. */
-  :global(.app-page__diagram--layout-vertical)
-    :global(.app-page__diagram-stage--progression)
-    .wrapPortrait.wrapFit {
-    width: auto;
-    height: auto;
-    max-width: 100%;
-    max-height: 100%;
-    flex: 0 0 auto;
-    min-width: 0;
-    min-height: 0;
-    align-self: center;
-  }
-
-  :global(.app-page__diagram--layout-vertical)
-    :global(.app-page__diagram-stage--progression)
-    .wrapPortrait.wrapFit
-    .svg {
-    width: auto;
-    height: auto;
-    max-width: 100%;
-    max-height: 100%;
-  }
-
-  :global(.app-page__diagram--layout-vertical)
-    :global(.app-page__diagram-stage--progression)
-    .wrapFit:not(.wrapPortrait) {
-    width: 100%;
-    height: auto;
-    max-width: 100%;
-    max-height: 100%;
-    flex: 0 0 auto;
-    min-width: 0;
-    min-height: 0;
-  }
-
-  :global(.app-page__diagram--layout-vertical)
-    :global(.app-page__diagram-stage--progression)
+  :global(.app-page__diagram-stage--progression[data-arrangement='row'])
     .wrapFit:not(.wrapPortrait)
     .svg {
     width: 100%;
     height: auto;
+    max-width: 100%;
+    max-height: 100%;
+  }
+
+  :global(.app-page__diagram-stage--progression[data-arrangement='column'])
+    .wrapPortrait.wrapFit,
+  :global(.app-page__diagram-stage--progression[data-arrangement='grid'])
+    .wrapPortrait.wrapFit {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    height: 100%;
+    max-height: 100%;
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+    align-self: stretch;
+  }
+
+  :global(.app-page__diagram-stage--progression[data-arrangement='column'])
+    .wrapPortrait.wrapFit
+    .svg,
+  :global(.app-page__diagram-stage--progression[data-arrangement='grid'])
+    .wrapPortrait.wrapFit
+    .svg {
+    display: block;
+    height: 100%;
+    width: auto;
     max-width: 100%;
     max-height: 100%;
   }
@@ -360,12 +424,7 @@
 
   @media (orientation: landscape) {
     :global(.app-page--split)
-      :global(.app-page__diagram--layout-vertical)
-      :global(.app-page__diagram-stage--progression)
-      .wrapFit,
-    :global(.app-page--split)
-      :global(.app-page__diagram--layout-horizontal)
-      :global(.app-page__diagram-stage--progression)
+      :global(.app-page__diagram-stage--progression[data-arrangement='row'])
       .wrapFit {
       width: 100%;
       height: 100%;
@@ -378,12 +437,7 @@
     }
 
     :global(.app-page--split)
-      :global(.app-page__diagram--layout-vertical)
-      :global(.app-page__diagram-stage--progression)
-      .wrapPortrait.wrapFit,
-    :global(.app-page--split)
-      :global(.app-page__diagram--layout-horizontal)
-      :global(.app-page__diagram-stage--progression)
+      :global(.app-page__diagram-stage--progression[data-arrangement='row'])
       .wrapPortrait.wrapFit {
       width: 100%;
       height: 100%;
@@ -396,13 +450,7 @@
     }
 
     :global(.app-page--split)
-      :global(.app-page__diagram--layout-vertical)
-      :global(.app-page__diagram-stage--progression)
-      .wrapFit
-      .svg,
-    :global(.app-page--split)
-      :global(.app-page__diagram--layout-horizontal)
-      :global(.app-page__diagram-stage--progression)
+      :global(.app-page__diagram-stage--progression[data-arrangement='row'])
       .wrapFit
       .svg {
       width: auto;
@@ -412,8 +460,7 @@
     }
 
     :global(.app-page--split)
-      :global(.app-page__diagram--layout-vertical)
-      :global(.app-page__diagram-stage--progression)
+      :global(.app-page__diagram-stage--progression[data-arrangement='row'])
       .wrapPortrait.wrapFit
       .svg {
       width: auto;
