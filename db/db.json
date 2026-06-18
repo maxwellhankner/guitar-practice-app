@@ -2,7 +2,7 @@
   "userSettings": [
     {
       "id": "default",
-      "settingsVersion": 2,
+      "settingsVersion": 3,
       "disabledChords": [
         "Adim",
         "Adim7",
@@ -162,9 +162,9 @@
       "fretCount": 6,
       "scaleSelection": null,
       "diagramLayout": "horizontal",
-      "horizontalSplitRatio": 0.6985333692142088,
-      "verticalSplitRatio": 0.6422505696614583,
-      "fretboardOrientation": "landscape",
+      "horizontalSplitRatio": 0.6273499072267664,
+      "verticalSplitRatio": 0.6093366093366094,
+      "fretboardOrientation": "portrait",
       "panelsSwapped": false,
       "diagramHidden": false,
       "accentColorId": "gold",
@@ -179,7 +179,6 @@
         "Am7",
         "Aadd9",
         "A6",
-        "C",
         "Csus2",
         "C7",
         "Cmaj7",
@@ -208,8 +207,13 @@
         "Gadd9",
         "G6",
         "Gsus2",
-        "G"
-      ]
+        "G",
+        "Fm",
+        "C"
+      ],
+      "selectedKey": null,
+      "selectedChord": null,
+      "builtProgression": null
     }
   ],
   "$schema": "./node_modules/json-server/schema.json"

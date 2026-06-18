@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { ChordPresetId, ScaleSelection } from '../components/Fretboard'
+import type { ChordPresetId, KeyId, ScaleSelection } from '../components/Fretboard'
 import {
   DEFAULT_HORIZONTAL_SPLIT,
   DEFAULT_VERTICAL_SPLIT,
@@ -17,6 +17,7 @@ import {
   setFretboardOrientation,
   setPanelsSwapped,
   setDiagramHidden,
+  setPracticeSelection,
   type AccentColorId,
   type DiagramLayout,
   type FretboardOrientation,
@@ -24,6 +25,7 @@ import {
 } from '../db/userSettingsRepository'
 import { DEFAULT_ACCENT_COLOR_ID } from '../theme/accentColors'
 import { useAccentTheme } from './useAccentTheme'
+import { useDevSettingsSync } from './useDevSettingsSync'
 
 export function useUserSettings() {
   const [settings, setSettings] = useState<UserSettings | null>(null)
@@ -39,6 +41,8 @@ export function useUserSettings() {
       cancelled = true
     }
   }, [])
+
+  useDevSettingsSync(setSettings)
 
   const knownChords = useMemo(
     () => new Set(settings?.knownChords ?? []),
@@ -132,6 +136,20 @@ export function useUserSettings() {
     setSettings(next)
   }, [])
 
+  const setPracticeSelectionState = useCallback(
+    async (partial: {
+      selectedKey?: KeyId | null
+      selectedChord?: ChordPresetId | null
+      builtProgression?: ChordPresetId[] | null
+      scaleSelection?: ScaleSelection
+    }) => {
+      setSettings((prev) => (prev != null ? { ...prev, ...partial } : prev))
+      const next = await setPracticeSelection(partial)
+      setSettings(next)
+    },
+    [],
+  )
+
   useAccentTheme(settings?.accentColorId)
 
   return {
@@ -149,6 +167,9 @@ export function useUserSettings() {
     panelsSwapped: settings?.panelsSwapped ?? false,
     diagramHidden: settings?.diagramHidden ?? false,
     accentColorId: settings?.accentColorId ?? DEFAULT_ACCENT_COLOR_ID,
+    selectedKey: settings?.selectedKey ?? null,
+    selectedChord: settings?.selectedChord ?? null,
+    builtProgression: settings?.builtProgression ?? null,
     setChordKnown: setChordKnownState,
     setFilterPlayableOnly: setFilterPlayableOnlyState,
     setDisplayNotes: setDisplayNotesState,
@@ -161,5 +182,6 @@ export function useUserSettings() {
     setPanelsSwapped: setPanelsSwappedState,
     setDiagramHidden: setDiagramHiddenState,
     setAccentColorId: setAccentColorIdState,
+    setPracticeSelection: setPracticeSelectionState,
   }
 }

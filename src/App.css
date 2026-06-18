@@ -1,5 +1,8 @@
 .app-shell {
-  height: 100dvh;
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
+  max-width: 100%;
   overflow: hidden;
 }
 
@@ -82,7 +85,7 @@
 }
 
 .app-page--diagram-hidden {
-  grid-template-rows: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
   grid-template-columns: minmax(0, 1fr);
 }
 
@@ -93,6 +96,30 @@
   grid-column: 1;
   min-height: 0;
   overflow: hidden;
+  padding-bottom: 0;
+}
+
+.app-page--diagram-hidden .app-page__divider {
+  grid-row: 2;
+  grid-column: 1;
+}
+
+.app-page--diagram-hidden.app-page--split {
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.app-page--diagram-hidden.app-page--split .app-page__options {
+  grid-row: 1;
+  grid-column: 1;
+}
+
+.app-page--diagram-hidden.app-page--split .app-page__divider {
+  grid-row: 1;
+  grid-column: 2;
+  align-self: stretch;
+  height: auto;
+  min-height: 0;
 }
 
 .app-page__title-row {
@@ -138,6 +165,9 @@
 .app-page--diagram-hidden .app-page__options .app-page__inner {
   flex: 1 1 auto;
   min-height: 0;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
   overflow-y: auto;
 }
 
@@ -147,34 +177,69 @@
   flex-shrink: 0;
   touch-action: none;
   overflow: visible;
-  background: transparent;
+  box-sizing: border-box;
   --divider-btn-size: 2.5rem;
-  --divider-btn-gap: 0.375rem;
-  --divider-btn-step: calc(var(--divider-btn-size) + var(--divider-btn-gap));
+  --divider-btn-gap: 0.5rem;
+  --divider-bar-thickness: calc(var(--divider-btn-size) + 0.625rem);
+  --divider-btn-bg: var(--page-bg);
   --divider-fret-font: 1.125rem;
   --divider-icon-size: 1.3125rem;
 }
 
 .app-page__divider--horizontal {
-  height: 0;
+  width: 100%;
+  height: var(--divider-bar-thickness);
+  min-height: var(--divider-bar-thickness);
+  background: var(--menu-bar-bg);
+  border: none;
   border-top: 1px solid var(--card-border);
+  border-bottom: 1px solid var(--card-border);
   cursor: ns-resize;
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: center;
+  justify-content: center;
+  gap: var(--divider-btn-gap);
+}
+
+.app-page__divider--horizontal.app-page__divider--docked {
+  border: none;
+  border-top: 1px solid var(--card-border);
 }
 
 .app-page__divider--vertical {
-  width: 0;
+  align-self: stretch;
+  width: var(--divider-bar-thickness);
+  min-width: var(--divider-bar-thickness);
+  height: 100%;
+  background: var(--menu-bar-bg);
   border-left: 1px solid var(--card-border);
+  border-right: 1px solid var(--card-border);
   cursor: ew-resize;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--divider-btn-gap);
 }
 
-.app-page__divider-handle,
+.app-page__divider--docked {
+  cursor: default;
+  touch-action: auto;
+}
+
+@media (prefers-color-scheme: dark) {
+  .app-page__divider {
+    --divider-btn-bg: var(--card-bg);
+  }
+}
+
 .app-page__divider-layout-toggle,
 .app-page__divider-orientation-toggle,
 .app-page__divider-swap-toggle,
 .app-page__divider-diagram-toggle,
 .app-page__divider-known-toggle,
 .app-page__divider-notes-toggle {
-  position: absolute;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -183,43 +248,19 @@
   padding: 0;
   border: 1px solid var(--card-border);
   border-radius: 50%;
-  background: var(--card-bg);
+  background: var(--divider-btn-bg);
   color: var(--muted);
+  flex-shrink: 0;
 }
 
-.app-page__divider-handle {
-  z-index: 1;
-  appearance: none;
-  -webkit-appearance: none;
-  transition:
-    color 0.12s ease,
-    background 0.12s ease,
-    border-color 0.12s ease,
-    box-shadow 0.12s ease;
+.app-page__divider > .app-tooltip-anchor,
+.app-page__divider > .app-page__divider-frets,
+.app-page__divider > .app-page__divider-accent {
+  position: static;
+  translate: none;
+  flex-shrink: 0;
 }
 
-.app-page__divider--horizontal .app-page__divider-handle {
-  top: 50%;
-  right: calc(0.5rem + 8 * var(--divider-btn-step));
-  left: auto;
-  translate: 0 -50%;
-  cursor: ns-resize;
-}
-
-.app-page__divider--vertical .app-page__divider-handle {
-  top: calc(0.5rem + 8 * var(--divider-btn-step));
-  bottom: auto;
-  left: 50%;
-  right: auto;
-  translate: -50% 0;
-  cursor: ew-resize;
-}
-
-.app-page__divider-handle .app-page__divider-icon {
-  pointer-events: none;
-}
-
-.app-page__divider-handle svg,
 .app-page__divider-layout-toggle svg,
 .app-page__divider-orientation-toggle svg,
 .app-page__divider-swap-toggle svg,
@@ -253,8 +294,7 @@
   .app-page__divider-swap-toggle:hover,
   .app-page__divider-diagram-toggle:hover,
   .app-page__divider-known-toggle:hover,
-  .app-page__divider-notes-toggle:hover,
-  .app-page__divider-handle:hover {
+  .app-page__divider-notes-toggle:hover {
     color: var(--heading);
     background: var(--page-bg);
   }
@@ -265,8 +305,7 @@
 .app-page__divider-swap-toggle:focus-visible,
 .app-page__divider-diagram-toggle:focus-visible,
 .app-page__divider-known-toggle:focus-visible,
-.app-page__divider-notes-toggle:focus-visible,
-.app-page__divider-handle:focus-visible {
+.app-page__divider-notes-toggle:focus-visible {
   outline: none;
   border-color: var(--accent-line);
 }
@@ -313,7 +352,7 @@
 }
 
 .app-page__divider-frets {
-  position: absolute;
+  position: relative;
   z-index: 2;
 }
 
@@ -326,7 +365,7 @@
   height: var(--divider-btn-size);
   padding: 0;
   border: 1px solid var(--card-border);
-  background: var(--card-bg);
+  background: var(--divider-btn-bg);
   color: var(--muted);
   appearance: none;
   -webkit-appearance: none;
@@ -415,7 +454,7 @@
 }
 
 .app-page__divider-accent {
-  position: absolute;
+  position: relative;
   z-index: 2;
 }
 
@@ -426,7 +465,7 @@
   justify-content: center;
   padding: 0;
   border: 1px solid var(--card-border);
-  background: var(--card-bg);
+  background: var(--divider-btn-bg);
   appearance: none;
   -webkit-appearance: none;
   cursor: pointer;
@@ -518,136 +557,11 @@
   }
 }
 
-.app-page__divider--horizontal .app-page__divider-layout-toggle {
-  top: 50%;
-  right: calc(0.5rem + 0 * var(--divider-btn-step));
-  left: auto;
-  translate: 0 -50%;
-}
-
-.app-page__divider--horizontal .app-page__divider-swap-toggle {
-  top: 50%;
-  right: calc(0.5rem + 1 * var(--divider-btn-step));
-  left: auto;
-  translate: 0 -50%;
-}
-
-.app-page__divider--horizontal .app-page__divider-diagram-toggle {
-  top: 50%;
-  right: calc(0.5rem + 2 * var(--divider-btn-step));
-  left: auto;
-  translate: 0 -50%;
-}
-
-.app-page__divider--horizontal .app-page__divider-orientation-toggle {
-  top: 50%;
-  right: calc(0.5rem + 3 * var(--divider-btn-step));
-  left: auto;
-  translate: 0 -50%;
-}
-
-.app-page__divider--horizontal .app-page__divider-frets {
-  top: 50%;
-  right: calc(0.5rem + 4 * var(--divider-btn-step));
-  left: auto;
-  translate: 0 -50%;
-}
-
-.app-page__divider--horizontal .app-page__divider-accent {
-  top: 50%;
-  right: calc(0.5rem + 5 * var(--divider-btn-step));
-  left: auto;
-  translate: 0 -50%;
-}
-
-.app-page__divider--horizontal .app-page__divider-known-toggle {
-  top: 50%;
-  right: calc(0.5rem + 6 * var(--divider-btn-step));
-  left: auto;
-  translate: 0 -50%;
-}
-
-.app-page__divider--horizontal .app-page__divider-notes-toggle {
-  top: 50%;
-  right: calc(0.5rem + 7 * var(--divider-btn-step));
-  left: auto;
-  translate: 0 -50%;
-}
-
-.app-page__divider--vertical .app-page__divider-layout-toggle {
-  top: calc(0.5rem + 0 * var(--divider-btn-step));
-  bottom: auto;
-  left: 50%;
-  right: auto;
-  translate: -50% 0;
-}
-
-.app-page__divider--vertical .app-page__divider-swap-toggle {
-  top: calc(0.5rem + 1 * var(--divider-btn-step));
-  bottom: auto;
-  left: 50%;
-  right: auto;
-  translate: -50% 0;
-}
-
-.app-page__divider--vertical .app-page__divider-diagram-toggle {
-  top: calc(0.5rem + 2 * var(--divider-btn-step));
-  bottom: auto;
-  left: 50%;
-  right: auto;
-  translate: -50% 0;
-}
-
-.app-page__divider--vertical .app-page__divider-orientation-toggle {
-  top: calc(0.5rem + 3 * var(--divider-btn-step));
-  bottom: auto;
-  left: 50%;
-  right: auto;
-  translate: -50% 0;
-}
-
-.app-page__divider--vertical .app-page__divider-frets {
-  top: calc(0.5rem + 4 * var(--divider-btn-step));
-  bottom: auto;
-  left: 50%;
-  right: auto;
-  translate: -50% 0;
-}
-
-.app-page__divider--vertical .app-page__divider-accent {
-  top: calc(0.5rem + 5 * var(--divider-btn-step));
-  bottom: auto;
-  left: 50%;
-  right: auto;
-  translate: -50% 0;
-}
-
-.app-page__divider--vertical .app-page__divider-known-toggle {
-  top: calc(0.5rem + 6 * var(--divider-btn-step));
-  bottom: auto;
-  left: 50%;
-  right: auto;
-  translate: -50% 0;
-}
-
-.app-page__divider--vertical .app-page__divider-notes-toggle {
-  top: calc(0.5rem + 7 * var(--divider-btn-step));
-  bottom: auto;
-  left: 50%;
-  right: auto;
-  translate: -50% 0;
-}
-
-.app-page__divider-icon {
-  display: block;
-}
-
-.app-page__divider-icon--vertical {
-  rotate: 90deg;
-}
-
 .app-page__options {
   min-height: 0;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: none;
@@ -793,6 +707,8 @@
 
 .app-page__inner {
   width: var(--app-content-width);
+  max-width: 100%;
+  min-width: 0;
   margin-inline: auto;
 }
 
@@ -815,12 +731,16 @@
   display: flex;
   flex-direction: column;
   gap: 0.875rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .diagram-field {
   display: flex;
   flex-direction: column;
   gap: 0.625rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .diagram-notes-frets {
@@ -936,13 +856,27 @@
 
 .diagram-fret-grid {
   display: grid;
-  grid-template-columns: repeat(var(--fret-grid-cols), 1fr);
+  grid-template-columns: repeat(var(--fret-grid-cols), minmax(0, 1fr));
   gap: 0.375rem;
+}
+
+.diagram-select-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.diagram-select-stack-divider {
+  display: none;
+  margin: 0;
+  border: none;
+  border-top: 1px solid var(--card-border);
+  width: 100%;
 }
 
 .diagram-key-select-grid {
   display: grid;
-  grid-template-columns: repeat(var(--key-grid-cols), 1fr);
+  grid-template-columns: repeat(var(--key-grid-cols), minmax(0, 1fr));
   gap: 0.375rem;
 }
 
@@ -953,7 +887,7 @@
 
 .diagram-scale-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.375rem;
 }
 
@@ -1270,7 +1204,7 @@
 
 .diagram-root-picker {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.25rem;
   margin-top: 0.35rem;
   padding-top: 0.35rem;
@@ -1289,14 +1223,14 @@
 
 .diagram-chord-select-grid {
   display: grid;
-  grid-template-columns: repeat(var(--chord-select-cols), 1fr);
+  grid-template-columns: repeat(var(--chord-select-cols), minmax(0, 1fr));
   gap: 0.375rem;
   overflow: visible;
 }
 
 .diagram-chord-select-grid--cells {
   display: grid;
-  grid-template-columns: repeat(var(--chord-select-cols), 1fr);
+  grid-template-columns: repeat(var(--chord-select-cols), minmax(0, 1fr));
   gap: 0.375rem;
   overflow: visible;
 }
@@ -1553,17 +1487,199 @@
 
   .app-page__options {
     padding: 1rem 1rem 1.5rem;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .app-page--diagram-hidden .app-page__options {
+    padding-bottom: 0;
   }
 
   @media (orientation: landscape) {
+    body,
+    #root,
+    .app-shell {
+      height: 100svh;
+      max-height: 100svh;
+      min-height: 0;
+    }
+
+    .app-page--split:not(.app-page--diagram-hidden) {
+      grid-template-rows: minmax(0, 1fr) !important;
+      min-height: 0;
+      height: 100%;
+    }
+
+    .app-page--split:not(.app-page--diagram-hidden) .app-page__options,
+    .app-page--split:not(.app-page--diagram-hidden) .app-page__divider,
+    .app-page--split:not(.app-page--diagram-hidden) .app-page__diagram {
+      grid-row: 1 !important;
+      min-height: 0;
+    }
+
+    .app-page--split:not(.app-page--diagram-hidden) .app-page__divider--vertical {
+      width: var(--divider-bar-thickness);
+      min-width: var(--divider-bar-thickness);
+      height: auto;
+      min-height: 0;
+      align-self: stretch;
+      flex-direction: column;
+      border-top: none;
+      border-bottom: none;
+      border-left: 1px solid var(--card-border);
+      border-right: 1px solid var(--card-border);
+      cursor: ew-resize;
+    }
+
     .app-page__options {
       padding-left: 2.25rem;
       padding-right: 2.25rem;
+    }
+
+    .app-page--diagram-hidden.app-page--split {
+      grid-template-rows: minmax(0, 1fr) !important;
+      grid-template-columns: minmax(0, 1fr) auto !important;
+      min-height: 0;
+      height: 100%;
+    }
+
+    .app-page--diagram-hidden.app-page--split .app-page__options {
+      grid-row: 1 !important;
+      grid-column: 1 !important;
+      min-height: 0;
+    }
+
+    .app-page--diagram-hidden.app-page--split .app-page__divider {
+      grid-row: 1 !important;
+      grid-column: 2 !important;
+      align-self: stretch;
+      min-height: 0;
+    }
+
+    .app-page--diagram-hidden.app-page--split .app-page__divider--docked {
+      padding-bottom: 0;
+      min-height: 0;
+      height: auto;
+      background: var(--menu-bar-bg);
+    }
+
+    .app-page--diagram-hidden.app-page--split .app-page__divider--vertical {
+      width: var(--divider-bar-thickness);
+      min-width: var(--divider-bar-thickness);
+      flex-direction: column;
+      border-top: none;
+      border-bottom: none;
+      border-left: 1px solid var(--card-border);
+      border-right: 1px solid var(--card-border);
+      cursor: default;
+    }
+
+    .app-page--split .app-page__diagram--layout-vertical .app-page__diagram-stage--progression {
+      flex-direction: column;
+      overflow: hidden;
+      justify-content: stretch;
+      align-items: stretch;
+      min-height: 0;
+    }
+
+    .app-page--split .app-page__diagram--layout-vertical .diagram-progression-board {
+      flex: 1 1 0;
+      width: 100%;
+      min-width: 0;
+      min-height: 0;
+      height: auto;
+      justify-content: center;
+      align-items: stretch;
+      overflow: hidden;
+    }
+
+    .app-page--split .app-page__diagram--layout-horizontal .app-page__diagram-stage--progression {
+      flex-direction: row;
+      overflow: hidden;
+      justify-content: stretch;
+      align-items: stretch;
+      min-height: 0;
+    }
+
+    .app-page--split .app-page__diagram--layout-horizontal .diagram-progression-board {
+      flex: 1 1 0;
+      min-width: 0;
+      min-height: 0;
+      height: 100%;
+      justify-content: center;
+      align-items: stretch;
+      overflow: hidden;
+    }
+
+    .app-page--split .app-page__diagram--progression {
+      overflow: hidden;
+    }
+
+    .app-page--split .app-page__diagram--progression .app-page__diagram-wrap {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .app-page--split .app-page__diagram--progression .app-page__diagram-stage--progression {
+      flex: 1 1 auto;
+      min-height: 0;
+      height: auto;
     }
   }
 
   .app-page__diagram {
     padding: 0.75rem 0.75rem 1rem;
+    align-items: stretch;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .app-page__diagram-wrap,
+  .app-page__diagram-stage {
+    align-self: stretch;
+    min-height: 0;
+  }
+
+  .app-page__diagram-stage--single,
+  .app-page__diagram-stage--progression {
+    flex: 1 1 auto;
+    width: 100%;
+    min-height: 0;
+  }
+
+  .app-page__diagram-stage--progression {
+    align-items: stretch;
+  }
+
+  .app-page__diagram--layout-horizontal .app-page__diagram-stage--progression {
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .app-page__diagram--layout-vertical .app-page__diagram-stage--progression {
+    justify-content: flex-start;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .app-page__diagram--layout-horizontal .diagram-progression-board {
+    flex: 1 1 0;
+    min-width: 0;
+    height: 100%;
+    justify-content: center;
+    align-items: stretch;
+    overflow: hidden;
+  }
+
+  .app-page__diagram--layout-vertical .diagram-progression-board {
+    flex: 0 0 auto;
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    justify-content: center;
+    align-items: stretch;
   }
 
   .app-page__title-row {
@@ -1578,95 +1694,52 @@
 
   .app-page__divider {
     --divider-btn-size: 2.125rem;
-    --divider-btn-gap: 0.25rem;
+    --divider-btn-gap: 0.375rem;
     --divider-fret-font: 1rem;
     --divider-icon-size: 1.125rem;
-    --divider-btn-bg: var(--page-bg);
-  }
-
-  .app-page__divider-handle,
-  .app-page__divider-layout-toggle,
-  .app-page__divider-orientation-toggle,
-  .app-page__divider-swap-toggle,
-  .app-page__divider-diagram-toggle,
-  .app-page__divider-known-toggle,
-  .app-page__divider-notes-toggle,
-  .app-page__divider-frets-toggle,
-  .app-page__divider-accent-toggle {
-    background: var(--divider-btn-bg);
   }
 
   .app-page__divider-layout-toggle {
     display: none;
   }
 
-  /* Layout toggle hidden on mobile — shift remaining toolbar buttons into its slot. */
-  .app-page__divider--horizontal .app-page__divider-swap-toggle {
-    right: calc(0.5rem + 0 * var(--divider-btn-step));
+  .app-page__divider > .app-tooltip-anchor:has(.app-page__divider-layout-toggle) {
+    display: none;
   }
 
-  .app-page__divider--horizontal .app-page__divider-diagram-toggle {
-    right: calc(0.5rem + 1 * var(--divider-btn-step));
-  }
-
-  .app-page__divider--horizontal .app-page__divider-orientation-toggle {
-    right: calc(0.5rem + 2 * var(--divider-btn-step));
-  }
-
-  .app-page__divider--horizontal .app-page__divider-frets {
-    right: calc(0.5rem + 3 * var(--divider-btn-step));
-  }
-
-  .app-page__divider--horizontal .app-page__divider-accent {
-    right: calc(0.5rem + 4 * var(--divider-btn-step));
-  }
-
-  .app-page__divider--horizontal .app-page__divider-known-toggle {
-    right: calc(0.5rem + 5 * var(--divider-btn-step));
-  }
-
-  .app-page__divider--horizontal .app-page__divider-notes-toggle {
-    right: calc(0.5rem + 6 * var(--divider-btn-step));
-  }
-
-  .app-page__divider--horizontal .app-page__divider-handle {
-    right: calc(0.5rem + 7 * var(--divider-btn-step));
-  }
-
-  .app-page__divider--vertical .app-page__divider-swap-toggle {
-    top: calc(0.5rem + 0 * var(--divider-btn-step));
-  }
-
-  .app-page__divider--vertical .app-page__divider-diagram-toggle {
-    top: calc(0.5rem + 1 * var(--divider-btn-step));
-  }
-
-  .app-page__divider--vertical .app-page__divider-orientation-toggle {
-    top: calc(0.5rem + 2 * var(--divider-btn-step));
-  }
-
-  .app-page__divider--vertical .app-page__divider-frets {
-    top: calc(0.5rem + 3 * var(--divider-btn-step));
-  }
-
-  .app-page__divider--vertical .app-page__divider-accent {
-    top: calc(0.5rem + 4 * var(--divider-btn-step));
-  }
-
-  .app-page__divider--vertical .app-page__divider-known-toggle {
-    top: calc(0.5rem + 5 * var(--divider-btn-step));
-  }
-
-  .app-page__divider--vertical .app-page__divider-notes-toggle {
-    top: calc(0.5rem + 6 * var(--divider-btn-step));
-  }
-
-  .app-page__divider--vertical .app-page__divider-handle {
-    top: calc(0.5rem + 7 * var(--divider-btn-step));
+  .app-page--diagram-hidden .app-page__divider--docked.app-page__divider--horizontal {
+    --divider-docked-bottom-inset: max(2rem, env(safe-area-inset-bottom, 0px));
+    height: auto;
+    min-height: calc(
+      var(--divider-bar-thickness) + var(--divider-docked-bottom-inset)
+    );
+    padding-bottom: var(--divider-docked-bottom-inset);
   }
 
   /* Stacked panels in portrait; landscape uses side-by-side via JS layout. */
   @media (orientation: portrait) {
+  body {
+    padding-bottom: 0;
+  }
+
+  .app-page__diagram {
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .app-page--panels-swapped:not(.app-page--diagram-hidden) .app-page__diagram {
+    padding-bottom: 1rem;
+  }
+
+  .app-page--panels-swapped:not(.app-page--diagram-hidden) .app-page__options {
+    padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .app-page--diagram-hidden .app-page__divider--docked.app-page__divider--horizontal {
+    background:
+      var(--card-bg) bottom / 100% var(--divider-docked-bottom-inset) no-repeat,
+      var(--menu-bar-bg);
+  }
+
   .app-page--split {
     grid-template-columns: minmax(0, 1fr) !important;
     grid-template-rows: minmax(0, 44%) auto minmax(0, 56%) !important;
@@ -1696,76 +1769,17 @@
   }
 
   .app-page--split .app-page__divider--vertical {
-    width: auto;
-    height: 0;
-    border-left: none;
+    width: 100%;
+    min-width: 0;
+    height: var(--divider-bar-thickness);
+    min-height: var(--divider-bar-thickness);
+    border: none;
     border-top: 1px solid var(--card-border);
+    border-bottom: 1px solid var(--card-border);
     cursor: ns-resize;
-  }
-
-  .app-page--split .app-page__divider--vertical .app-page__divider-swap-toggle {
-    top: 50%;
-    right: calc(0.5rem + 0 * var(--divider-btn-step));
-    left: auto;
-    bottom: auto;
-    translate: 0 -50%;
-  }
-
-  .app-page--split .app-page__divider--vertical .app-page__divider-diagram-toggle {
-    top: 50%;
-    right: calc(0.5rem + 1 * var(--divider-btn-step));
-    left: auto;
-    bottom: auto;
-    translate: 0 -50%;
-  }
-
-  .app-page--split .app-page__divider--vertical .app-page__divider-orientation-toggle {
-    top: 50%;
-    right: calc(0.5rem + 2 * var(--divider-btn-step));
-    left: auto;
-    bottom: auto;
-    translate: 0 -50%;
-  }
-
-  .app-page--split .app-page__divider--vertical .app-page__divider-frets {
-    top: 50%;
-    right: calc(0.5rem + 3 * var(--divider-btn-step));
-    left: auto;
-    bottom: auto;
-    translate: 0 -50%;
-  }
-
-  .app-page--split .app-page__divider--vertical .app-page__divider-accent {
-    top: 50%;
-    right: calc(0.5rem + 4 * var(--divider-btn-step));
-    left: auto;
-    bottom: auto;
-    translate: 0 -50%;
-  }
-
-  .app-page--split .app-page__divider--vertical .app-page__divider-known-toggle {
-    top: 50%;
-    right: calc(0.5rem + 5 * var(--divider-btn-step));
-    left: auto;
-    bottom: auto;
-    translate: 0 -50%;
-  }
-
-  .app-page--split .app-page__divider--vertical .app-page__divider-notes-toggle {
-    top: 50%;
-    right: calc(0.5rem + 6 * var(--divider-btn-step));
-    left: auto;
-    bottom: auto;
-    translate: 0 -50%;
-  }
-
-  .app-page--split .app-page__divider--vertical .app-page__divider-handle {
-    top: 50%;
-    right: calc(0.5rem + 7 * var(--divider-btn-step));
-    left: auto;
-    bottom: auto;
-    translate: 0 -50%;
-    cursor: ns-resize;
+    flex-direction: row-reverse;
+    align-items: center;
+    justify-content: center;
   }
   }
 
@@ -1773,15 +1787,24 @@
     grid-column: span 1;
   }
 
-  .diagram-chords-build__progression-steps {
-    grid-template-columns: repeat(
-      var(--progression-step-count, 1),
-      minmax(2.75rem, 1fr)
-    );
+  .diagram-chords-build__progression-steps-scroll {
+    width: 100%;
+    min-width: 0;
     overflow-x: auto;
     overscroll-behavior-x: contain;
     padding-bottom: 0.125rem;
     -webkit-overflow-scrolling: touch;
+  }
+
+  .diagram-chords-build__progression-steps {
+    width: max(
+      100%,
+      calc(var(--progression-step-count, 1) / 4 * 100%)
+    );
+    grid-template-columns: repeat(
+      var(--progression-step-count, 1),
+      minmax(0, 1fr)
+    );
   }
 
   .diagram-progression-step__alts {
@@ -1800,6 +1823,11 @@
   .diagram-field__label-row {
     flex-wrap: wrap;
     row-gap: 0.375rem;
+  }
+
+  .diagram-select-stack-divider {
+    display: block;
+    margin: 0.125rem 0;
   }
 }
 

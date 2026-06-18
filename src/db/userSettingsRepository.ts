@@ -2,9 +2,13 @@ import { ApiError, apiGet, apiPatch, apiPost } from '../api'
 import siteStateJson from '../data/siteState.json'
 import {
   CHORD_PRESET_IDS,
+  KEY_MAJOR_IDS,
+  KEY_MINOR_IDS,
+  MAX_PROGRESSION_STEPS,
   sanitizeFretCount,
   sanitizeScaleSelection,
   type ChordPresetId,
+  type KeyId,
   type ScaleSelection,
 } from '../components/Fretboard'
 import type { FretboardOrientation } from '../components/Fretboard/types'
@@ -52,6 +56,12 @@ export type UserSettings = {
   diagramHidden: boolean
   /** Rainbow accent used for selections, borders, and highlights. */
   accentColorId: AccentColorId
+  /** Last selected key, if any. */
+  selectedKey: KeyId | null
+  /** Last selected chord for the fretboard, if any. */
+  selectedChord: ChordPresetId | null
+  /** Built progression chord sequence, if any. */
+  builtProgression: ChordPresetId[] | null
 }
 
 /** Baked snapshot shipped with production builds (see scripts/publish-state.mjs). */
@@ -68,7 +78,7 @@ type UserSettingsRecordInput = Omit<Partial<UserSettings>, 'knownChords'> & {
   disabledChords?: unknown
 }
 
-const USER_SETTINGS_VERSION = 2
+const USER_SETTINGS_VERSION = 3
 
 const DEFAULT_SETTINGS: UserSettings = {
   settingsVersion: USER_SETTINGS_VERSION,
@@ -84,9 +94,13 @@ const DEFAULT_SETTINGS: UserSettings = {
   panelsSwapped: false,
   diagramHidden: false,
   accentColorId: DEFAULT_ACCENT_COLOR_ID,
+  selectedKey: null,
+  selectedChord: null,
+  builtProgression: null,
 }
 
 const validChordIds = new Set<string>(CHORD_PRESET_IDS)
+const validKeyIds = new Set<string>([...KEY_MAJOR_IDS, ...KEY_MINOR_IDS])
 
 function isDevApiEnabled(): boolean {
   return import.meta.env.DEV
@@ -149,6 +163,18 @@ function mergeSettings(
       partial.accentColorId != null
         ? sanitizeAccentColorId(partial.accentColorId)
         : current.accentColorId,
+    selectedKey:
+      partial.selectedKey !== undefined
+        ? sanitizeSelectedKey(partial.selectedKey)
+        : current.selectedKey,
+    selectedChord:
+      partial.selectedChord !== undefined
+        ? sanitizeSelectedChord(partial.selectedChord)
+        : current.selectedChord,
+    builtProgression:
+      partial.builtProgression !== undefined
+        ? sanitizeBuiltProgression(partial.builtProgression)
+        : current.builtProgression,
   }
 }
 
@@ -172,6 +198,31 @@ function sanitizeChordIds(ids: unknown): ChordPresetId[] {
     return []
   }
   return ids.filter((id): id is ChordPresetId => validChordIds.has(id))
+}
+
+function sanitizeSelectedKey(value: unknown): KeyId | null {
+  if (typeof value !== 'string' || !validKeyIds.has(value)) {
+    return null
+  }
+  return value as KeyId
+}
+
+function sanitizeSelectedChord(value: unknown): ChordPresetId | null {
+  if (typeof value !== 'string' || !validChordIds.has(value)) {
+    return null
+  }
+  return value as ChordPresetId
+}
+
+function sanitizeBuiltProgression(value: unknown): ChordPresetId[] | null {
+  if (value == null) {
+    return null
+  }
+  const ids = sanitizeChordIds(value)
+  if (ids.length === 0) {
+    return null
+  }
+  return ids.slice(0, MAX_PROGRESSION_STEPS)
 }
 
 function knownChordsFromRecord(record: UserSettingsRecordInput): ChordPresetId[] {
@@ -225,6 +276,9 @@ function fromRecord(record: UserSettingsRecordInput): UserSettings {
         ? record.diagramHidden
         : DEFAULT_SETTINGS.diagramHidden,
     accentColorId: sanitizeAccentColorId(record.accentColorId),
+    selectedKey: sanitizeSelectedKey(record.selectedKey),
+    selectedChord: sanitizeSelectedChord(record.selectedChord),
+    builtProgression: sanitizeBuiltProgression(record.builtProgression),
   }
 }
 
@@ -239,6 +293,14 @@ function applyMigrations(settings: UserSettings): {
   let next = settings
   if (next.knownChords.length === 0) {
     next = { ...next, knownChords: defaultKnownChords() }
+  }
+  if (next.settingsVersion < 3) {
+    next = {
+      ...next,
+      selectedKey: next.selectedKey ?? null,
+      selectedChord: next.selectedChord ?? null,
+      builtProgression: next.builtProgression ?? null,
+    }
   }
   return {
     settings: { ...next, settingsVersion: USER_SETTINGS_VERSION },
@@ -392,4 +454,18 @@ export async function setAccentColorId(
   value: AccentColorId,
 ): Promise<UserSettings> {
   return saveUserSettings({ accentColorId: sanitizeAccentColorId(value) })
+}
+
+export type PracticeSelection = {
+  selectedKey?: KeyId | null
+  selectedChord?: ChordPresetId | null
+  builtProgression?: ChordPresetId[] | null
+  /** Cleared with the key when deselecting practice state. */
+  scaleSelection?: ScaleSelection
+}
+
+export async function setPracticeSelection(
+  partial: PracticeSelection,
+): Promise<UserSettings> {
+  return saveUserSettings(partial)
 }

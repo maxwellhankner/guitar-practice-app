@@ -2,7 +2,7 @@
   "userSettings": [
     {
       "id": "default",
-      "settingsVersion": 2,
+      "settingsVersion": 3,
       "knownChords": [
         "A",
         "Am",
@@ -55,7 +55,10 @@
       "fretboardOrientation": "landscape",
       "panelsSwapped": false,
       "diagramHidden": false,
-      "accentColorId": "gold"
+      "accentColorId": "gold",
+      "selectedKey": null,
+      "selectedChord": null,
+      "builtProgression": null
     }
   ]
 }

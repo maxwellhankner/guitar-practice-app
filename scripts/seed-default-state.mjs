@@ -13,7 +13,7 @@ const knownIds = JSON.parse(readFileSync(knownPath, 'utf8'))
 
 const userSettings = {
   id: 'default',
-  settingsVersion: 2,
+  settingsVersion: 3,
   knownChords: knownIds,
   filterPlayableOnly: false,
   displayNotes: false,
@@ -26,6 +26,9 @@ const userSettings = {
   panelsSwapped: false,
   diagramHidden: false,
   accentColorId: 'gold',
+  selectedKey: null,
+  selectedChord: null,
+  builtProgression: null,
 }
 
 const siteState = {

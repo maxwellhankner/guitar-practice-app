@@ -1,5 +1,7 @@
-export const API_BASE =
-  import.meta.env.VITE_API_BASE ?? 'http://localhost:3001'
+/** Dev: Vite proxies /api → local json-server (works from phone on LAN). */
+export const API_BASE = import.meta.env.DEV
+  ? '/api'
+  : (import.meta.env.VITE_API_BASE ?? 'http://localhost:3001')
 
 export class ApiError extends Error {
   status: number

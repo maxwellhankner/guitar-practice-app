@@ -2,13 +2,14 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import {
   ArrowLeftRight,
   ArrowUpDown,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
   Columns2,
-  Guitar,
   ListChecks,
-  Minus,
   Music,
   Plus,
-  SquareX,
   RotateCcw,
   Rows2,
   RotateCcwSquare,
@@ -66,6 +67,7 @@ import {
 } from '../components/Fretboard'
 import { useUserSettings } from '../hooks/useUserSettings'
 import { useMobileDiagramLayout } from '../hooks/useMobileDiagramLayout'
+import { useIsMobileViewport } from '../hooks/useIsMobileViewport'
 import {
   ACCENT_COLOR_OPTIONS,
   accentColorLabel,
@@ -77,6 +79,47 @@ import {
 } from '../db/userSettingsRepository'
 
 type BoardSelection = { kind: 'chord'; id: ChordPresetId }
+
+function progressionEqual(
+  a: ChordPresetId[] | null,
+  b: ChordPresetId[] | null,
+): boolean {
+  if (a === b) {
+    return true
+  }
+  if (a == null || b == null) {
+    return false
+  }
+  if (a.length !== b.length) {
+    return false
+  }
+  return a.every((id, index) => id === b[index])
+}
+
+type PracticeSelectionSnapshot = {
+  selectedKey: KeyId | null
+  selectedChord: ChordPresetId | null
+  builtProgression: ChordPresetId[] | null
+}
+
+function practiceSelectionSnapshot(
+  selectedKey: KeyId | null,
+  selectedChord: ChordPresetId | null,
+  builtProgression: ChordPresetId[] | null,
+): PracticeSelectionSnapshot {
+  return { selectedKey, selectedChord, builtProgression }
+}
+
+function practiceSelectionsEqual(
+  a: PracticeSelectionSnapshot,
+  b: PracticeSelectionSnapshot,
+): boolean {
+  return (
+    a.selectedKey === b.selectedKey &&
+    a.selectedChord === b.selectedChord &&
+    progressionEqual(a.builtProgression, b.builtProgression)
+  )
+}
 
 export function HomePage() {
   const baseId = useId()
@@ -98,6 +141,11 @@ export function HomePage() {
   const fretPickerRef = useRef<HTMLDivElement>(null)
   const accentPickerRef = useRef<HTMLDivElement>(null)
   const addProgressionPickerRef = useRef<HTMLDivElement>(null)
+  const practiceHydratedRef = useRef(false)
+  const lastSyncedPracticeRef = useRef<PracticeSelectionSnapshot | null>(null)
+  const pendingPracticePersistRef = useRef<PracticeSelectionSnapshot | null>(
+    null,
+  )
   const {
     ready: settingsReady,
     knownChords,
@@ -124,7 +172,99 @@ export function HomePage() {
     setDiagramHidden,
     accentColorId,
     setAccentColorId,
+    selectedKey: savedSelectedKey,
+    selectedChord: savedSelectedChord,
+    builtProgression: savedBuiltProgression,
+    setPracticeSelection,
   } = useUserSettings()
+
+  useEffect(() => {
+    if (!settingsReady) {
+      return
+    }
+
+    const selectedChord =
+      selection?.kind === 'chord' ? selection.id : null
+    const local = practiceSelectionSnapshot(
+      selectedKey,
+      selectedChord,
+      builtProgression,
+    )
+    const saved = practiceSelectionSnapshot(
+      savedSelectedKey,
+      savedSelectedChord,
+      savedBuiltProgression,
+    )
+
+    if (!practiceHydratedRef.current) {
+      setSelectedKey(saved.selectedKey)
+      setBuiltProgression(saved.builtProgression)
+      setSelection(
+        saved.selectedChord != null
+          ? { kind: 'chord', id: saved.selectedChord }
+          : null,
+      )
+      practiceHydratedRef.current = true
+      lastSyncedPracticeRef.current = saved
+      return
+    }
+
+    const lastSynced = lastSyncedPracticeRef.current
+    if (lastSynced == null) {
+      lastSyncedPracticeRef.current = saved
+      return
+    }
+
+    const savedChanged = !practiceSelectionsEqual(saved, lastSynced)
+    const localChanged = !practiceSelectionsEqual(local, lastSynced)
+
+    if (savedChanged && !localChanged) {
+      if (pendingPracticePersistRef.current != null) {
+        return
+      }
+      setSelectedKey(saved.selectedKey)
+      setBuiltProgression(saved.builtProgression)
+      setSelection(
+        saved.selectedChord != null
+          ? { kind: 'chord', id: saved.selectedChord }
+          : null,
+      )
+      lastSyncedPracticeRef.current = saved
+      return
+    }
+
+    if (localChanged && !practiceSelectionsEqual(local, saved)) {
+      lastSyncedPracticeRef.current = local
+      pendingPracticePersistRef.current = local
+      void setPracticeSelection({
+        selectedKey: local.selectedKey,
+        selectedChord: local.selectedChord,
+        builtProgression: local.builtProgression,
+        ...(local.selectedKey == null ? { scaleSelection: null } : {}),
+      }).finally(() => {
+        if (
+          pendingPracticePersistRef.current != null &&
+          practiceSelectionsEqual(pendingPracticePersistRef.current, local)
+        ) {
+          pendingPracticePersistRef.current = null
+        }
+      })
+      return
+    }
+
+    if (savedChanged) {
+      lastSyncedPracticeRef.current = saved
+    }
+  }, [
+    settingsReady,
+    selectedKey,
+    selection,
+    builtProgression,
+    savedSelectedKey,
+    savedSelectedChord,
+    savedBuiltProgression,
+    setPracticeSelection,
+  ])
 
   const activeKey = useMemo(() => {
     if (selectedKey == null) {
@@ -161,7 +301,7 @@ export function HomePage() {
   const clearSelectedKey = () => {
     setBuiltProgression(null)
     setPendingAddAfterIndex(null)
-    void setScaleSelection(null)
+    setSelection(null)
     setSelectedKey(null)
   }
 
@@ -263,6 +403,7 @@ export function HomePage() {
     builtProgression != null && builtProgression.length > 0
 
   const effectiveDiagramLayout = useMobileDiagramLayout(diagramLayout)
+  const isMobileViewport = useIsMobileViewport()
   const diagramLayoutVertical = effectiveDiagramLayout === 'vertical'
   const fretboardPortrait = fretboardOrientation === 'portrait'
   const fretMenuPlacement = diagramLayoutVertical
@@ -341,13 +482,6 @@ export function HomePage() {
     if ((event.target as HTMLElement).closest('button')) {
       return
     }
-    startDividerResize(event)
-  }
-
-  const handleDividerResizePointerDown = (
-    event: React.PointerEvent<HTMLButtonElement>,
-  ) => {
-    event.stopPropagation()
     startDividerResize(event)
   }
 
@@ -740,8 +874,79 @@ export function HomePage() {
     )
   }
 
+  const renderKeyButton = (keyId: KeyId) => {
+    const def = KEY_DEFS[keyId]
+    const selected = activeKey === keyId
+    const inFindKeyFlow = selectedKey == null && findKeyMode
+    const playableBlocked =
+      filterPlayableOnly && !isKeyPlayable(keyId, knownChords)
+    const findKeyScore =
+      inFindKeyFlow && findKeyScoreById != null
+        ? findKeyScoreById.get(keyId)
+        : undefined
+    const findKeyBrightness =
+      findKeyScore != null ? findKeyMatchBrightness(findKeyScore) : null
+    const disabled =
+      playableBlocked ||
+      (inFindKeyFlow &&
+        (findKeyChords.length === 0 || findKeyBrightness == null))
+    const keyTitle =
+      inFindKeyFlow && findKeyChords.length === 0
+        ? 'Select chords below to find matching keys'
+        : inFindKeyFlow && findKeyScore != null
+          ? `${def.name} — ${findKeyScore}% match`
+          : inFindKeyFlow && findKeyBrightness == null
+            ? 'Does not match selected chords'
+            : playableBlocked
+              ? 'No progressions playable with your known chords'
+              : def.name
+    return (
+      <Tooltip key={keyId} label={keyTitle}>
+        <button
+          type="button"
+          className={[
+            'diagram-chord-btn',
+            selected ? 'diagram-chord-btn--selected' : '',
+            playableBlocked ? 'diagram-chord-btn--unplayable' : '',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+          aria-pressed={selected}
+          disabled={disabled}
+          style={
+            findKeyBrightness != null
+              ? { opacity: findKeyBrightness }
+              : undefined
+          }
+          onClick={() => selectKey(keyId)}
+        >
+          {def.label}
+        </button>
+      </Tooltip>
+    )
+  }
+
+  const renderChordRootColumn = (root: RootName) => (
+    <div
+      key={root}
+      className="diagram-chord-root-column"
+      aria-label={`${root} chords`}
+    >
+      {chordIdsForRoot(root).map((id) =>
+        renderChordCell(
+          id,
+          findKeyMode
+            ? {
+                selected: findKeyChords.includes(id),
+                onSelect: () => toggleFindKeyChord(id),
+              }
+            : undefined,
+        ),
+      )}
+    </div>
+  )
+
   const showDiagramPanel = !diagramHidden
-  const optionsToolbarTooltipPlacement = 'below' as const
 
   const renderFretCountControl = (
     fretMenuClass: string,
@@ -938,45 +1143,66 @@ export function HomePage() {
     </Tooltip>
   )
 
-  const renderDividerResizeControl = (
-    tooltipPlacement: typeof dividerTooltipPlacement | 'below',
-  ) => (
-    <Tooltip placement={tooltipPlacement} label="Resize panels">
-      <button
-        type="button"
-        className="app-page__divider-handle"
-        aria-label="Resize panels"
-        onPointerDown={handleDividerResizePointerDown}
-      >
-        <Minus
-          className={
-            diagramLayoutVertical
-              ? 'app-page__divider-icon app-page__divider-icon--vertical'
-              : 'app-page__divider-icon'
-          }
-          size={16}
-          strokeWidth={2.5}
-          aria-hidden
-        />
-      </button>
-    </Tooltip>
-  )
+  const usesVerticalSplitLayout =
+    diagramLayoutVertical &&
+    (showDiagramPanel || !isMobileViewport || diagramHidden)
+  const menuBarLayout = usesVerticalSplitLayout ? 'vertical' : 'horizontal'
+  const diagramPanelChevronDirection = diagramLayoutVertical
+    ? panelsSwapped
+      ? 'left'
+      : 'right'
+    : panelsSwapped
+      ? 'up'
+      : 'down'
+  const diagramPanelChevronOpposite = {
+    up: 'down',
+    down: 'up',
+    left: 'right',
+    right: 'left',
+  } as const
+  const diagramPanelPositionLabel =
+    diagramPanelChevronDirection === 'down'
+      ? 'below'
+      : diagramPanelChevronDirection === 'up'
+        ? 'above'
+        : diagramPanelChevronDirection === 'right'
+          ? 'to the right'
+          : 'to the left'
+
+  const renderDiagramPanelChevron = (
+    direction: keyof typeof diagramPanelChevronOpposite = diagramPanelChevronDirection,
+  ) => {
+    const iconProps = { size: 16, strokeWidth: 2.5, 'aria-hidden': true as const }
+    switch (direction) {
+      case 'up':
+        return <ChevronUp {...iconProps} />
+      case 'down':
+        return <ChevronDown {...iconProps} />
+      case 'left':
+        return <ChevronLeft {...iconProps} />
+      case 'right':
+        return <ChevronRight {...iconProps} />
+    }
+  }
 
   const renderHideDiagramControl = (
     tooltipPlacement: typeof dividerTooltipPlacement | 'below',
   ) => (
-    <Tooltip placement={tooltipPlacement} label="Hide guitar diagram">
+    <Tooltip
+      placement={tooltipPlacement}
+      label={`Hide guitar diagram ${diagramPanelPositionLabel}`}
+    >
       <button
         type="button"
         className="app-page__divider-diagram-toggle"
-        aria-label="Hide guitar diagram"
+        aria-label={`Hide guitar diagram ${diagramPanelPositionLabel}`}
         onPointerDown={(event) => event.stopPropagation()}
         onClick={() => {
           setFretPickerOpen(false)
           void setDiagramHidden(true)
         }}
       >
-        <SquareX size={16} strokeWidth={2.5} aria-hidden />
+        {renderDiagramPanelChevron()}
       </button>
     </Tooltip>
   )
@@ -984,17 +1210,160 @@ export function HomePage() {
   const renderShowDiagramControl = (
     tooltipPlacement: typeof dividerTooltipPlacement | 'below',
   ) => (
-    <Tooltip placement={tooltipPlacement} label="Show guitar diagram">
+    <Tooltip
+      placement={tooltipPlacement}
+      label={`Show guitar diagram ${diagramPanelPositionLabel}`}
+    >
       <button
         type="button"
         className="app-page__divider-diagram-toggle"
-        aria-label="Show guitar diagram"
+        aria-label={`Show guitar diagram ${diagramPanelPositionLabel}`}
         onPointerDown={(event) => event.stopPropagation()}
         onClick={() => void setDiagramHidden(false)}
       >
-        <Guitar size={16} strokeWidth={2.5} aria-hidden />
+        {renderDiagramPanelChevron(
+          diagramPanelChevronOpposite[diagramPanelChevronDirection],
+        )}
       </button>
     </Tooltip>
+  )
+
+  const menuBarTooltipPlacement = diagramHidden
+    ? usesVerticalSplitLayout
+      ? 'left'
+      : 'above'
+    : dividerTooltipPlacement
+  const menuFretMenuPlacement = diagramHidden
+    ? usesVerticalSplitLayout
+      ? 'app-page__divider-frets-menu--left'
+      : 'app-page__divider-frets-menu--above'
+    : fretMenuPlacement
+  const menuAccentMenuPlacement = diagramHidden
+    ? usesVerticalSplitLayout
+      ? 'app-page__divider-accent-menu--left'
+      : 'app-page__divider-accent-menu--above'
+    : accentMenuPlacement
+
+  const renderMenuBar = () => (
+    <div
+      className={[
+        'app-page__divider',
+        menuBarLayout === 'vertical'
+          ? 'app-page__divider--vertical'
+          : 'app-page__divider--horizontal',
+        diagramHidden ? 'app-page__divider--docked' : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
+      role={showDiagramPanel ? 'separator' : 'toolbar'}
+      aria-label={showDiagramPanel ? 'Resize panels' : 'Diagram tools'}
+      {...(showDiagramPanel
+        ? {
+            'aria-orientation': diagramLayoutVertical
+              ? ('vertical' as const)
+              : ('horizontal' as const),
+            'aria-valuenow': Math.round(panelSplitRatio * 100),
+            'aria-valuemin': Math.round(PANEL_SPLIT_MIN * 100),
+            'aria-valuemax': Math.round(PANEL_SPLIT_MAX * 100),
+            onPointerDown: handleDividerPointerDown,
+          }
+        : {})}
+    >
+      {diagramHidden
+        ? renderShowDiagramControl(menuBarTooltipPlacement)
+        : renderHideDiagramControl(menuBarTooltipPlacement)}
+      <Tooltip
+        placement={menuBarTooltipPlacement}
+        label={
+          diagramLayoutVertical
+            ? 'Arrange diagrams in a row'
+            : 'Stack diagrams vertically'
+        }
+      >
+        <button
+          type="button"
+          className="app-page__divider-layout-toggle"
+          aria-label={
+            diagramLayoutVertical
+              ? 'Arrange diagrams in a row'
+              : 'Stack diagrams vertically'
+          }
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={() =>
+            void setDiagramLayout(
+              diagramLayout === 'horizontal' ? 'vertical' : 'horizontal',
+            )
+          }
+        >
+          {diagramLayoutVertical ? (
+            <Rows2 size={16} strokeWidth={2.5} aria-hidden />
+          ) : (
+            <Columns2 size={16} strokeWidth={2.5} aria-hidden />
+          )}
+        </button>
+      </Tooltip>
+      <Tooltip
+        placement={menuBarTooltipPlacement}
+        label={
+          diagramLayoutVertical
+            ? 'Swap left and right panels'
+            : 'Swap top and bottom panels'
+        }
+      >
+        <button
+          type="button"
+          className="app-page__divider-swap-toggle"
+          aria-label={
+            diagramLayoutVertical
+              ? 'Swap left and right panels'
+              : 'Swap top and bottom panels'
+          }
+          aria-pressed={panelsSwapped}
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={() => void setPanelsSwapped(!panelsSwapped)}
+        >
+          {diagramLayoutVertical ? (
+            <ArrowLeftRight size={16} strokeWidth={2.5} aria-hidden />
+          ) : (
+            <ArrowUpDown size={16} strokeWidth={2.5} aria-hidden />
+          )}
+        </button>
+      </Tooltip>
+      <Tooltip
+        placement={menuBarTooltipPlacement}
+        label={
+          fretboardPortrait
+            ? 'Standard fretboard orientation'
+            : 'Rotate fretboard vertically'
+        }
+      >
+        <button
+          type="button"
+          className="app-page__divider-orientation-toggle"
+          aria-label={
+            fretboardPortrait
+              ? 'Standard fretboard orientation'
+              : 'Rotate fretboard vertically'
+          }
+          aria-pressed={fretboardPortrait}
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={() =>
+            void setFretboardOrientation(
+              fretboardPortrait ? 'landscape' : 'portrait',
+            )
+          }
+        >
+          <RotateCcwSquare size={16} strokeWidth={2.5} aria-hidden />
+        </button>
+      </Tooltip>
+      {renderFretCountControl(menuFretMenuPlacement, menuBarTooltipPlacement)}
+      {renderAccentColorControl(
+        menuAccentMenuPlacement,
+        menuBarTooltipPlacement,
+      )}
+      {renderKnownFilterControl(menuBarTooltipPlacement)}
+      {renderNotesControl(menuBarTooltipPlacement)}
+    </div>
   )
 
   if (!settingsReady) {
@@ -1013,9 +1382,7 @@ export function HomePage() {
     <main
       ref={mainRef}
       className={[
-        showDiagramPanel && diagramLayoutVertical
-          ? 'app-page app-page--split'
-          : 'app-page',
+        usesVerticalSplitLayout ? 'app-page app-page--split' : 'app-page',
         showDiagramPanel && panelsSwapped ? 'app-page--panels-swapped' : '',
         diagramHidden ? 'app-page--diagram-hidden' : '',
       ]
@@ -1040,25 +1407,9 @@ export function HomePage() {
         aria-labelledby={`${baseId}-heading`}
       >
         <div className="app-page__inner">
-          {diagramHidden ? (
-            <div className="app-page__title-row">
-              <h1 className="app-page__title" id={`${baseId}-heading`}>
-                Practice Guitar App
-              </h1>
-              <div
-                className="app-page__title-toolbar"
-                role="toolbar"
-                aria-label="Diagram tools"
-              >
-                {renderKnownFilterControl(optionsToolbarTooltipPlacement)}
-                {renderShowDiagramControl(optionsToolbarTooltipPlacement)}
-              </div>
-            </div>
-          ) : (
-            <h1 className="app-page__title" id={`${baseId}-heading`}>
-              Practice Guitar App
-            </h1>
-          )}
+          <h1 className="app-page__title" id={`${baseId}-heading`}>
+            Practice Guitar App
+          </h1>
           <div className="diagram-controls">
             <div className="diagram-field">
               <div className="diagram-field__label-row">
@@ -1091,65 +1442,17 @@ export function HomePage() {
                 ) : null}
               </div>
               <div
-                className="diagram-chord-grid diagram-key-select-grid"
+                className="diagram-select-stack"
                 role="group"
                 aria-labelledby={`${baseId}-key-label`}
               >
-                {[...KEY_MAJOR_IDS, ...KEY_MINOR_IDS].map((keyId) => {
-                  const def = KEY_DEFS[keyId]
-                  const selected = activeKey === keyId
-                  const inFindKeyFlow =
-                    selectedKey == null && findKeyMode
-                  const playableBlocked =
-                    filterPlayableOnly &&
-                    !isKeyPlayable(keyId, knownChords)
-                  const findKeyScore =
-                    inFindKeyFlow && findKeyScoreById != null
-                      ? findKeyScoreById.get(keyId)
-                      : undefined
-                  const findKeyBrightness =
-                    findKeyScore != null
-                      ? findKeyMatchBrightness(findKeyScore)
-                      : null
-                  const disabled =
-                    playableBlocked ||
-                    (inFindKeyFlow &&
-                      (findKeyChords.length === 0 || findKeyBrightness == null))
-                  const keyTitle =
-                    inFindKeyFlow && findKeyChords.length === 0
-                      ? 'Select chords below to find matching keys'
-                      : inFindKeyFlow && findKeyScore != null
-                        ? `${def.name} — ${findKeyScore}% match`
-                        : inFindKeyFlow && findKeyBrightness == null
-                          ? 'Does not match selected chords'
-                          : playableBlocked
-                            ? 'No progressions playable with your known chords'
-                            : def.name
-                  return (
-                    <Tooltip key={keyId} label={keyTitle}>
-                      <button
-                        type="button"
-                        className={[
-                          'diagram-chord-btn',
-                          selected ? 'diagram-chord-btn--selected' : '',
-                          playableBlocked ? 'diagram-chord-btn--unplayable' : '',
-                        ]
-                          .filter(Boolean)
-                          .join(' ')}
-                        aria-pressed={selected}
-                        disabled={disabled}
-                        style={
-                          findKeyBrightness != null
-                            ? { opacity: findKeyBrightness }
-                            : undefined
-                        }
-                        onClick={() => selectKey(keyId)}
-                      >
-                        {def.label}
-                      </button>
-                    </Tooltip>
-                  )
-                })}
+                <div className="diagram-chord-grid diagram-key-select-grid">
+                  {KEY_MAJOR_IDS.map(renderKeyButton)}
+                </div>
+                <hr className="diagram-select-stack-divider" aria-hidden />
+                <div className="diagram-chord-grid diagram-key-select-grid">
+                  {KEY_MINOR_IDS.map(renderKeyButton)}
+                </div>
               </div>
             </div>
 
@@ -1323,21 +1626,23 @@ export function HomePage() {
                       : null}
                     {hasBuiltProgression ? (
                       <>
-                        <div
-                          className={[
-                            'diagram-chord-in-key diagram-chords-build__progression-steps',
-                            builtProgression.length > 6
-                              ? 'diagram-chords-build__progression-steps--compact-alts'
-                              : '',
-                          ]
-                            .filter(Boolean)
-                            .join(' ')}
-                          style={
-                            {
-                              '--progression-step-count': builtProgression.length,
-                            } as React.CSSProperties
-                          }
-                        >
+                        <div className="diagram-chords-build__progression-steps-scroll">
+                          <div
+                            className={[
+                              'diagram-chord-in-key diagram-chords-build__progression-steps',
+                              builtProgression.length > 6
+                                ? 'diagram-chords-build__progression-steps--compact-alts'
+                                : '',
+                            ]
+                              .filter(Boolean)
+                              .join(' ')}
+                            style={
+                              {
+                                '--progression-step-count':
+                                  builtProgression.length,
+                              } as React.CSSProperties
+                            }
+                          >
                           {builtProgression.map((chordId, stepIndex) => {
                             const triadId = triadIdForStep(activeKey, chordId)
                             const romanInfo = romanLabelForProgressionStep(
@@ -1542,9 +1847,24 @@ export function HomePage() {
                               </div>
                             )
                           })}
+                          </div>
                         </div>
                       </>
                     ) : null}
+                  </div>
+                </div>
+              ) : isMobileViewport ? (
+                <div
+                  className="diagram-select-stack"
+                  role="group"
+                  aria-labelledby={`${baseId}-chord-label`}
+                >
+                  <div className="diagram-chord-select-grid diagram-chord-select-grid--by-root">
+                    {ROOT_NAMES.slice(0, 6).map(renderChordRootColumn)}
+                  </div>
+                  <hr className="diagram-select-stack-divider" aria-hidden />
+                  <div className="diagram-chord-select-grid diagram-chord-select-grid--by-root">
+                    {ROOT_NAMES.slice(6).map(renderChordRootColumn)}
                   </div>
                 </div>
               ) : (
@@ -1553,25 +1873,7 @@ export function HomePage() {
                   role="group"
                   aria-labelledby={`${baseId}-chord-label`}
                 >
-                  {ROOT_NAMES.map((root) => (
-                    <div
-                      key={root}
-                      className="diagram-chord-root-column"
-                      aria-label={`${root} chords`}
-                    >
-                      {chordIdsForRoot(root).map((id) =>
-                        renderChordCell(
-                          id,
-                          findKeyMode
-                            ? {
-                                selected: findKeyChords.includes(id),
-                                onSelect: () => toggleFindKeyChord(id),
-                              }
-                            : undefined,
-                        ),
-                      )}
-                    </div>
-                  ))}
+                  {ROOT_NAMES.map(renderChordRootColumn)}
                 </div>
               )}
             </div>
@@ -1579,114 +1881,9 @@ export function HomePage() {
         </div>
       </section>
 
-      {showDiagramPanel ? (
-        <>
-          <div
-            className={
-              diagramLayoutVertical
-                ? 'app-page__divider app-page__divider--vertical'
-                : 'app-page__divider app-page__divider--horizontal'
-            }
-            role="separator"
-            aria-orientation={diagramLayoutVertical ? 'vertical' : 'horizontal'}
-            aria-valuenow={Math.round(panelSplitRatio * 100)}
-            aria-valuemin={Math.round(PANEL_SPLIT_MIN * 100)}
-            aria-valuemax={Math.round(PANEL_SPLIT_MAX * 100)}
-            aria-label="Resize panels"
-            onPointerDown={handleDividerPointerDown}
-          >
-            <Tooltip
-              placement={dividerTooltipPlacement}
-              label={
-                diagramLayoutVertical
-                  ? 'Arrange diagrams in a row'
-                  : 'Stack diagrams vertically'
-              }
-            >
-              <button
-                type="button"
-                className="app-page__divider-layout-toggle"
-                aria-label={
-                  diagramLayoutVertical
-                    ? 'Arrange diagrams in a row'
-                    : 'Stack diagrams vertically'
-                }
-                onPointerDown={(event) => event.stopPropagation()}
-                onClick={() =>
-                  void setDiagramLayout(
-                    diagramLayout === 'horizontal' ? 'vertical' : 'horizontal',
-                  )
-                }
-              >
-                {diagramLayoutVertical ? (
-                  <Rows2 size={16} strokeWidth={2.5} aria-hidden />
-                ) : (
-                  <Columns2 size={16} strokeWidth={2.5} aria-hidden />
-                )}
-              </button>
-            </Tooltip>
-            <Tooltip
-              placement={dividerTooltipPlacement}
-              label={
-                diagramLayoutVertical
-                  ? 'Swap left and right panels'
-                  : 'Swap top and bottom panels'
-              }
-            >
-              <button
-                type="button"
-                className="app-page__divider-swap-toggle"
-                aria-label={
-                  diagramLayoutVertical
-                    ? 'Swap left and right panels'
-                    : 'Swap top and bottom panels'
-                }
-                aria-pressed={panelsSwapped}
-                onPointerDown={(event) => event.stopPropagation()}
-                onClick={() => void setPanelsSwapped(!panelsSwapped)}
-              >
-                {diagramLayoutVertical ? (
-                  <ArrowLeftRight size={16} strokeWidth={2.5} aria-hidden />
-                ) : (
-                  <ArrowUpDown size={16} strokeWidth={2.5} aria-hidden />
-                )}
-              </button>
-            </Tooltip>
-            {renderHideDiagramControl(dividerTooltipPlacement)}
-            <Tooltip
-              placement={dividerTooltipPlacement}
-              label={
-                fretboardPortrait
-                  ? 'Standard fretboard orientation'
-                  : 'Rotate fretboard vertically'
-              }
-            >
-              <button
-                type="button"
-                className="app-page__divider-orientation-toggle"
-                aria-label={
-                  fretboardPortrait
-                    ? 'Standard fretboard orientation'
-                    : 'Rotate fretboard vertically'
-                }
-                aria-pressed={fretboardPortrait}
-                onPointerDown={(event) => event.stopPropagation()}
-                onClick={() =>
-                  void setFretboardOrientation(
-                    fretboardPortrait ? 'landscape' : 'portrait',
-                  )
-                }
-              >
-                <RotateCcwSquare size={16} strokeWidth={2.5} aria-hidden />
-              </button>
-            </Tooltip>
-            {renderFretCountControl(fretMenuPlacement, dividerTooltipPlacement)}
-            {renderAccentColorControl(accentMenuPlacement, dividerTooltipPlacement)}
-            {renderKnownFilterControl(dividerTooltipPlacement)}
-            {renderNotesControl(dividerTooltipPlacement)}
-            {renderDividerResizeControl(dividerTooltipPlacement)}
-          </div>
+      {renderMenuBar()}
 
+      {showDiagramPanel ? (
           <section
             className={[
               'app-page__diagram',
@@ -1760,7 +1957,6 @@ export function HomePage() {
               )}
             </div>
           </section>
-        </>
       ) : null}
     </main>
   )

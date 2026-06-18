@@ -6,6 +6,7 @@
   --fretboard-fret: #c5baa8;
   --page-bg: #f4f1eb;
   --card-bg: #fff;
+  --menu-bar-bg: color-mix(in srgb, var(--card-bg) 78%, #14120f);
   --card-border: rgba(20, 18, 15, 0.08);
   --card-shadow:
     0 1px 2px rgba(20, 18, 15, 0.04), 0 12px 32px rgba(20, 18, 15, 0.08);
@@ -30,6 +31,7 @@
     --fretboard-fret: #8a7f72;
     --page-bg: #121210;
     --card-bg: #1c1b18;
+    --menu-bar-bg: color-mix(in srgb, var(--card-bg) 55%, #000);
     --card-border: rgba(242, 239, 233, 0.1);
     --card-shadow:
       0 1px 2px rgba(0, 0, 0, 0.25), 0 12px 32px rgba(0, 0, 0, 0.45);
@@ -42,16 +44,29 @@
   box-sizing: border-box;
 }
 
+html {
+  height: 100%;
+}
+
 body {
   margin: 0;
-  height: 100dvh;
+  height: 100%;
+  min-height: 100svh;
   overflow: hidden;
   padding: env(safe-area-inset-top) env(safe-area-inset-right)
     env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
+@supports (height: 100dvh) {
+  body {
+    min-height: 100dvh;
+  }
+}
+
 #root {
-  height: 100dvh;
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
   overflow: hidden;
 }
 
