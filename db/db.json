@@ -161,10 +161,10 @@
       "displayNotes": false,
       "fretCount": 5,
       "scaleSelection": null,
-      "diagramLayout": "vertical",
+      "diagramLayout": "horizontal",
       "horizontalSplitRatio": 0.5,
       "verticalSplitRatio": 0.598089599609375,
-      "fretboardOrientation": "portrait",
+      "fretboardOrientation": "landscape",
       "panelsSwapped": false,
       "diagramHidden": false,
       "accentColorId": "gold",
@@ -211,14 +211,9 @@
         "F",
         "Fm"
       ],
-      "selectedKey": "C",
+      "selectedKey": null,
       "selectedChord": null,
-      "builtProgression": [
-        "C",
-        "G",
-        "Am",
-        "F"
-      ]
+      "builtProgression": null
     }
   ],
   "$schema": "./node_modules/json-server/schema.json"
