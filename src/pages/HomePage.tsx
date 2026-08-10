@@ -18,6 +18,7 @@ import {
   Share2,
   Trash2,
 } from 'lucide-react'
+import { AppNav } from '../components/AppNav'
 import { ChordPlayabilityCell } from '../components/ChordPlayabilityCell'
 import { Tooltip } from '../components/Tooltip'
 import {
@@ -1527,6 +1528,7 @@ export function HomePage() {
         aria-labelledby={`${baseId}-heading`}
       >
         <div className="app-page__inner">
+          <AppNav />
           <h1 className="app-page__title" id={`${baseId}-heading`}>
             Practice Guitar App
           </h1>
