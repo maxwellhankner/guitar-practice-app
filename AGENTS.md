@@ -15,6 +15,14 @@ This is a single-product Vite + React 19 + TypeScript app (`guitar-practice-app`
 - `npm run lint` — ESLint.
 - `npm run build` — production build (`publish-state` + `tsc -b` + `vite build`).
 
+### Git / deploy (Cloud Agents)
+
+This project deploys to GitHub Pages from `main`. The owner often prompts from mobile and uses the live Pages site as the preview.
+
+**In Cursor Cloud Agents only:** commit and push every completed change directly to `main` (no feature branch / PR workflow unless the user asks otherwise). Prefer small, frequent commits so Pages updates as work progresses.
+
+**In the local IDE:** do not push to `main` just for preview — use the Vite dev server. Follow normal local git habits unless the user asks to commit/push.
+
 ### Non-obvious gotchas
 
 - The base path is `/guitar-practice-app/`. Always open `http://localhost:5173/guitar-practice-app/`, not `http://localhost:5173/`.
