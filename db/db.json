@@ -211,9 +211,11 @@
         "F",
         "Fm"
       ],
-      "selectedKey": null,
-      "selectedChord": null,
-      "builtProgression": null
+      "selectedKey": "C",
+      "selectedChord": "C",
+      "builtProgression": [
+        "C"
+      ]
     }
   ],
   "$schema": "./node_modules/json-server/schema.json"
