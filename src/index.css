@@ -1,41 +1,27 @@
+/* Dark-only for now — light theme disabled. */
 :root {
-  --heading: #14120f;
-  --muted: #5c574f;
+  --heading: #f2efe9;
+  --muted: #a39e94;
   --fretboard-dot-stroke: var(--accent-line);
-  --fretboard-scale-dot-stroke: #8a8480;
-  --fretboard-fret: #c5baa8;
-  --page-bg: #f4f1eb;
-  --card-bg: #fff;
-  --menu-bar-bg: color-mix(in srgb, var(--card-bg) 78%, #14120f);
-  --card-border: rgba(20, 18, 15, 0.08);
+  --fretboard-scale-dot-stroke: #7a756e;
+  --fretboard-fret: #8a7f72;
+  --page-bg: #121210;
+  --card-bg: #1c1b18;
+  --menu-bar-bg: color-mix(in srgb, var(--card-bg) 55%, #000);
+  --card-border: rgba(242, 239, 233, 0.1);
   --card-shadow:
-    0 1px 2px rgba(20, 18, 15, 0.04), 0 12px 32px rgba(20, 18, 15, 0.08);
+    0 1px 2px rgba(0, 0, 0, 0.25), 0 12px 32px rgba(0, 0, 0, 0.45);
 
   font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color-scheme: light dark;
+  color-scheme: dark;
   color: var(--heading);
   background-color: var(--page-bg);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --heading: #f2efe9;
-    --muted: #a39e94;
-    --fretboard-scale-dot-stroke: #7a756e;
-    --fretboard-fret: #8a7f72;
-    --page-bg: #121210;
-    --card-bg: #1c1b18;
-    --menu-bar-bg: color-mix(in srgb, var(--card-bg) 55%, #000);
-    --card-border: rgba(242, 239, 233, 0.1);
-    --card-shadow:
-      0 1px 2px rgba(0, 0, 0, 0.25), 0 12px 32px rgba(0, 0, 0, 0.45);
-  }
 }
 
 *,

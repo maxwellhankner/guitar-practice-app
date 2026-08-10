@@ -143,7 +143,7 @@
   --divider-btn-size: 2.5rem;
   --divider-btn-gap: 0.5rem;
   --divider-bar-thickness: calc(var(--divider-btn-size) + 0.625rem);
-  --divider-btn-bg: var(--page-bg);
+  --divider-btn-bg: var(--card-bg);
   --divider-fret-font: 1.125rem;
   --divider-icon-size: 1.3125rem;
 }
@@ -188,12 +188,6 @@
 .app-page__divider--docked {
   cursor: default;
   touch-action: auto;
-}
-
-@media (prefers-color-scheme: dark) {
-  .app-page__divider {
-    --divider-btn-bg: var(--card-bg);
-  }
 }
 
 .app-page__divider-layout-toggle,
