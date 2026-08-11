@@ -32,6 +32,11 @@ const A4_HZ = 440
 export const AUDIBLE_MIN_HZ = 70
 export const AUDIBLE_MAX_HZ = 1500
 
+/** Volume gate: below this RMS, treat input as silence. */
+export const TUNER_RMS_GATE_MOBILE = 0.008
+/** Laptop mics tend to pick up more room noise — require a stronger signal. */
+export const TUNER_RMS_GATE_DESKTOP = 0.02
+
 const YIN_THRESHOLD = 0.15
 
 function parabolicPeak(values: Float32Array, index: number): number {
@@ -55,6 +60,7 @@ export function detectFrequency(
   sampleRate: number,
   minHz: number = AUDIBLE_MIN_HZ,
   maxHz: number = AUDIBLE_MAX_HZ,
+  minRms: number = TUNER_RMS_GATE_MOBILE,
 ): number {
   const size = buffer.length
   if (size < 64 || sampleRate <= 0) {
@@ -74,8 +80,8 @@ export function detectFrequency(
     rms += val * val
   }
   rms = Math.sqrt(rms / size)
-  // Ignore silence / noise floor (kept low so quiet sustained notes still track)
-  if (rms < 0.008) {
+  // Ignore silence / noise floor
+  if (rms < minRms) {
     return -1
   }
 

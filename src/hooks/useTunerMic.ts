@@ -5,6 +5,8 @@ import {
   centsOffTarget,
   detectFrequency,
   pitchFromFrequency,
+  TUNER_RMS_GATE_DESKTOP,
+  TUNER_RMS_GATE_MOBILE,
   type DetectedPitch,
 } from '../audio/pitchDetect'
 
@@ -27,6 +29,14 @@ export type TunerReading = {
   pitch: DetectedPitch
   target: TunerTarget
   cents: number
+}
+
+/** Touch-first devices (phones/tablets); fine-pointer desktops use the stricter gate. */
+function isMobileLikeDevice(): boolean {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+    return false
+  }
+  return window.matchMedia('(pointer: coarse)').matches
 }
 
 function chromaticTarget(pitch: DetectedPitch): TunerTarget {
@@ -97,6 +107,10 @@ export function useTunerMic() {
       if (context.state === 'suspended') {
         await context.resume()
       }
+
+      const minRms = isMobileLikeDevice()
+        ? TUNER_RMS_GATE_MOBILE
+        : TUNER_RMS_GATE_DESKTOP
 
       const source = context.createMediaStreamSource(stream)
       const analyser = context.createAnalyser()
@@ -188,6 +202,7 @@ export function useTunerMic() {
           current.context.sampleRate,
           AUDIBLE_MIN_HZ,
           AUDIBLE_MAX_HZ,
+          minRms,
         )
 
         if (frequency > 0) {
