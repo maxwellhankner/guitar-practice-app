@@ -183,15 +183,16 @@ export function TunerPage() {
               </div>
             </div>
 
-            <div
-              className={
-                inTune
-                  ? 'tuner__display tuner__display--in-tune'
-                  : 'tuner__display'
-              }
-              aria-live="polite"
-            >
-              <p className="diagram-label tuner__display-label">Note meter</p>
+            <div className="tuner__note-meter">
+              <p className="diagram-label">Note meter</p>
+              <div
+                className={
+                  inTune
+                    ? 'tuner__display tuner__display--in-tune'
+                    : 'tuner__display'
+                }
+                aria-live="polite"
+              >
               <p className="tuner__note">
                 {reading ? `${reading.pitch.noteName}` : '—'}
                 {reading ? (
@@ -244,6 +245,7 @@ export function TunerPage() {
                   />
                 </div>
               </div>
+            </div>
             </div>
           </div>
         </div>

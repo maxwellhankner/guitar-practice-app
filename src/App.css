@@ -125,6 +125,13 @@
   line-height: 1.4;
 }
 
+.tuner__note-meter {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  min-width: 0;
+}
+
 .tuner__display {
   display: flex;
   flex-direction: column;
@@ -135,13 +142,6 @@
   border-radius: 0.875rem;
   background: var(--card-bg);
   text-align: center;
-}
-
-.tuner__display-label {
-  align-self: flex-start;
-  margin: 0 0 0.5rem;
-  width: 100%;
-  text-align: left;
 }
 
 .tuner__display--in-tune {
