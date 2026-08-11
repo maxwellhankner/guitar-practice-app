@@ -1525,13 +1525,10 @@ export function HomePage() {
     >
       <section
         className="app-page__options"
-        aria-labelledby={`${baseId}-heading`}
+        aria-label="Practice"
       >
         <div className="app-page__inner">
           <AppNav />
-          <h1 className="app-page__title" id={`${baseId}-heading`}>
-            Practice Guitar App
-          </h1>
           <div className="diagram-controls">
             <div className="diagram-field">
               <div className="diagram-field__label-row">
