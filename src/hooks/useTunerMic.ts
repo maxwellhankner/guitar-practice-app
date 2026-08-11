@@ -5,7 +5,6 @@ import {
   centsOffTarget,
   detectFrequency,
   pitchFromFrequency,
-  STANDARD_GUITAR_STRINGS,
   type DetectedPitch,
 } from '../audio/pitchDetect'
 
@@ -22,18 +21,12 @@ export type TunerTarget = {
   noteName: string
   octave: number
   frequency: number
-  kind: 'note' | 'string'
 }
 
 export type TunerReading = {
   pitch: DetectedPitch
   target: TunerTarget
   cents: number
-}
-
-type UseTunerMicOptions = {
-  /** When set, lock comparison to this guitar string; otherwise nearest note. */
-  lockedStringId: string | null
 }
 
 function chromaticTarget(pitch: DetectedPitch): TunerTarget {
@@ -43,17 +36,13 @@ function chromaticTarget(pitch: DetectedPitch): TunerTarget {
     noteName: pitch.noteName,
     octave: pitch.octave,
     frequency: pitch.nearestNoteHz,
-    kind: 'note',
   }
 }
 
-export function useTunerMic({ lockedStringId }: UseTunerMicOptions) {
+export function useTunerMic() {
   const [status, setStatus] = useState<TunerStatus>('idle')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [reading, setReading] = useState<TunerReading | null>(null)
-
-  const lockedRef = useRef(lockedStringId)
-  lockedRef.current = lockedStringId
 
   const audioRef = useRef<{
     stream: MediaStream
@@ -131,21 +120,7 @@ export function useTunerMic({ lockedStringId }: UseTunerMicOptions) {
         if (!pitch) {
           return
         }
-        const lockedId = lockedRef.current
-        const lockedString =
-          lockedId != null
-            ? STANDARD_GUITAR_STRINGS.find((s) => s.id === lockedId)
-            : undefined
-        const target: TunerTarget = lockedString
-          ? {
-              id: lockedString.id,
-              label: lockedString.label,
-              noteName: lockedString.noteName,
-              octave: lockedString.octave,
-              frequency: lockedString.frequency,
-              kind: 'string',
-            }
-          : chromaticTarget(pitch)
+        const target = chromaticTarget(pitch)
         const cents = centsOffTarget(frequency, target.frequency)
         const targetKey = target.id
         if (targetKey !== lastTargetKey) {

@@ -1,17 +1,21 @@
-import { useId, useState } from 'react'
+import { useId } from 'react'
 import { Mic, MicOff } from 'lucide-react'
 import { AppNav } from '../components/AppNav'
 import {
   AUDIBLE_MAX_HZ,
   AUDIBLE_MIN_HZ,
   audibleRangePosition,
+  centsOffTarget,
   formatFrequency,
   STANDARD_GUITAR_STRINGS,
 } from '../audio/pitchDetect'
 import { useTunerMic } from '../hooks/useTunerMic'
 
+/** Matches the flat/sharp dial span (±50 cents). */
+const CENTS_HIGHLIGHT_RANGE = 50
+
 function clampCents(cents: number): number {
-  return Math.max(-50, Math.min(50, cents))
+  return Math.max(-CENTS_HIGHLIGHT_RANGE, Math.min(CENTS_HIGHLIGHT_RANGE, cents))
 }
 
 const RANGE_MARKS = [
@@ -25,18 +29,16 @@ const RANGE_MARKS = [
 
 export function TunerPage() {
   const baseId = useId()
-  const [lockedStringId, setLockedStringId] = useState<string | null>(null)
-  const { status, errorMessage, reading, start, stop } = useTunerMic({
-    lockedStringId,
-  })
+  const { status, errorMessage, reading, start, stop } = useTunerMic()
 
   const listening = status === 'listening'
   const cents = reading ? clampCents(reading.cents) : 0
   const inTune = reading != null && Math.abs(reading.cents) <= 5
-  const needlePct = ((cents + 50) / 100) * 100
+  const needlePct = ((cents + CENTS_HIGHLIGHT_RANGE) / (CENTS_HIGHLIGHT_RANGE * 2)) * 100
   const rangePct = reading
     ? audibleRangePosition(reading.pitch.frequency)
     : null
+  const liveHz = reading?.pitch.frequency ?? null
 
   return (
     <main className="app-page app-page--tuner">
@@ -82,41 +84,6 @@ export function TunerPage() {
                 {errorMessage}
               </p>
             ) : null}
-
-            <div
-              className={
-                inTune
-                  ? 'tuner__display tuner__display--in-tune'
-                  : 'tuner__display'
-              }
-              aria-live="polite"
-            >
-              <p className="tuner__note">
-                {reading ? `${reading.pitch.noteName}` : '—'}
-                {reading ? (
-                  <span className="tuner__octave">{reading.pitch.octave}</span>
-                ) : null}
-              </p>
-              <p className="tuner__freq-primary">
-                {reading
-                  ? formatFrequency(reading.pitch.frequency)
-                  : listening
-                    ? 'Listening…'
-                    : 'Mic off'}
-              </p>
-              <p className="tuner__target">
-                {reading
-                  ? `Target ${reading.target.noteName}${reading.target.octave} · ${formatFrequency(reading.target.frequency)}`
-                  : listening
-                    ? 'Play a note…'
-                    : `${AUDIBLE_MIN_HZ} Hz – ${formatFrequency(AUDIBLE_MAX_HZ)}`}
-              </p>
-              <p className="tuner__cents">
-                {reading
-                  ? `${reading.cents >= 0 ? '+' : ''}${reading.cents.toFixed(0)} cents`
-                  : '±0 cents'}
-              </p>
-            </div>
 
             <div
               className="tuner__range"
@@ -173,79 +140,97 @@ export function TunerPage() {
             </div>
 
             <div
-              className="tuner__meter"
-              role="meter"
-              aria-valuemin={-50}
-              aria-valuemax={50}
-              aria-valuenow={reading ? Math.round(reading.cents) : 0}
-              aria-label="Cents sharp or flat"
+              className={
+                inTune
+                  ? 'tuner__display tuner__display--in-tune'
+                  : 'tuner__display'
+              }
+              aria-live="polite"
             >
-              <div className="tuner__meter-track">
-                <span className="tuner__meter-mark tuner__meter-mark--left">
-                  ♭
-                </span>
-                <span className="tuner__meter-center" aria-hidden />
-                <span className="tuner__meter-mark tuner__meter-mark--right">
-                  ♯
-                </span>
-                <span
-                  className={
-                    inTune
-                      ? 'tuner__needle tuner__needle--in-tune'
-                      : 'tuner__needle'
-                  }
-                  style={{ left: `${needlePct}%` }}
-                />
+              <p className="tuner__note">
+                {reading ? `${reading.pitch.noteName}` : '—'}
+                {reading ? (
+                  <span className="tuner__octave">{reading.pitch.octave}</span>
+                ) : null}
+              </p>
+              <p className="tuner__freq-primary">
+                {reading
+                  ? formatFrequency(reading.pitch.frequency)
+                  : listening
+                    ? 'Listening…'
+                    : 'Mic off'}
+              </p>
+              <p className="tuner__target">
+                {reading
+                  ? `Target ${reading.target.noteName}${reading.target.octave} · ${formatFrequency(reading.target.frequency)}`
+                  : listening
+                    ? 'Play a note…'
+                    : `${AUDIBLE_MIN_HZ} Hz – ${formatFrequency(AUDIBLE_MAX_HZ)}`}
+              </p>
+              <p className="tuner__cents">
+                {reading
+                  ? `${reading.cents >= 0 ? '+' : ''}${reading.cents.toFixed(0)} cents`
+                  : '±0 cents'}
+              </p>
+
+              <div
+                className="tuner__meter"
+                role="meter"
+                aria-valuemin={-CENTS_HIGHLIGHT_RANGE}
+                aria-valuemax={CENTS_HIGHLIGHT_RANGE}
+                aria-valuenow={reading ? Math.round(reading.cents) : 0}
+                aria-label="Cents sharp or flat"
+              >
+                <div className="tuner__meter-track">
+                  <span className="tuner__meter-mark tuner__meter-mark--left">
+                    ♭
+                  </span>
+                  <span className="tuner__meter-center" aria-hidden />
+                  <span className="tuner__meter-mark tuner__meter-mark--right">
+                    ♯
+                  </span>
+                  <span
+                    className={
+                      inTune
+                        ? 'tuner__needle tuner__needle--in-tune'
+                        : 'tuner__needle'
+                    }
+                    style={{ left: `${needlePct}%` }}
+                  />
+                </div>
               </div>
             </div>
 
             <div className="tuner__strings">
               <p className="diagram-label" id={`${baseId}-strings-label`}>
-                Guitar string lock
+                Guitar strings
               </p>
               <div
                 className="tuner__string-grid"
-                role="group"
+                role="list"
                 aria-labelledby={`${baseId}-strings-label`}
               >
-                <button
-                  type="button"
-                  className={
-                    lockedStringId == null
-                      ? 'tuner__string-btn tuner__string-btn--active'
-                      : 'tuner__string-btn'
-                  }
-                  aria-pressed={lockedStringId == null}
-                  onClick={() => setLockedStringId(null)}
-                >
-                  Auto
-                </button>
                 {STANDARD_GUITAR_STRINGS.map((s) => {
-                  const active = lockedStringId === s.id
-                  const detected =
-                    reading != null &&
-                    reading.target.kind === 'string' &&
-                    reading.target.id === s.id
+                  const inRange =
+                    liveHz != null &&
+                    Math.abs(centsOffTarget(liveHz, s.frequency)) <=
+                      CENTS_HIGHLIGHT_RANGE
                   return (
-                    <button
+                    <div
                       key={s.id}
-                      type="button"
+                      role="listitem"
                       className={
-                        active
+                        inRange
                           ? 'tuner__string-btn tuner__string-btn--active'
-                          : detected
-                            ? 'tuner__string-btn tuner__string-btn--detected'
-                            : 'tuner__string-btn'
+                          : 'tuner__string-btn'
                       }
-                      aria-pressed={active}
-                      onClick={() =>
-                        setLockedStringId((prev) =>
-                          prev === s.id ? null : s.id,
-                        )
-                      }
+                      aria-current={inRange ? 'true' : undefined}
                     >
-                      {s.label}
-                    </button>
+                      <span className="tuner__string-btn-label">{s.label}</span>
+                      <span className="tuner__string-btn-hz">
+                        {formatFrequency(s.frequency)}
+                      </span>
+                    </div>
                   )
                 })}
               </div>

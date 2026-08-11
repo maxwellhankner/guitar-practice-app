@@ -130,7 +130,7 @@
   flex-direction: column;
   align-items: center;
   gap: 0.25rem;
-  padding: 1.5rem 1rem;
+  padding: 1.5rem 1rem 1.1rem;
   border: 1px solid var(--card-border);
   border-radius: 0.875rem;
   background: var(--card-bg);
@@ -178,9 +178,15 @@
 
 .tuner__cents {
   margin-top: 0.35rem;
+  margin-bottom: 0.85rem;
   color: var(--heading);
   font-size: var(--options-text-label);
   font-variant-numeric: tabular-nums;
+}
+
+.tuner__display .tuner__meter {
+  width: 100%;
+  margin-top: 0.15rem;
 }
 
 .tuner__range {
@@ -337,20 +343,37 @@
 
 .tuner__string-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(4.5rem, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.5rem;
 }
 
 .tuner__string-btn {
-  min-height: 2.25rem;
-  padding: 0.4rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  min-height: 2.75rem;
+  padding: 0.5rem 0.4rem;
   border: 1px solid var(--card-border);
   border-radius: 0.5rem;
   background: var(--card-bg);
   color: var(--muted);
   font-size: var(--options-text-btn-sm);
   font-weight: 500;
-  cursor: pointer;
+  text-align: center;
+}
+
+.tuner__string-btn-label {
+  color: inherit;
+  font-weight: 600;
+}
+
+.tuner__string-btn-hz {
+  color: inherit;
+  font-size: var(--options-text-micro);
+  font-variant-numeric: tabular-nums;
+  opacity: 0.85;
 }
 
 .tuner__string-btn--active {
@@ -359,15 +382,8 @@
   background: color-mix(in srgb, var(--accent-line) 14%, var(--card-bg));
 }
 
-.tuner__string-btn--detected {
-  color: var(--heading);
-  border-color: color-mix(in srgb, var(--heading) 25%, var(--card-border));
-}
-
-@media (hover: hover) {
-  .tuner__string-btn:hover {
-    color: var(--heading);
-  }
+.tuner__string-btn--active .tuner__string-btn-hz {
+  opacity: 1;
 }
 
 .app-page {
