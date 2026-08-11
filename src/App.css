@@ -313,7 +313,7 @@
   top: 50%;
   translate: 0 -50%;
   color: var(--muted);
-  font-size: var(--options-text-micro);
+  font-size: 1.125rem;
   line-height: 1;
   pointer-events: none;
 }
