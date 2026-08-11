@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import {
+  AUDIBLE_MAX_HZ,
+  AUDIBLE_MIN_HZ,
   centsOffTarget,
   detectFrequency,
-  nearestGuitarString,
   pitchFromFrequency,
   STANDARD_GUITAR_STRINGS,
   type DetectedPitch,
-  type GuitarString,
 } from '../audio/pitchDetect'
 
 export type TunerStatus =
@@ -16,15 +16,35 @@ export type TunerStatus =
   | 'denied'
   | 'error'
 
+export type TunerTarget = {
+  id: string
+  label: string
+  noteName: string
+  octave: number
+  frequency: number
+  kind: 'note' | 'string'
+}
+
 export type TunerReading = {
   pitch: DetectedPitch
-  target: GuitarString
+  target: TunerTarget
   cents: number
 }
 
 type UseTunerMicOptions = {
-  /** When set, lock comparison to this string; otherwise auto-pick nearest. */
+  /** When set, lock comparison to this guitar string; otherwise nearest note. */
   lockedStringId: string | null
+}
+
+function chromaticTarget(pitch: DetectedPitch): TunerTarget {
+  return {
+    id: `${pitch.noteName}${pitch.octave}`,
+    label: `${pitch.noteName}${pitch.octave}`,
+    noteName: pitch.noteName,
+    octave: pitch.octave,
+    frequency: pitch.nearestNoteHz,
+    kind: 'note',
+  }
 }
 
 export function useTunerMic({ lockedStringId }: UseTunerMicOptions) {
@@ -91,7 +111,8 @@ export function useTunerMic({ lockedStringId }: UseTunerMicOptions) {
 
       const source = context.createMediaStreamSource(stream)
       const analyser = context.createAnalyser()
-      analyser.fftSize = 2048
+      // Larger window so ~20 Hz fundamentals have enough periods to correlate.
+      analyser.fftSize = 8192
       source.connect(analyser)
 
       const buffer = new Float32Array(new ArrayBuffer(analyser.fftSize * 4))
@@ -100,7 +121,7 @@ export function useTunerMic({ lockedStringId }: UseTunerMicOptions) {
       setStatus('listening')
 
       let smoothCents: number | null = null
-      let lastNoteKey: string | null = null
+      let lastTargetKey: string | null = null
 
       const tick = () => {
         const current = audioRef.current
@@ -112,22 +133,33 @@ export function useTunerMic({ lockedStringId }: UseTunerMicOptions) {
         const frequency = detectFrequency(
           current.buffer,
           current.context.sampleRate,
+          AUDIBLE_MIN_HZ,
+          AUDIBLE_MAX_HZ,
         )
 
         if (frequency > 0) {
           const pitch = pitchFromFrequency(frequency)
           if (pitch) {
             const lockedId = lockedRef.current
-            const target =
+            const lockedString =
               lockedId != null
-                ? (STANDARD_GUITAR_STRINGS.find((s) => s.id === lockedId) ??
-                  nearestGuitarString(frequency))
-                : nearestGuitarString(frequency)
+                ? STANDARD_GUITAR_STRINGS.find((s) => s.id === lockedId)
+                : undefined
+            const target: TunerTarget = lockedString
+              ? {
+                  id: lockedString.id,
+                  label: lockedString.label,
+                  noteName: lockedString.noteName,
+                  octave: lockedString.octave,
+                  frequency: lockedString.frequency,
+                  kind: 'string',
+                }
+              : chromaticTarget(pitch)
             const cents = centsOffTarget(frequency, target.frequency)
-            const noteKey = `${pitch.noteName}${pitch.octave}`
-            if (noteKey !== lastNoteKey) {
+            const targetKey = target.id
+            if (targetKey !== lastTargetKey) {
               smoothCents = cents
-              lastNoteKey = noteKey
+              lastTargetKey = targetKey
             } else if (smoothCents == null) {
               smoothCents = cents
             } else {
@@ -139,9 +171,6 @@ export function useTunerMic({ lockedStringId }: UseTunerMicOptions) {
               cents: smoothCents,
             })
           }
-        } else {
-          // Keep last reading briefly; clear if silence persists via idle fade
-          // (leave previous reading so the needle doesn't flicker)
         }
 
         current.raf = requestAnimationFrame(tick)

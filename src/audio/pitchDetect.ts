@@ -1,11 +1,14 @@
-/** Pitch detection via autocorrelation (monophonic; good enough for guitar). */
+/** Pitch detection via autocorrelation (monophonic). */
 
 export type DetectedPitch = {
   frequency: number
   noteIndex: number
   noteName: string
   octave: number
+  /** Cents off the nearest equal-temperament note. */
   cents: number
+  /** Frequency of the nearest equal-temperament note. */
+  nearestNoteHz: number
 }
 
 const NOTE_NAMES = [
@@ -25,20 +28,31 @@ const NOTE_NAMES = [
 
 const A4_HZ = 440
 
-/** Lowest / highest freqs we bother reporting for guitar + a bit of headroom. */
-const MIN_HZ = 60
-const MAX_HZ = 1200
+/** Conventional human hearing band used for the tuner range display. */
+export const AUDIBLE_MIN_HZ = 20
+export const AUDIBLE_MAX_HZ = 20_000
 
 /**
  * Returns fundamental frequency in Hz, or -1 if no clear pitch.
  * Based on the classic Web Audio autocorrelation approach.
+ * `minHz` / `maxHz` clamp the search (defaults cover the audible band,
+ * capped by Nyquist).
  */
 export function detectFrequency(
   buffer: Float32Array,
   sampleRate: number,
+  minHz: number = AUDIBLE_MIN_HZ,
+  maxHz: number = AUDIBLE_MAX_HZ,
 ): number {
   const size = buffer.length
   if (size < 32 || sampleRate <= 0) {
+    return -1
+  }
+
+  const nyquist = sampleRate / 2
+  const lo = Math.max(AUDIBLE_MIN_HZ, minHz)
+  const hi = Math.min(nyquist * 0.98, maxHz)
+  if (!(lo < hi)) {
     return -1
   }
 
@@ -76,16 +90,18 @@ export function detectFrequency(
     return -1
   }
 
-  const maxSamples = Math.floor(sampleRate / MIN_HZ)
-  const minSamples = Math.max(2, Math.floor(sampleRate / MAX_HZ))
-  if (maxSamples >= n) {
+  const maxSamples = Math.min(Math.floor(sampleRate / lo), Math.floor(n / 2))
+  const minSamples = Math.max(2, Math.floor(sampleRate / hi))
+  if (maxSamples <= minSamples) {
     return -1
   }
 
   const correlations = new Float32Array(maxSamples)
   for (let offset = minSamples; offset < maxSamples; offset++) {
     let sum = 0
-    for (let i = 0; i < n - offset; i++) {
+    // Stride slightly on long windows to keep mobile frames cheap.
+    const step = n - offset > 4096 ? 2 : 1
+    for (let i = 0; i < n - offset; i += step) {
       sum += trimmed[i]! * trimmed[i + offset]!
     }
     correlations[offset] = sum
@@ -123,17 +139,25 @@ export function detectFrequency(
   }
 
   const frequency = sampleRate / betterOffset
-  if (frequency < MIN_HZ || frequency > MAX_HZ) {
+  if (frequency < lo || frequency > hi) {
     return -1
   }
   return frequency
+}
+
+export function midiFromFrequency(frequency: number): number {
+  return 69 + 12 * Math.log2(frequency / A4_HZ)
+}
+
+export function frequencyFromMidi(midi: number): number {
+  return A4_HZ * 2 ** ((midi - 69) / 12)
 }
 
 export function pitchFromFrequency(frequency: number): DetectedPitch | null {
   if (!(frequency > 0) || !Number.isFinite(frequency)) {
     return null
   }
-  const midi = 69 + 12 * Math.log2(frequency / A4_HZ)
+  const midi = midiFromFrequency(frequency)
   const rounded = Math.round(midi)
   const cents = (midi - rounded) * 100
   const noteIndex = ((rounded % 12) + 12) % 12
@@ -144,6 +168,7 @@ export function pitchFromFrequency(frequency: number): DetectedPitch | null {
     noteName: NOTE_NAMES[noteIndex]!,
     octave,
     cents,
+    nearestNoteHz: frequencyFromMidi(rounded),
   }
 }
 
@@ -180,4 +205,26 @@ export function nearestGuitarString(frequency: number): GuitarString {
 
 export function centsOffTarget(frequency: number, targetHz: number): number {
   return 1200 * Math.log2(frequency / targetHz)
+}
+
+/** 0–100 position on a log frequency axis spanning the audible band. */
+export function audibleRangePosition(frequency: number): number {
+  const lo = Math.log(AUDIBLE_MIN_HZ)
+  const hi = Math.log(AUDIBLE_MAX_HZ)
+  const clamped = Math.min(
+    AUDIBLE_MAX_HZ,
+    Math.max(AUDIBLE_MIN_HZ, frequency),
+  )
+  return ((Math.log(clamped) - lo) / (hi - lo)) * 100
+}
+
+export function formatFrequency(hz: number): string {
+  if (hz >= 1000) {
+    const khz = hz / 1000
+    return `${khz >= 10 ? khz.toFixed(1) : khz.toFixed(2)} kHz`
+  }
+  if (hz >= 100) {
+    return `${hz.toFixed(1)} Hz`
+  }
+  return `${hz.toFixed(2)} Hz`
 }
