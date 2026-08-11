@@ -59,13 +59,6 @@
   min-width: 0;
 }
 
-.tuner__hint {
-  margin: 0;
-  font-size: var(--options-text-body);
-  color: var(--muted);
-  line-height: 1.45;
-}
-
 .tuner__actions {
   display: flex;
   flex-wrap: wrap;
