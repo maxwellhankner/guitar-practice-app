@@ -166,6 +166,7 @@ export function useUserSettings() {
     selectedKey: settings?.selectedKey ?? null,
     selectedChord: settings?.selectedChord ?? null,
     builtProgression: settings?.builtProgression ?? null,
+    selectedSongId: settings?.selectedSongId ?? null,
     setChordKnown: setChordKnownState,
     setFilterPlayableOnly: setFilterPlayableOnlyState,
     setDisplayNotes: setDisplayNotesState,

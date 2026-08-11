@@ -6,6 +6,11 @@ import {
   isProgressionResolvableInKey,
   type ProgressionId,
 } from './progressions'
+import {
+  chordsForSong,
+  isSongResolvableInKey,
+  type SongId,
+} from './songs'
 
 export function isChordKnown(
   chordId: ChordPresetId,
@@ -53,6 +58,17 @@ export function isProgressionPlayableInKey(
     return false
   }
   return allChordsKnown(chordsForProgression(keyId, progressionId), known)
+}
+
+export function isSongPlayableInKey(
+  keyId: KeyId,
+  songId: SongId,
+  known: ReadonlySet<ChordPresetId>,
+): boolean {
+  if (!isSongResolvableInKey(keyId, songId)) {
+    return false
+  }
+  return allChordsKnown(chordsForSong(keyId, songId), known)
 }
 
 /** At least one progression in this key uses only known chords. */

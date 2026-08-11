@@ -255,12 +255,11 @@ export function allowedChordsForProgression(
   return allowed
 }
 
-/** Chords for a progression in the given key, in progression order. */
-export function chordsForProgression(
+/** Chords for arbitrary degree/color steps in the given key, in order. */
+export function chordsForSteps(
   keyId: KeyId,
-  progressionId: ProgressionId,
+  steps: readonly ProgressionStepDef[],
 ): ChordPresetId[] {
-  const { steps } = PROGRESSIONS[progressionId]
   return steps.map((step) => {
     const chordId = chordForStep(keyId, step)
     if (chordId == null) {
@@ -270,6 +269,14 @@ export function chordsForProgression(
     }
     return chordId
   })
+}
+
+/** Chords for a progression in the given key, in progression order. */
+export function chordsForProgression(
+  keyId: KeyId,
+  progressionId: ProgressionId,
+): ChordPresetId[] {
+  return chordsForSteps(keyId, PROGRESSIONS[progressionId].steps)
 }
 
 assertProgressions()

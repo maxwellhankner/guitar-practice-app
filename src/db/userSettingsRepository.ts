@@ -10,6 +10,8 @@ import {
   type ChordPresetId,
   type KeyId,
   type ScaleSelection,
+  sanitizeSongId,
+  type SongId,
 } from '../components/Fretboard'
 import type { FretboardOrientation } from '../components/Fretboard/types'
 import {
@@ -62,6 +64,8 @@ export type UserSettings = {
   selectedChord: ChordPresetId | null
   /** Built progression chord sequence, if any. */
   builtProgression: ChordPresetId[] | null
+  /** Song that seeded the current progression, if any. */
+  selectedSongId: SongId | null
 }
 
 /** Baked snapshot shipped with production builds (see scripts/publish-state.mjs). */
@@ -97,6 +101,7 @@ const DEFAULT_SETTINGS: UserSettings = {
   selectedKey: null,
   selectedChord: null,
   builtProgression: null,
+  selectedSongId: null,
 }
 
 const validChordIds = new Set<string>(CHORD_PRESET_IDS)
@@ -175,6 +180,10 @@ function mergeSettings(
       partial.builtProgression !== undefined
         ? sanitizeBuiltProgression(partial.builtProgression)
         : current.builtProgression,
+    selectedSongId:
+      partial.selectedSongId !== undefined
+        ? sanitizeSongId(partial.selectedSongId)
+        : current.selectedSongId,
   }
 }
 
@@ -279,6 +288,7 @@ function fromRecord(record: UserSettingsRecordInput): UserSettings {
     selectedKey: sanitizeSelectedKey(record.selectedKey),
     selectedChord: sanitizeSelectedChord(record.selectedChord),
     builtProgression: sanitizeBuiltProgression(record.builtProgression),
+    selectedSongId: sanitizeSongId(record.selectedSongId),
   }
 }
 
@@ -300,6 +310,7 @@ function applyMigrations(settings: UserSettings): {
       selectedKey: next.selectedKey ?? null,
       selectedChord: next.selectedChord ?? null,
       builtProgression: next.builtProgression ?? null,
+      selectedSongId: next.selectedSongId ?? null,
     }
   }
   return {
@@ -460,6 +471,7 @@ export type PracticeSelection = {
   selectedKey?: KeyId | null
   selectedChord?: ChordPresetId | null
   builtProgression?: ChordPresetId[] | null
+  selectedSongId?: SongId | null
 }
 
 export async function setPracticeSelection(

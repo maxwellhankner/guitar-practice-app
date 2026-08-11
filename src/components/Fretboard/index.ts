@@ -62,6 +62,7 @@ export {
   BASIC_PROGRESSION_IDS,
   COLORED_PROGRESSION_IDS,
   chordsForProgression,
+  chordsForSteps,
   allowedChordsForProgression,
   isProgressionResolvableInKey,
   type ProgressionId,
@@ -71,6 +72,17 @@ export {
   type ProgressionDef,
   type ProgressionStepDef,
 } from './progressions'
+export {
+  SONGS,
+  SONG_IDS,
+  chordsForSong,
+  seedProgressionFromSong,
+  isSongResolvableInKey,
+  isSongId,
+  sanitizeSongId,
+  type SongId,
+  type SongDef,
+} from './songs'
 export {
   MIN_PROGRESSION_STEPS,
   MAX_PROGRESSION_STEPS,
@@ -96,6 +108,7 @@ export {
   unknownChordsIn,
   unplayableChordsIn,
   isProgressionPlayableInKey,
+  isSongPlayableInKey,
   isKeyPlayable,
 } from './playability'
 export {

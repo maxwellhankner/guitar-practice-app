@@ -41,6 +41,7 @@ import {
   romanLabelForProgressionStep,
   unknownChordsIn,
   seedProgressionFromPreset,
+  seedProgressionFromSong,
   allowedChordsForBuiltProgression,
   progressionHighlightedTriadsInKey,
   swapAdjacentProgressionSteps,
@@ -57,6 +58,11 @@ import {
   PROGRESSIONS,
   BASIC_PROGRESSION_IDS,
   COLORED_PROGRESSION_IDS,
+  SONGS,
+  SONG_IDS,
+  chordsForSong,
+  isSongResolvableInKey,
+  isSongPlayableInKey,
   resolveChord,
   chordRomanNumeralOnScale,
   scalePatternForKey,
@@ -67,6 +73,7 @@ import {
   type ProgressionId,
   type RootName,
   type ScaleSelection,
+  type SongId,
 } from '../components/Fretboard'
 import { useUserSettings } from '../hooks/useUserSettings'
 import { useMobileDiagramLayout } from '../hooks/useMobileDiagramLayout'
@@ -117,14 +124,16 @@ type PracticeSelectionSnapshot = {
   selectedKey: KeyId | null
   selectedChord: ChordPresetId | null
   builtProgression: ChordPresetId[] | null
+  selectedSongId: SongId | null
 }
 
 function practiceSelectionSnapshot(
   selectedKey: KeyId | null,
   selectedChord: ChordPresetId | null,
   builtProgression: ChordPresetId[] | null,
+  selectedSongId: SongId | null,
 ): PracticeSelectionSnapshot {
-  return { selectedKey, selectedChord, builtProgression }
+  return { selectedKey, selectedChord, builtProgression, selectedSongId }
 }
 
 function practiceSelectionsEqual(
@@ -134,6 +143,7 @@ function practiceSelectionsEqual(
   return (
     a.selectedKey === b.selectedKey &&
     a.selectedChord === b.selectedChord &&
+    a.selectedSongId === b.selectedSongId &&
     progressionEqual(a.builtProgression, b.builtProgression)
   )
 }
@@ -145,6 +155,7 @@ export function HomePage() {
   const [builtProgression, setBuiltProgression] = useState<
     ChordPresetId[] | null
   >(null)
+  const [selectedSongId, setSelectedSongId] = useState<SongId | null>(null)
   const [pendingAddAfterIndex, setPendingAddAfterIndex] = useState<
     number | null
   >(null)
@@ -194,6 +205,7 @@ export function HomePage() {
     selectedKey: savedSelectedKey,
     selectedChord: savedSelectedChord,
     builtProgression: savedBuiltProgression,
+    selectedSongId: savedSelectedSongId,
     setPracticeSelection,
   } = useUserSettings()
 
@@ -208,16 +220,19 @@ export function HomePage() {
       selectedKey,
       selectedChord,
       builtProgression,
+      selectedSongId,
     )
     const saved = practiceSelectionSnapshot(
       savedSelectedKey,
       savedSelectedChord,
       savedBuiltProgression,
+      savedSelectedSongId,
     )
 
     if (!practiceHydratedRef.current) {
       setSelectedKey(saved.selectedKey)
       setBuiltProgression(saved.builtProgression)
+      setSelectedSongId(saved.selectedSongId)
       setSelection(
         saved.selectedChord != null
           ? { kind: 'chord', id: saved.selectedChord }
@@ -243,6 +258,7 @@ export function HomePage() {
       }
       setSelectedKey(saved.selectedKey)
       setBuiltProgression(saved.builtProgression)
+      setSelectedSongId(saved.selectedSongId)
       setSelection(
         saved.selectedChord != null
           ? { kind: 'chord', id: saved.selectedChord }
@@ -259,6 +275,7 @@ export function HomePage() {
         selectedKey: local.selectedKey,
         selectedChord: local.selectedChord,
         builtProgression: local.builtProgression,
+        selectedSongId: local.selectedSongId,
       }).finally(() => {
         if (
           pendingPracticePersistRef.current != null &&
@@ -278,9 +295,11 @@ export function HomePage() {
     selectedKey,
     selection,
     builtProgression,
+    selectedSongId,
     savedSelectedKey,
     savedSelectedChord,
     savedBuiltProgression,
+    savedSelectedSongId,
     setPracticeSelection,
   ])
 
@@ -318,6 +337,7 @@ export function HomePage() {
 
   const clearSelectedKey = () => {
     setBuiltProgression(null)
+    setSelectedSongId(null)
     setPendingAddAfterIndex(null)
     setSelection(null)
     setSelectedKey(null)
@@ -638,8 +658,25 @@ export function HomePage() {
     if (activeKey == null) {
       return
     }
+    setSelectedSongId(null)
     setBuiltProgression(seedProgressionFromPreset(activeKey, progressionId))
     setPendingAddAfterIndex(null)
+  }
+
+  const seedFromSong = (songId: SongId) => {
+    const song = SONGS[songId]
+    const keyId = activeKey ?? song.defaultKey
+    if (activeKey == null) {
+      setSelectedKey(keyId)
+    }
+    setSelectedSongId(songId)
+    setBuiltProgression(seedProgressionFromSong(keyId, songId))
+    setPendingAddAfterIndex(null)
+    setSelection(null)
+  }
+
+  const detachSongAssociation = () => {
+    setSelectedSongId(null)
   }
 
   const toggleEditKnownChordsMode = () => {
@@ -702,18 +739,23 @@ export function HomePage() {
     setSelection(null)
     setSelectedKey(keyId)
     if (transposedProgression != null) {
+      if (progressionFromFindKey != null) {
+        setSelectedSongId(null)
+      }
       setBuiltProgression(transposedProgression)
     }
   }
 
   const clearBuiltProgression = () => {
     setBuiltProgression(null)
+    setSelectedSongId(null)
     setPendingAddAfterIndex(null)
     setSelection(null)
   }
 
   const handleKeyRowChordClick = (chordId: ChordPresetId) => {
     setPendingAddAfterIndex(null)
+    detachSongAssociation()
 
     if (
       builtProgression != null &&
@@ -741,6 +783,7 @@ export function HomePage() {
   }
 
   const handleSwapAdjacentSteps = (leftIndex: number) => {
+    detachSongAssociation()
     setBuiltProgression((cur) =>
       cur == null ? cur : swapAdjacentProgressionSteps(cur, leftIndex),
     )
@@ -751,6 +794,7 @@ export function HomePage() {
     const deletedId = builtProgression?.[stepIndex]
     const willBeEmpty = builtProgression?.length === 1
 
+    detachSongAssociation()
     setBuiltProgression((cur) =>
       cur == null ? cur : deleteProgressionStep(cur, stepIndex),
     )
@@ -779,6 +823,7 @@ export function HomePage() {
     ) {
       return
     }
+    detachSongAssociation()
     let chordId = rootName as ChordPresetId
     if (isRootInKey(selectedKey, rootName)) {
       for (const slot of diatonicSlotsInKey(selectedKey)) {
@@ -847,18 +892,98 @@ export function HomePage() {
     )
   }
 
+  const songDisabledReason = (
+    keyId: KeyId,
+    songId: SongId,
+  ): string | null => {
+    if (!isSongResolvableInKey(keyId, songId)) {
+      return 'Not available in this key'
+    }
+    if (!filterPlayableOnly) {
+      return null
+    }
+    const missing = unknownChordsIn(chordsForSong(keyId, songId), knownChords)
+    if (missing.length === 0) {
+      return null
+    }
+    return `Requires ${missing.join(', ')}`
+  }
+
+  const renderSongSeedButton = (keyId: KeyId, songId: SongId) => {
+    const song = SONGS[songId]
+    const unresolved = !isSongResolvableInKey(keyId, songId)
+    const blocked =
+      filterPlayableOnly &&
+      !unresolved &&
+      !isSongPlayableInKey(keyId, songId, knownChords)
+    const disabled = unresolved || blocked
+    const blockedReason = songDisabledReason(keyId, songId)
+    const seedChords = unresolved
+      ? null
+      : chordsForSong(keyId, songId)
+          .map((id) => CHORD_PRESETS[id].name)
+          .join(' · ')
+    const tooltipLabel =
+      blockedReason ??
+      (seedChords != null
+        ? `${song.artist} — ${seedChords} in ${KEY_DEFS[keyId].name}`
+        : `${song.title} · ${song.artist}`)
+
+    return (
+      <Tooltip key={songId} label={tooltipLabel}>
+        <button
+          type="button"
+          className={[
+            'diagram-chord-btn',
+            'diagram-song-seeds__btn',
+            blocked ? 'diagram-chord-btn--unplayable' : '',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+          disabled={disabled}
+          aria-disabled={disabled}
+          onClick={() => seedFromSong(songId)}
+        >
+          <span className="diagram-song-seeds__title">{song.title}</span>
+        </button>
+      </Tooltip>
+    )
+  }
+
   const renderProgressionSeeds = (keyId: KeyId) => (
-    <div
-      className="diagram-chord-grid diagram-progression-grid diagram-progression-seeds"
-      role="group"
-      aria-label="Progression seeds"
-    >
-      {BASIC_PROGRESSION_IDS.map((progressionId) =>
-        renderProgressionSeedButton(keyId, progressionId),
-      )}
-      {COLORED_PROGRESSION_IDS.map((progressionId) =>
-        renderProgressionSeedButton(keyId, progressionId, true),
-      )}
+    <div className="diagram-progression-choosers">
+      <div className="diagram-progression-chooser">
+        <p className="diagram-chords-build__sub-label" id={`${baseId}-songs-label`}>
+          Songs
+        </p>
+        <div
+          className="diagram-chord-grid diagram-song-seeds"
+          role="group"
+          aria-labelledby={`${baseId}-songs-label`}
+        >
+          {SONG_IDS.map((songId) => renderSongSeedButton(keyId, songId))}
+        </div>
+      </div>
+      <div className="diagram-progression-chooser">
+        <p
+          className="diagram-chords-build__sub-label"
+          id={`${baseId}-patterns-label`}
+        >
+          Patterns
+        </p>
+        <div
+          className="diagram-chord-grid diagram-progression-grid diagram-progression-seeds"
+          role="group"
+          aria-labelledby={`${baseId}-patterns-label`}
+        >
+          {BASIC_PROGRESSION_IDS.map((progressionId) =>
+            renderProgressionSeedButton(keyId, progressionId),
+          )}
+          {COLORED_PROGRESSION_IDS.map((progressionId) =>
+            renderProgressionSeedButton(keyId, progressionId, true),
+          )}
+        </div>
+      </div>
     </div>
   )
 
@@ -1715,12 +1840,22 @@ export function HomePage() {
                     aria-labelledby={`${baseId}-progression-label`}
                   >
                     <div className="diagram-chords-build__progression-header">
-                      <p
-                        className="diagram-chords-build__sub-label"
-                        id={`${baseId}-progression-label`}
-                      >
-                        Progression
-                      </p>
+                      <div className="diagram-chords-build__progression-heading">
+                        <p
+                          className="diagram-chords-build__sub-label"
+                          id={`${baseId}-progression-label`}
+                        >
+                          Progression
+                        </p>
+                        {selectedSongId != null ? (
+                          <p className="diagram-chords-build__song-label">
+                            {SONGS[selectedSongId].title}
+                            <span className="diagram-chords-build__song-artist">
+                              {SONGS[selectedSongId].artist}
+                            </span>
+                          </p>
+                        ) : null}
+                      </div>
                       {hasBuiltProgression ? (
                         <button
                           type="button"
