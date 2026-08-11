@@ -1247,10 +1247,23 @@
 
 .diagram-field__label-row {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
+  min-height: 1.25rem;
   line-height: 1;
+}
+
+.diagram-field__label-action {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  min-height: 1.25rem;
+}
+
+.diagram-field__label-action--reserved {
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .diagram-find-key,

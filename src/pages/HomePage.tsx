@@ -1545,8 +1545,15 @@ export function HomePage() {
                 <p className="diagram-label" id={`${baseId}-key-label`}>
                   Key
                 </p>
-                {selectedKey == null ? (
+                <div
+                  className={
+                    selectedKey == null
+                      ? 'diagram-field__label-action'
+                      : 'diagram-field__label-action diagram-field__label-action--reserved'
+                  }
+                >
                   <Tooltip
+                    disabled={selectedKey != null}
                     label={
                       findKeyMode
                         ? 'Multiselect chords to find matching keys'
@@ -1562,13 +1569,16 @@ export function HomePage() {
                       }
                       aria-pressed={findKeyMode}
                       aria-label="Find key from selected chords"
+                      aria-hidden={selectedKey != null}
+                      tabIndex={selectedKey == null ? undefined : -1}
+                      disabled={selectedKey != null}
                       onClick={toggleFindKeyMode}
                     >
                       <Search size={12} aria-hidden />
                       find key
                     </button>
                   </Tooltip>
-                ) : null}
+                </div>
               </div>
               <div
                 className="diagram-select-stack"
