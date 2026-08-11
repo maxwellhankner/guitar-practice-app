@@ -46,11 +46,10 @@ export function TunerPage() {
       >
         <div className="app-page__inner">
           <AppNav />
-          <h1 className="app-page__title" id={`${baseId}-heading`}>
-            Tuner
-          </h1>
-
-          <div className="tuner">
+          <div className="tuner__header">
+            <h1 className="app-page__title" id={`${baseId}-heading`}>
+              Tuner
+            </h1>
             <div className="tuner__actions">
               {listening ? (
                 <button
@@ -75,7 +74,9 @@ export function TunerPage() {
                 </button>
               )}
             </div>
+          </div>
 
+          <div className="tuner">
             {errorMessage ? (
               <p className="tuner__error" role="alert">
                 {errorMessage}
