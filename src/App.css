@@ -6,45 +6,6 @@
   overflow: hidden;
 }
 
-.nav-toggle {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.2rem;
-  width: 100%;
-  margin: 0 0 0.875rem;
-  padding: 0.2rem;
-  border: 1px solid var(--card-border);
-  border-radius: 0.65rem;
-  background: color-mix(in srgb, var(--card-bg) 75%, #000);
-}
-
-.nav-toggle__item {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 2.15rem;
-  padding: 0.4rem 0.75rem;
-  border-radius: 0.5rem;
-  color: var(--muted);
-  font-size: var(--options-text-btn-sm);
-  font-weight: 500;
-  text-decoration: none;
-  line-height: 1.2;
-  text-align: center;
-}
-
-.nav-toggle__item--active {
-  color: var(--heading);
-  background: color-mix(in srgb, var(--accent-line) 20%, var(--card-bg));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-line) 40%, transparent);
-}
-
-@media (hover: hover) {
-  .nav-toggle__item:hover {
-    color: var(--heading);
-  }
-}
-
 .app-page--tuner {
   display: block;
   overflow: auto;
@@ -65,14 +26,14 @@
 }
 
 .tuner__actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: stretch;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 0.625rem;
   min-width: 0;
 }
 
-.tuner__mic-btn {
+.tuner__mic-btn,
+.tuner__exit-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -80,13 +41,26 @@
   width: 100%;
   min-height: 2.5rem;
   padding: 0.5rem 0.875rem;
-  border: 1px solid color-mix(in srgb, var(--accent-line) 45%, var(--card-border));
   border-radius: 0.625rem;
-  background: color-mix(in srgb, var(--accent-line) 18%, var(--card-bg));
-  color: var(--heading);
   font-size: var(--options-text-btn);
   font-weight: 600;
+  line-height: 1.2;
+  text-decoration: none;
   cursor: pointer;
+  box-sizing: border-box;
+}
+
+.tuner__mic-btn {
+  border: 1px solid color-mix(in srgb, var(--accent-line) 45%, var(--card-border));
+  background: color-mix(in srgb, var(--accent-line) 18%, var(--card-bg));
+  color: var(--heading);
+}
+
+.tuner__exit-btn {
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  color: var(--heading);
+  font-weight: 500;
 }
 
 .tuner__mic-btn:disabled {
@@ -103,6 +77,11 @@
 @media (hover: hover) {
   .tuner__mic-btn:hover:not(:disabled) {
     border-color: var(--accent-line);
+  }
+
+  .tuner__exit-btn:hover {
+    border-color: color-mix(in srgb, var(--heading) 28%, var(--card-border));
+    color: var(--heading);
   }
 }
 
@@ -599,7 +578,8 @@
 .app-page__divider-diagram-toggle,
 .app-page__divider-scale-toggle,
 .app-page__divider-known-toggle,
-.app-page__divider-notes-toggle {
+.app-page__divider-notes-toggle,
+.app-page__divider-tuner-toggle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -648,7 +628,8 @@
 .app-page__divider-diagram-toggle svg,
 .app-page__divider-scale-toggle svg,
 .app-page__divider-known-toggle svg,
-.app-page__divider-notes-toggle svg {
+.app-page__divider-notes-toggle svg,
+.app-page__divider-tuner-toggle svg {
   width: var(--divider-icon-size);
   height: var(--divider-icon-size);
 }
@@ -659,7 +640,8 @@
 .app-page__divider-diagram-toggle,
 .app-page__divider-scale-toggle,
 .app-page__divider-known-toggle,
-.app-page__divider-notes-toggle {
+.app-page__divider-notes-toggle,
+.app-page__divider-tuner-toggle {
   z-index: 1;
   appearance: none;
   -webkit-appearance: none;
@@ -669,6 +651,7 @@
     background 0.12s ease,
     border-color 0.12s ease,
     box-shadow 0.12s ease;
+  text-decoration: none;
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -678,7 +661,8 @@
   .app-page__divider-diagram-toggle:hover,
   .app-page__divider-scale-toggle:hover,
   .app-page__divider-known-toggle:hover,
-  .app-page__divider-notes-toggle:hover {
+  .app-page__divider-notes-toggle:hover,
+  .app-page__divider-tuner-toggle:hover {
     color: var(--heading);
     background: var(--page-bg);
   }
@@ -690,7 +674,8 @@
 .app-page__divider-diagram-toggle:focus-visible,
 .app-page__divider-scale-toggle:focus-visible,
 .app-page__divider-known-toggle:focus-visible,
-.app-page__divider-notes-toggle:focus-visible {
+.app-page__divider-notes-toggle:focus-visible,
+.app-page__divider-tuner-toggle:focus-visible {
   outline: none;
   border-color: var(--accent-line);
 }

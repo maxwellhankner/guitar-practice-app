@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   ArrowLeftRight,
   ArrowUpDown,
@@ -7,6 +8,7 @@ import {
   ChevronRight,
   ChevronUp,
   Columns2,
+  Guitar,
   ListChecks,
   Music,
   Plus,
@@ -18,7 +20,6 @@ import {
   Share2,
   Trash2,
 } from 'lucide-react'
-import { AppNav } from '../components/AppNav'
 import { ChordPlayabilityCell } from '../components/ChordPlayabilityCell'
 import { Tooltip } from '../components/Tooltip'
 import {
@@ -1484,6 +1485,16 @@ export function HomePage() {
       {renderScaleControl(menuPickerPopupPlacement, menuBarTooltipPlacement)}
       {renderKnownFilterControl(menuBarTooltipPlacement)}
       {renderNotesControl(menuBarTooltipPlacement)}
+      <Tooltip placement={menuBarTooltipPlacement} label="Tuner">
+        <Link
+          to="/tuner"
+          className="app-page__divider-tuner-toggle"
+          aria-label="Open tuner"
+          onPointerDown={(event) => event.stopPropagation()}
+        >
+          <Guitar size={16} strokeWidth={2.5} aria-hidden />
+        </Link>
+      </Tooltip>
     </div>
   )
 
@@ -1528,7 +1539,6 @@ export function HomePage() {
         aria-label="Practice"
       >
         <div className="app-page__inner">
-          <AppNav />
           <div className="diagram-controls">
             <div className="diagram-field">
               <div className="diagram-field__label-row">

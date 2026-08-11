@@ -1,6 +1,6 @@
 import { useId } from 'react'
+import { Link } from 'react-router-dom'
 import { Mic, MicOff } from 'lucide-react'
-import { AppNav } from '../components/AppNav'
 import {
   AUDIBLE_MAX_HZ,
   AUDIBLE_MIN_HZ,
@@ -47,8 +47,6 @@ export function TunerPage() {
         aria-label="Tuner"
       >
         <div className="app-page__inner">
-          <AppNav />
-
           <div className="tuner">
             {errorMessage ? (
               <p className="tuner__error" role="alert">
@@ -164,59 +162,59 @@ export function TunerPage() {
                 }
                 aria-live="polite"
               >
-              <p className="tuner__note">
-                {reading ? `${reading.pitch.noteName}` : '—'}
-                {reading ? (
-                  <span className="tuner__octave">{reading.pitch.octave}</span>
-                ) : null}
-              </p>
-              <p className="tuner__freq-primary">
-                {reading
-                  ? formatFrequency(reading.pitch.frequency)
-                  : listening
-                    ? 'Listening…'
-                    : 'Mic off'}
-              </p>
-              <p className="tuner__target">
-                {reading
-                  ? `Target ${reading.target.noteName}${reading.target.octave} · ${formatFrequency(reading.target.frequency)}`
-                  : listening
-                    ? 'Play a note…'
-                    : null}
-              </p>
-              <p className="tuner__cents">
-                {reading
-                  ? `${reading.cents >= 0 ? '+' : ''}${reading.cents.toFixed(0)} cents`
-                  : '±0 cents'}
-              </p>
+                <p className="tuner__note">
+                  {reading ? `${reading.pitch.noteName}` : '—'}
+                  {reading ? (
+                    <span className="tuner__octave">{reading.pitch.octave}</span>
+                  ) : null}
+                </p>
+                <p className="tuner__freq-primary">
+                  {reading
+                    ? formatFrequency(reading.pitch.frequency)
+                    : listening
+                      ? 'Listening…'
+                      : 'Mic off'}
+                </p>
+                <p className="tuner__target">
+                  {reading
+                    ? `Target ${reading.target.noteName}${reading.target.octave} · ${formatFrequency(reading.target.frequency)}`
+                    : listening
+                      ? 'Play a note…'
+                      : null}
+                </p>
+                <p className="tuner__cents">
+                  {reading
+                    ? `${reading.cents >= 0 ? '+' : ''}${reading.cents.toFixed(0)} cents`
+                    : '±0 cents'}
+                </p>
 
-              <div
-                className="tuner__meter"
-                role="meter"
-                aria-valuemin={-CENTS_HIGHLIGHT_RANGE}
-                aria-valuemax={CENTS_HIGHLIGHT_RANGE}
-                aria-valuenow={reading ? Math.round(reading.cents) : 0}
-                aria-label="Cents sharp or flat"
-              >
-                <div className="tuner__meter-track">
-                  <span className="tuner__meter-mark tuner__meter-mark--left">
-                    ♭
-                  </span>
-                  <span className="tuner__meter-center" aria-hidden />
-                  <span className="tuner__meter-mark tuner__meter-mark--right">
-                    ♯
-                  </span>
-                  <span
-                    className={
-                      inTune
-                        ? 'tuner__needle tuner__needle--in-tune'
-                        : 'tuner__needle'
-                    }
-                    style={{ left: `${needlePct}%` }}
-                  />
+                <div
+                  className="tuner__meter"
+                  role="meter"
+                  aria-valuemin={-CENTS_HIGHLIGHT_RANGE}
+                  aria-valuemax={CENTS_HIGHLIGHT_RANGE}
+                  aria-valuenow={reading ? Math.round(reading.cents) : 0}
+                  aria-label="Cents sharp or flat"
+                >
+                  <div className="tuner__meter-track">
+                    <span className="tuner__meter-mark tuner__meter-mark--left">
+                      ♭
+                    </span>
+                    <span className="tuner__meter-center" aria-hidden />
+                    <span className="tuner__meter-mark tuner__meter-mark--right">
+                      ♯
+                    </span>
+                    <span
+                      className={
+                        inTune
+                          ? 'tuner__needle tuner__needle--in-tune'
+                          : 'tuner__needle'
+                      }
+                      style={{ left: `${needlePct}%` }}
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
             </div>
 
             <div className="tuner__actions">
@@ -242,6 +240,13 @@ export function TunerPage() {
                     : 'Enable microphone'}
                 </button>
               )}
+              <Link
+                to="/"
+                className="tuner__exit-btn"
+                onClick={() => stop()}
+              >
+                Exit
+              </Link>
             </div>
           </div>
         </div>
