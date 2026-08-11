@@ -137,6 +137,13 @@
   text-align: center;
 }
 
+.tuner__display-label {
+  align-self: flex-start;
+  margin: 0 0 0.5rem;
+  width: 100%;
+  text-align: left;
+}
+
 .tuner__display--in-tune {
   border-color: color-mix(in srgb, var(--accent-line) 55%, var(--card-border));
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-line) 25%, transparent);

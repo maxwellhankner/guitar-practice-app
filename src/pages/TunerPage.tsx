@@ -98,10 +98,10 @@ export function TunerPage() {
                   ? formatFrequency(reading.pitch.frequency)
                   : 'No pitch detected'
               }
-              aria-label="Frequency in the human audible range"
+              aria-label="Frequency in the guitar tuning range"
             >
               <div className="tuner__range-label-row">
-                <p className="diagram-label">Audible range</p>
+                <p className="diagram-label">Frequency range</p>
                 <p className="tuner__range-span">
                   {AUDIBLE_MIN_HZ} Hz – {formatFrequency(AUDIBLE_MAX_HZ)}
                 </p>
@@ -191,6 +191,7 @@ export function TunerPage() {
               }
               aria-live="polite"
             >
+              <p className="diagram-label tuner__display-label">Note meter</p>
               <p className="tuner__note">
                 {reading ? `${reading.pitch.noteName}` : '—'}
                 {reading ? (
