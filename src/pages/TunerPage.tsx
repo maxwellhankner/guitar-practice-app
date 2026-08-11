@@ -211,7 +211,7 @@ export function TunerPage() {
                   ? `Target ${reading.target.noteName}${reading.target.octave} · ${formatFrequency(reading.target.frequency)}`
                   : listening
                     ? 'Play a note…'
-                    : `${AUDIBLE_MIN_HZ} Hz – ${formatFrequency(AUDIBLE_MAX_HZ)}`}
+                    : null}
               </p>
               <p className="tuner__cents">
                 {reading
