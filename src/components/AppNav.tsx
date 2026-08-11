@@ -1,19 +1,24 @@
-import { NavLink, useLocation } from 'react-router-dom'
-import { ArrowLeftRight, Guitar, Music2 } from 'lucide-react'
+import { NavLink } from 'react-router-dom'
 
 export function AppNav() {
-  const { pathname } = useLocation()
-  const onTuner = pathname.includes('tuner')
-  const swapTo = onTuner ? '/' : '/tuner'
-  const swapLabel = onTuner ? 'Practice' : 'Tuner'
-  const SwapIcon = onTuner ? Music2 : Guitar
-
   return (
-    <nav className="nav-swap" aria-label="App">
-      <NavLink to={swapTo} className="nav-swap__btn">
-        <ArrowLeftRight aria-hidden size={15} strokeWidth={2} />
-        <SwapIcon aria-hidden size={15} strokeWidth={2} />
-        {swapLabel}
+    <nav className="nav-toggle" aria-label="App">
+      <NavLink
+        to="/"
+        end
+        className={({ isActive }) =>
+          isActive ? 'nav-toggle__item nav-toggle__item--active' : 'nav-toggle__item'
+        }
+      >
+        Practice
+      </NavLink>
+      <NavLink
+        to="/tuner"
+        className={({ isActive }) =>
+          isActive ? 'nav-toggle__item nav-toggle__item--active' : 'nav-toggle__item'
+        }
+      >
+        Tuner
       </NavLink>
     </nav>
   )
