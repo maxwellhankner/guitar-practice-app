@@ -32,11 +32,23 @@ const A4_HZ = 440
 export const AUDIBLE_MIN_HZ = 20
 export const AUDIBLE_MAX_HZ = 20_000
 
+const YIN_THRESHOLD = 0.15
+
+function parabolicPeak(values: Float32Array, index: number): number {
+  const x0 = values[index - 1] ?? values[index]!
+  const x1 = values[index]!
+  const x2 = values[index + 1] ?? values[index]!
+  const denom = 2 * (2 * x1 - x0 - x2)
+  if (denom === 0) {
+    return index
+  }
+  return index + (x2 - x0) / denom
+}
+
 /**
  * Returns fundamental frequency in Hz, or -1 if no clear pitch.
- * Based on the classic Web Audio autocorrelation approach.
- * `minHz` / `maxHz` clamp the search (defaults cover the audible band,
- * capped by Nyquist).
+ * Uses the YIN cumulative-mean-normalized difference method, which tracks
+ * sustained tones much more reliably than plain autocorrelation.
  */
 export function detectFrequency(
   buffer: Float32Array,
@@ -45,7 +57,7 @@ export function detectFrequency(
   maxHz: number = AUDIBLE_MAX_HZ,
 ): number {
   const size = buffer.length
-  if (size < 32 || sampleRate <= 0) {
+  if (size < 64 || sampleRate <= 0) {
     return -1
   }
 
@@ -62,83 +74,75 @@ export function detectFrequency(
     rms += val * val
   }
   rms = Math.sqrt(rms / size)
-  // Ignore silence / noise floor
-  if (rms < 0.01) {
+  // Ignore silence / noise floor (kept low so quiet sustained notes still track)
+  if (rms < 0.008) {
     return -1
   }
 
-  // Find signal start / end (skip near-silent edges)
-  let r1 = 0
-  let r2 = size - 1
-  const threshold = 0.2
-  for (let i = 0; i < size / 2; i++) {
-    if (Math.abs(buffer[i]!) > threshold) {
-      r1 = i
-      break
-    }
-  }
-  for (let i = 1; i < size / 2; i++) {
-    if (Math.abs(buffer[size - i]!) > threshold) {
-      r2 = size - i
-      break
-    }
-  }
-
-  const trimmed = buffer.subarray(r1, r2)
-  const n = trimmed.length
-  if (n < 32) {
+  // Analyse the most recent half-buffer so continuous tones stay in-window.
+  const half = Math.floor(size / 2)
+  const start = size - half * 2
+  const minTau = Math.max(2, Math.floor(sampleRate / hi))
+  const maxTau = Math.min(half - 2, Math.floor(sampleRate / lo))
+  if (maxTau <= minTau) {
     return -1
   }
 
-  const maxSamples = Math.min(Math.floor(sampleRate / lo), Math.floor(n / 2))
-  const minSamples = Math.max(2, Math.floor(sampleRate / hi))
-  if (maxSamples <= minSamples) {
-    return -1
-  }
+  const yin = new Float32Array(maxTau + 1)
 
-  const correlations = new Float32Array(maxSamples)
-  for (let offset = minSamples; offset < maxSamples; offset++) {
+  // Difference function d(tau).
+  for (let tau = 1; tau <= maxTau; tau++) {
     let sum = 0
-    // Stride slightly on long windows to keep mobile frames cheap.
-    const step = n - offset > 4096 ? 2 : 1
-    for (let i = 0; i < n - offset; i += step) {
-      sum += trimmed[i]! * trimmed[i + offset]!
+    for (let i = 0; i < half; i++) {
+      const delta = buffer[start + i]! - buffer[start + i + tau]!
+      sum += delta * delta
     }
-    correlations[offset] = sum
+    yin[tau] = sum
   }
 
-  // Find first dip then climb to peak (skip lag-0 lobe)
-  let d = minSamples
-  while (d + 1 < maxSamples && correlations[d]! > correlations[d + 1]!) {
-    d++
+  // Cumulative mean normalized difference (classic YIN).
+  yin[0] = 1
+  let runningSum = 0
+  for (let tau = 1; tau <= maxTau; tau++) {
+    runningSum += yin[tau]!
+    yin[tau] = runningSum > 0 ? (yin[tau]! * tau) / runningSum : 1
   }
 
-  let maxCorr = -1
-  let maxOffset = -1
-  for (let i = d; i < maxSamples; i++) {
-    const corr = correlations[i]!
-    if (corr > maxCorr) {
-      maxCorr = corr
-      maxOffset = i
+  // Absolute threshold: first dip under threshold, then local minimum.
+  let tauEstimate = -1
+  for (let tau = minTau; tau < maxTau; tau++) {
+    if (yin[tau]! < YIN_THRESHOLD) {
+      while (tau + 1 <= maxTau && yin[tau + 1]! < yin[tau]!) {
+        tau++
+      }
+      tauEstimate = tau
+      break
     }
   }
 
-  if (maxOffset <= 0 || maxCorr < 0.01) {
+  // Fallback: strongest minimum in-band (still reject very weak periodicity).
+  if (tauEstimate < 0) {
+    let bestVal = 1
+    let bestTau = -1
+    for (let tau = minTau; tau <= maxTau; tau++) {
+      const value = yin[tau]!
+      if (value < bestVal) {
+        bestVal = value
+        bestTau = tau
+      }
+    }
+    if (bestTau < 0 || bestVal > 0.45) {
+      return -1
+    }
+    tauEstimate = bestTau
+  }
+
+  const betterTau = parabolicPeak(yin, tauEstimate)
+  if (!(betterTau > 0)) {
     return -1
   }
 
-  // Parabolic interpolation around the peak for sub-sample accuracy
-  const y0 = correlations[maxOffset - 1] ?? maxCorr
-  const y1 = maxCorr
-  const y2 = correlations[maxOffset + 1] ?? maxCorr
-  const denom = 2 * (2 * y1 - y0 - y2)
-  const shift = denom === 0 ? 0 : (y2 - y0) / denom
-  const betterOffset = maxOffset + shift
-  if (betterOffset <= 0) {
-    return -1
-  }
-
-  const frequency = sampleRate / betterOffset
+  const frequency = sampleRate / betterTau
   if (frequency < lo || frequency > hi) {
     return -1
   }

@@ -111,8 +111,9 @@ export function useTunerMic({ lockedStringId }: UseTunerMicOptions) {
 
       const source = context.createMediaStreamSource(stream)
       const analyser = context.createAnalyser()
-      // Larger window so ~20 Hz fundamentals have enough periods to correlate.
-      analyser.fftSize = 8192
+      // 4096 keeps YIN responsive on mobile while still reaching ~20 Hz.
+      analyser.fftSize = 4096
+      analyser.smoothingTimeConstant = 0
       source.connect(analyser)
 
       const buffer = new Float32Array(new ArrayBuffer(analyser.fftSize * 4))
@@ -120,8 +121,51 @@ export function useTunerMic({ lockedStringId }: UseTunerMicOptions) {
       audioRef.current = active
       setStatus('listening')
 
+      let smoothHz: number | null = null
       let smoothCents: number | null = null
       let lastTargetKey: string | null = null
+      let missedFrames = 0
+
+      const publish = (frequency: number) => {
+        const pitch = pitchFromFrequency(frequency)
+        if (!pitch) {
+          return
+        }
+        const lockedId = lockedRef.current
+        const lockedString =
+          lockedId != null
+            ? STANDARD_GUITAR_STRINGS.find((s) => s.id === lockedId)
+            : undefined
+        const target: TunerTarget = lockedString
+          ? {
+              id: lockedString.id,
+              label: lockedString.label,
+              noteName: lockedString.noteName,
+              octave: lockedString.octave,
+              frequency: lockedString.frequency,
+              kind: 'string',
+            }
+          : chromaticTarget(pitch)
+        const cents = centsOffTarget(frequency, target.frequency)
+        const targetKey = target.id
+        if (targetKey !== lastTargetKey) {
+          smoothCents = cents
+          lastTargetKey = targetKey
+        } else if (smoothCents == null) {
+          smoothCents = cents
+        } else {
+          smoothCents = smoothCents * 0.55 + cents * 0.45
+        }
+        setReading({
+          pitch: {
+            ...pitch,
+            frequency,
+            cents: pitch.cents,
+          },
+          target,
+          cents: smoothCents,
+        })
+      }
 
       const tick = () => {
         const current = audioRef.current
@@ -138,39 +182,18 @@ export function useTunerMic({ lockedStringId }: UseTunerMicOptions) {
         )
 
         if (frequency > 0) {
-          const pitch = pitchFromFrequency(frequency)
-          if (pitch) {
-            const lockedId = lockedRef.current
-            const lockedString =
-              lockedId != null
-                ? STANDARD_GUITAR_STRINGS.find((s) => s.id === lockedId)
-                : undefined
-            const target: TunerTarget = lockedString
-              ? {
-                  id: lockedString.id,
-                  label: lockedString.label,
-                  noteName: lockedString.noteName,
-                  octave: lockedString.octave,
-                  frequency: lockedString.frequency,
-                  kind: 'string',
-                }
-              : chromaticTarget(pitch)
-            const cents = centsOffTarget(frequency, target.frequency)
-            const targetKey = target.id
-            if (targetKey !== lastTargetKey) {
-              smoothCents = cents
-              lastTargetKey = targetKey
-            } else if (smoothCents == null) {
-              smoothCents = cents
-            } else {
-              smoothCents = smoothCents * 0.7 + cents * 0.3
-            }
-            setReading({
-              pitch,
-              target,
-              cents: smoothCents,
-            })
-          }
+          missedFrames = 0
+          // Live-track frequency while sounding; light smoothing only.
+          smoothHz =
+            smoothHz == null ? frequency : smoothHz * 0.4 + frequency * 0.6
+          publish(smoothHz)
+        } else if (smoothHz != null && missedFrames < 8) {
+          // Hold briefly through tiny gaps so the needle doesn't stall mid-note.
+          missedFrames += 1
+          publish(smoothHz)
+        } else {
+          smoothHz = null
+          missedFrames = 0
         }
 
         current.raf = requestAnimationFrame(tick)
