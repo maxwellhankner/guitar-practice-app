@@ -11,7 +11,7 @@ This is a single-product Vite + React 19 + TypeScript app (`guitar-practice-app`
 
 ### Run / lint / build
 
-- `npm run dev` — starts BOTH web + api together (via `concurrently`). Web serves at `http://localhost:5173/guitar-practice-app/` (note the `/guitar-practice-app/` base path — the bare root returns 404). The Vite dev server proxies `/api` → `http://127.0.0.1:3001`. Run individually with `npm run dev:web` and `npm run dev:api`.
+- `npm run dev` — starts BOTH web + api together (via `concurrently`). Web serves at `http://localhost:5173/guitar-practice-app/` (note the `/guitar-practice-app/` base path — the bare root returns 404). The Vite dev server proxies `/api` → `http://127.0.0.1:3101`. Run individually with `npm run dev:web` and `npm run dev:api`.
 - `npm run lint` — ESLint.
 - `npm run build` — production build (`publish-state` + `tsc -b` + `vite build`).
 

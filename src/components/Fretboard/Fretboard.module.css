@@ -333,7 +333,7 @@
 }
 
 /* Portrait boards size from intrinsic aspect ratio; % height alone collapses on mobile flex. */
-@media (max-width: 40rem), (max-height: 40rem) {
+@media (max-width: 56rem), (max-height: 40rem) {
   :global(.app-page__diagram-stage--single) .wrapPortrait.wrapFit {
     width: auto;
     height: auto;

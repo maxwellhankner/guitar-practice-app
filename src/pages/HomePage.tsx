@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import {
   ArrowLeftRight,
   ArrowUpDown,
+  ArrowDown,
+  ArrowUp,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -909,8 +911,9 @@ export function HomePage() {
     return `Requires ${missing.join(', ')}`
   }
 
-  const renderSongSeedButton = (keyId: KeyId, songId: SongId) => {
+  const renderSongSeedButton = (songId: SongId) => {
     const song = SONGS[songId]
+    const keyId = song.defaultKey
     const unresolved = !isSongResolvableInKey(keyId, songId)
     const blocked =
       filterPlayableOnly &&
@@ -944,46 +947,42 @@ export function HomePage() {
           aria-disabled={disabled}
           onClick={() => seedFromSong(songId)}
         >
-          <span className="diagram-song-seeds__title">{song.title}</span>
+          <span className="diagram-song-seeds__text">
+            <span className="diagram-song-seeds__title">{song.title}</span>
+            <span className="diagram-song-seeds__artist">{song.artist}</span>
+          </span>
         </button>
       </Tooltip>
     )
   }
 
+  const renderSongSeeds = () => (
+    <div
+      className="diagram-field diagram-field--songs"
+      role="group"
+      aria-labelledby={`${baseId}-songs-label`}
+    >
+      <p className="diagram-label" id={`${baseId}-songs-label`}>
+        Songs
+      </p>
+      <div className="diagram-chord-grid diagram-song-seeds">
+        {SONG_IDS.map((songId) => renderSongSeedButton(songId))}
+      </div>
+    </div>
+  )
+
   const renderProgressionSeeds = (keyId: KeyId) => (
-    <div className="diagram-progression-choosers">
-      <div className="diagram-progression-chooser">
-        <p className="diagram-chords-build__sub-label" id={`${baseId}-songs-label`}>
-          Songs
-        </p>
-        <div
-          className="diagram-chord-grid diagram-song-seeds"
-          role="group"
-          aria-labelledby={`${baseId}-songs-label`}
-        >
-          {SONG_IDS.map((songId) => renderSongSeedButton(keyId, songId))}
-        </div>
-      </div>
-      <div className="diagram-progression-chooser">
-        <p
-          className="diagram-chords-build__sub-label"
-          id={`${baseId}-patterns-label`}
-        >
-          Patterns
-        </p>
-        <div
-          className="diagram-chord-grid diagram-progression-grid diagram-progression-seeds"
-          role="group"
-          aria-labelledby={`${baseId}-patterns-label`}
-        >
-          {BASIC_PROGRESSION_IDS.map((progressionId) =>
-            renderProgressionSeedButton(keyId, progressionId),
-          )}
-          {COLORED_PROGRESSION_IDS.map((progressionId) =>
-            renderProgressionSeedButton(keyId, progressionId, true),
-          )}
-        </div>
-      </div>
+    <div
+      className="diagram-chord-grid diagram-progression-grid diagram-progression-seeds"
+      role="group"
+      aria-label="Progression seeds"
+    >
+      {BASIC_PROGRESSION_IDS.map((progressionId) =>
+        renderProgressionSeedButton(keyId, progressionId),
+      )}
+      {COLORED_PROGRESSION_IDS.map((progressionId) =>
+        renderProgressionSeedButton(keyId, progressionId, true),
+      )}
     </div>
   )
 
@@ -1873,6 +1872,54 @@ export function HomePage() {
                     {hasBuiltProgression ? (
                       <>
                         <div className="diagram-chords-build__progression-steps-scroll">
+                          {selectedSongId != null ? (
+                            <div
+                              className="diagram-strum-pattern"
+                              style={
+                                {
+                                  '--progression-step-count':
+                                    builtProgression.length,
+                                } as React.CSSProperties
+                              }
+                              aria-label={`Strum pattern ${SONGS[selectedSongId].strumPattern.join(' ')}${
+                                SONGS[selectedSongId].strumBarsPerChord > 1
+                                  ? `, ${SONGS[selectedSongId].strumBarsPerChord} times per chord`
+                                  : ', once per chord'
+                              }`}
+                            >
+                              {builtProgression.map((chordId, stepIndex) => {
+                                const song = SONGS[selectedSongId]
+                                const bars = song.strumBarsPerChord
+                                const strokes = Array.from(
+                                  { length: bars },
+                                  () => song.strumPattern,
+                                ).flat()
+                                return (
+                                  <div
+                                    key={`strum-chord-${stepIndex}-${chordId}`}
+                                    className="diagram-strum-pattern__bar"
+                                    aria-hidden
+                                  >
+                                    {strokes.map((stroke, strokeIndex) =>
+                                      stroke === 'D' ? (
+                                        <ArrowDown
+                                          key={`${stepIndex}-d-${strokeIndex}`}
+                                          className="diagram-strum-pattern__icon diagram-strum-pattern__icon--down"
+                                          strokeWidth={2.5}
+                                        />
+                                      ) : (
+                                        <ArrowUp
+                                          key={`${stepIndex}-u-${strokeIndex}`}
+                                          className="diagram-strum-pattern__icon diagram-strum-pattern__icon--up"
+                                          strokeWidth={2.5}
+                                        />
+                                      ),
+                                    )}
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          ) : null}
                           <div
                             className={[
                               'diagram-chord-in-key diagram-chords-build__progression-steps',
@@ -1896,22 +1943,32 @@ export function HomePage() {
                               chordId,
                               triadId,
                             )
-                            const altOptions = progressionAltOptions(
-                              activeKey,
-                              chordId,
-                            )
+                            const songLocked = selectedSongId != null
+                            const altOptions = songLocked
+                              ? []
+                              : progressionAltOptions(activeKey, chordId)
                             const canAdd =
+                              !songLocked &&
                               builtProgression.length < MAX_PROGRESSION_STEPS
-                            const canSwapLeft = stepIndex > 0
+                            const canSwapLeft = !songLocked && stepIndex > 0
                             const canSwapRight =
+                              !songLocked &&
                               stepIndex < builtProgression.length - 1
                             const pickingRoot =
-                              pendingAddAfterIndex === stepIndex
+                              !songLocked && pendingAddAfterIndex === stepIndex
 
                             return (
                               <div
                                 key={`progression-step-${stepIndex}-${chordId}`}
-                                className="diagram-chord-in-key__column diagram-chord-in-key__column--editable diagram-progression-step"
+                                className={[
+                                  'diagram-chord-in-key__column',
+                                  'diagram-progression-step',
+                                  songLocked
+                                    ? ''
+                                    : 'diagram-chord-in-key__column--editable',
+                                ]
+                                  .filter(Boolean)
+                                  .join(' ')}
                               >
                                 <div
                                   ref={
@@ -1928,6 +1985,7 @@ export function HomePage() {
                                     .filter(Boolean)
                                     .join(' ')}
                                 >
+                                  {!songLocked ? (
                                   <div
                                     className="diagram-progression-step__hover-controls diagram-progression-step__hover-controls--left"
                                   >
@@ -1968,6 +2026,7 @@ export function HomePage() {
                                       </button>
                                     </Tooltip>
                                   </div>
+                                  ) : null}
                                   {renderChordCell(chordId, {
                                     keyId: activeKey,
                                     roman:
@@ -1977,6 +2036,7 @@ export function HomePage() {
                                     inProgression: true,
                                     selectable: false,
                                   })}
+                                  {!songLocked ? (
                                   <div
                                     className="diagram-progression-step__hover-controls diagram-progression-step__hover-controls--right"
                                   >
@@ -2030,6 +2090,7 @@ export function HomePage() {
                                       </Tooltip>
                                     ) : null}
                                   </div>
+                                  ) : null}
                                   {pickingRoot ? (
                                     <div
                                       className="diagram-progression-add-menu"
@@ -2123,6 +2184,8 @@ export function HomePage() {
                 </div>
               )}
             </div>
+
+            {activeKey == null ? renderSongSeeds() : null}
           </div>
         </div>
       </section>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 
-export const MOBILE_VIEWPORT_MEDIA = '(max-width: 40rem), (max-height: 40rem)'
+export const MOBILE_VIEWPORT_MEDIA =
+  '(max-width: 56rem), (max-height: 40rem)'
 
 export function useIsMobileViewport(): boolean {
   const [isMobile, setIsMobile] = useState(

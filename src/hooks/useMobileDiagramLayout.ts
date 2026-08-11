@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react'
 import type { DiagramLayout } from '../db/userSettingsRepository'
+import { MOBILE_VIEWPORT_MEDIA } from './useIsMobileViewport'
 
-const MOBILE_MEDIA = '(max-width: 40rem), (max-height: 40rem)'
 const LANDSCAPE_MEDIA = '(orientation: landscape)'
 
 function readMobileDiagramLayout(): DiagramLayout | null {
   if (typeof window === 'undefined') {
     return null
   }
-  if (!window.matchMedia(MOBILE_MEDIA).matches) {
+  if (!window.matchMedia(MOBILE_VIEWPORT_MEDIA).matches) {
     return null
   }
   return window.matchMedia(LANDSCAPE_MEDIA).matches ? 'vertical' : 'horizontal'
@@ -23,7 +23,7 @@ export function useMobileDiagramLayout(
   )
 
   useEffect(() => {
-    const mobileMql = window.matchMedia(MOBILE_MEDIA)
+    const mobileMql = window.matchMedia(MOBILE_VIEWPORT_MEDIA)
     const landscapeMql = window.matchMedia(LANDSCAPE_MEDIA)
 
     const sync = () => {

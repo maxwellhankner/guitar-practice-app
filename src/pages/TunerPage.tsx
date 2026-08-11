@@ -76,14 +76,6 @@ export function TunerPage() {
                 </p>
               </div>
               <div className="tuner__range-track">
-                {RANGE_MARKS.map((mark) => (
-                  <span
-                    key={mark.hz}
-                    className="tuner__range-gridline"
-                    style={{ left: `${audibleRangePosition(mark.hz)}%` }}
-                    aria-hidden
-                  />
-                ))}
                 {STANDARD_GUITAR_STRINGS.map((s) => (
                   <span
                     key={`tick-${s.id}`}

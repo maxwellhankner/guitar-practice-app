@@ -23,6 +23,9 @@ export const SONG_IDS = [
 
 export type SongId = (typeof SONG_IDS)[number]
 
+/** Down or up stroke for a beginner one-bar strum loop. */
+export type StrumStroke = 'D' | 'U'
+
 export type SongDef = {
   id: SongId
   title: string
@@ -31,11 +34,33 @@ export type SongDef = {
   defaultKey: KeyId
   /** Degree-based loop (4–8 chords) that repeats while you play. */
   steps: readonly ProgressionStepDef[]
+  /** Repeating one-bar strum shown above the progression chords. */
+  strumPattern: readonly StrumStroke[]
+  /** How many times to play the strum pattern while holding each chord. */
+  strumBarsPerChord: 1 | 2
 }
 
 function steps(degrees: readonly number[]): ProgressionStepDef[] {
   return degrees.map((degree) => ({ degree }))
 }
+
+/** Common pop/folk pattern: D D U U D U */
+const FOLK_STRUM = ['D', 'D', 'U', 'U', 'D', 'U'] as const satisfies readonly StrumStroke[]
+/** Steady downs — great while learning chord changes. */
+const DOWN_STRUM = ['D', 'D', 'D', 'D'] as const satisfies readonly StrumStroke[]
+/** Even down-up eighths. */
+const ALTERNATE_STRUM = [
+  'D',
+  'U',
+  'D',
+  'U',
+  'D',
+  'U',
+  'D',
+  'U',
+] as const satisfies readonly StrumStroke[]
+/** Reggae-style offbeat ups (simplified). */
+const SKANK_STRUM = ['U', 'U', 'U', 'U'] as const satisfies readonly StrumStroke[]
 
 /**
  * Simple repeating beginner loops (open-chord friendly).
@@ -48,6 +73,8 @@ export const SONGS: Record<SongId, SongDef> = {
     artist: 'The Beatles',
     defaultKey: 'C',
     steps: steps([1, 5, 6, 4]),
+    strumPattern: FOLK_STRUM,
+    strumBarsPerChord: 1,
   },
   'im-yours': {
     id: 'im-yours',
@@ -55,6 +82,8 @@ export const SONGS: Record<SongId, SongDef> = {
     artist: 'Jason Mraz',
     defaultKey: 'G',
     steps: steps([1, 5, 6, 4]),
+    strumPattern: FOLK_STRUM,
+    strumBarsPerChord: 2,
   },
   perfect: {
     id: 'perfect',
@@ -62,6 +91,8 @@ export const SONGS: Record<SongId, SongDef> = {
     artist: 'Ed Sheeran',
     defaultKey: 'G',
     steps: steps([1, 6, 4, 5]),
+    strumPattern: FOLK_STRUM,
+    strumBarsPerChord: 2,
   },
   'stand-by-me': {
     id: 'stand-by-me',
@@ -69,6 +100,8 @@ export const SONGS: Record<SongId, SongDef> = {
     artist: 'Ben E. King',
     defaultKey: 'A',
     steps: steps([1, 6, 4, 5]),
+    strumPattern: FOLK_STRUM,
+    strumBarsPerChord: 2,
   },
   'with-or-without-you': {
     id: 'with-or-without-you',
@@ -76,6 +109,8 @@ export const SONGS: Record<SongId, SongDef> = {
     artist: 'U2',
     defaultKey: 'D',
     steps: steps([1, 5, 6, 4]),
+    strumPattern: DOWN_STRUM,
+    strumBarsPerChord: 2,
   },
   'knockin-heavens-door': {
     id: 'knockin-heavens-door',
@@ -83,6 +118,8 @@ export const SONGS: Record<SongId, SongDef> = {
     artist: 'Bob Dylan',
     defaultKey: 'G',
     steps: steps([1, 5, 2, 4]),
+    strumPattern: FOLK_STRUM,
+    strumBarsPerChord: 2,
   },
   'horse-with-no-name': {
     id: 'horse-with-no-name',
@@ -90,6 +127,8 @@ export const SONGS: Record<SongId, SongDef> = {
     artist: 'America',
     defaultKey: 'Em',
     steps: steps([1, 7, 1, 7]),
+    strumPattern: FOLK_STRUM,
+    strumBarsPerChord: 2,
   },
   zombie: {
     id: 'zombie',
@@ -97,6 +136,8 @@ export const SONGS: Record<SongId, SongDef> = {
     artist: 'The Cranberries',
     defaultKey: 'Em',
     steps: steps([1, 6, 3, 7]),
+    strumPattern: DOWN_STRUM,
+    strumBarsPerChord: 2,
   },
   'three-little-birds': {
     id: 'three-little-birds',
@@ -104,6 +145,8 @@ export const SONGS: Record<SongId, SongDef> = {
     artist: 'Bob Marley',
     defaultKey: 'A',
     steps: steps([1, 4, 5, 1]),
+    strumPattern: SKANK_STRUM,
+    strumBarsPerChord: 2,
   },
   'louie-louie': {
     id: 'louie-louie',
@@ -111,6 +154,8 @@ export const SONGS: Record<SongId, SongDef> = {
     artist: 'The Kingsmen',
     defaultKey: 'A',
     steps: steps([1, 4, 5, 4]),
+    strumPattern: DOWN_STRUM,
+    strumBarsPerChord: 2,
   },
   'sweet-home-alabama': {
     id: 'sweet-home-alabama',
@@ -118,6 +163,8 @@ export const SONGS: Record<SongId, SongDef> = {
     artist: 'Lynyrd Skynyrd',
     defaultKey: 'G',
     steps: steps([1, 5, 4, 1]),
+    strumPattern: FOLK_STRUM,
+    strumBarsPerChord: 1,
   },
   'good-riddance': {
     id: 'good-riddance',
@@ -126,6 +173,8 @@ export const SONGS: Record<SongId, SongDef> = {
     defaultKey: 'G',
     // Verse-style loop that stays within 8 chords
     steps: steps([1, 4, 5, 6, 1, 4, 5, 1]),
+    strumPattern: ALTERNATE_STRUM,
+    strumBarsPerChord: 1,
   },
 }
 
@@ -161,4 +210,8 @@ export function seedProgressionFromSong(
   songId: SongId,
 ): ChordPresetId[] {
   return chordsForSong(keyId, songId)
+}
+
+export function formatStrumPattern(pattern: readonly StrumStroke[]): string {
+  return pattern.join(' ')
 }

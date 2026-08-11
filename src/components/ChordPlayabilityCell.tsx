@@ -1,4 +1,6 @@
+import { useRef, type Ref } from 'react'
 import type { ChordPresetId } from './Fretboard'
+import { useFitText } from '../hooks/useFitText'
 import { Tooltip } from './Tooltip'
 
 type ChordPlayabilityCellProps = {
@@ -41,6 +43,8 @@ export function ChordPlayabilityCell({
 }: ChordPlayabilityCellProps) {
   const showAsUnknown = knownChordsMode && !known
   const canInteract = editKnownMode || selectable
+  const rootRef = useRef<HTMLElement | null>(null)
+  const labelRef = useRef<HTMLSpanElement | null>(null)
 
   const chordClasses = [
     'diagram-chord-btn',
@@ -61,9 +65,17 @@ export function ChordPlayabilityCell({
     .join(' ')
 
   const chordContent = label ?? chordId
+  useFitText(rootRef, labelRef, chordContent)
+
+  const chordLabel = (
+    <span ref={labelRef} className="diagram-chord-btn__label">
+      {chordContent}
+    </span>
+  )
 
   const chordButton = canInteract ? (
     <button
+      ref={rootRef as Ref<HTMLButtonElement>}
       type="button"
       className={chordClasses}
       aria-pressed={!editKnownMode && selectable ? selected : undefined}
@@ -81,10 +93,12 @@ export function ChordPlayabilityCell({
         e.currentTarget.blur()
       }}
     >
-      {chordContent}
+      {chordLabel}
     </button>
   ) : (
-    <div className={chordClasses}>{chordContent}</div>
+    <div ref={rootRef as Ref<HTMLDivElement>} className={chordClasses}>
+      {chordLabel}
+    </div>
   )
 
   const chordControl =

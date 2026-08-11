@@ -17,7 +17,7 @@ import { App } from '@tinyhttp/app'
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const file = join(root, 'db', 'db.json')
 const example = join(root, 'db', 'db.example.json')
-const port = 3001
+const port = Number(process.env.DEV_API_PORT ?? 3101)
 const host = '127.0.0.1'
 
 if (!existsSync(file)) {
@@ -66,7 +66,23 @@ let writing = false
 
 app.use(api)
 
-app.listen(port, () => {}, host)
+const server = app.listen(port, () => {
+  console.log(`Settings API http://${host}:${port}`)
+}, host)
+
+server.on('error', (err) => {
+  if (err && typeof err === 'object' && 'code' in err && err.code === 'EADDRINUSE') {
+    console.log(
+      chalk.yellow(
+        `Settings API port ${port} is already in use — continuing without it. The app will use defaults.`,
+      ),
+    )
+    // Stay alive so `concurrently` keeps the web process paired with this script.
+    setInterval(() => {}, 60_000)
+    return
+  }
+  throw err
+})
 
 observer.onWriteStart = () => {
   writing = true

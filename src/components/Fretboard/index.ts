@@ -80,8 +80,10 @@ export {
   isSongResolvableInKey,
   isSongId,
   sanitizeSongId,
+  formatStrumPattern,
   type SongId,
   type SongDef,
+  type StrumStroke,
 } from './songs'
 export {
   MIN_PROGRESSION_STEPS,

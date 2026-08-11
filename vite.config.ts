@@ -22,7 +22,8 @@ export default defineConfig({
     proxy: {
       // Same-origin API in dev — phone uses Mac IP :5173 only; Vite forwards to json-server
       '/api': {
-        target: 'http://127.0.0.1:3001',
+        // Avoid 3001 — Cursor often binds it locally and hangs proxied requests.
+        target: `http://127.0.0.1:${process.env.DEV_API_PORT ?? 3101}`,
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
