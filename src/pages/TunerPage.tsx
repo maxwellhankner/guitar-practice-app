@@ -19,12 +19,12 @@ function clampCents(cents: number): number {
 }
 
 const RANGE_MARKS = [
-  { hz: 20, label: '20' },
-  { hz: 100, label: '100' },
+  { hz: 70, label: '70' },
+  { hz: 110, label: '110' },
+  { hz: 220, label: '220' },
   { hz: 440, label: '440' },
-  { hz: 1000, label: '1k' },
-  { hz: 5000, label: '5k' },
-  { hz: 20000, label: '20k' },
+  { hz: 880, label: '880' },
+  { hz: 1500, label: '1.5k' },
 ] as const
 
 export function TunerPage() {

@@ -28,9 +28,9 @@ const NOTE_NAMES = [
 
 const A4_HZ = 440
 
-/** Conventional human hearing band used for the tuner range display. */
-export const AUDIBLE_MIN_HZ = 20
-export const AUDIBLE_MAX_HZ = 20_000
+/** Practical standard-electric range (~E2–E6) with a little headroom. */
+export const AUDIBLE_MIN_HZ = 70
+export const AUDIBLE_MAX_HZ = 1500
 
 const YIN_THRESHOLD = 0.15
 

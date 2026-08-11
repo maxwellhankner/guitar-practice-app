@@ -100,7 +100,7 @@ export function useTunerMic() {
 
       const source = context.createMediaStreamSource(stream)
       const analyser = context.createAnalyser()
-      // 4096 keeps YIN responsive on mobile while still reaching ~20 Hz.
+      // 4096 keeps YIN responsive while covering low E (~82 Hz).
       analyser.fftSize = 4096
       analyser.smoothingTimeConstant = 0
       source.connect(analyser)
