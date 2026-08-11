@@ -51,12 +51,6 @@ export function TunerPage() {
           </h1>
 
           <div className="tuner">
-            <p className="tuner__hint">
-              Detects pitch across the human hearing range (
-              {AUDIBLE_MIN_HZ} Hz – {formatFrequency(AUDIBLE_MAX_HZ)}). Allow
-              microphone access, then play a single clear note.
-            </p>
-
             <div className="tuner__actions">
               {listening ? (
                 <button
