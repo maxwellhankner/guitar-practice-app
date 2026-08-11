@@ -44,39 +44,10 @@ export function TunerPage() {
     <main className="app-page app-page--tuner">
       <section
         className="app-page__options app-page__options--tuner"
-        aria-labelledby={`${baseId}-heading`}
+        aria-label="Tuner"
       >
         <div className="app-page__inner">
           <AppNav />
-          <div className="tuner__header">
-            <h1 className="app-page__title" id={`${baseId}-heading`}>
-              Tuner
-            </h1>
-            <div className="tuner__actions">
-              {listening ? (
-                <button
-                  type="button"
-                  className="tuner__mic-btn tuner__mic-btn--stop"
-                  onClick={stop}
-                >
-                  <MicOff aria-hidden size={18} strokeWidth={2} />
-                  Stop listening
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className="tuner__mic-btn"
-                  onClick={() => void start()}
-                  disabled={status === 'requesting'}
-                >
-                  <Mic aria-hidden size={18} strokeWidth={2} />
-                  {status === 'requesting'
-                    ? 'Waiting for permission…'
-                    : 'Enable microphone'}
-                </button>
-              )}
-            </div>
-          </div>
 
           <div className="tuner">
             {errorMessage ? (
@@ -246,6 +217,31 @@ export function TunerPage() {
                 </div>
               </div>
             </div>
+            </div>
+
+            <div className="tuner__actions">
+              {listening ? (
+                <button
+                  type="button"
+                  className="tuner__mic-btn tuner__mic-btn--stop"
+                  onClick={stop}
+                >
+                  <MicOff aria-hidden size={18} strokeWidth={2} />
+                  Stop listening
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="tuner__mic-btn"
+                  onClick={() => void start()}
+                  disabled={status === 'requesting'}
+                >
+                  <Mic aria-hidden size={18} strokeWidth={2} />
+                  {status === 'requesting'
+                    ? 'Waiting for permission…'
+                    : 'Enable microphone'}
+                </button>
+              )}
             </div>
           </div>
         </div>
