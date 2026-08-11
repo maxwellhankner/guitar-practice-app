@@ -235,6 +235,19 @@
   pointer-events: none;
 }
 
+.tuner__range-string-tick {
+  position: absolute;
+  top: 0.25rem;
+  bottom: 0.25rem;
+  width: 1px;
+  translate: -50% 0;
+  border-radius: 1px;
+  background: #e8c84a;
+  box-shadow: 0 0 0 0.5px color-mix(in srgb, #e8c84a 35%, transparent);
+  pointer-events: none;
+  z-index: 1;
+}
+
 .tuner__range-needle {
   position: absolute;
   top: 0.35rem;
@@ -245,6 +258,7 @@
   background: var(--heading);
   box-shadow: 0 0 12px color-mix(in srgb, var(--heading) 35%, transparent);
   will-change: left;
+  z-index: 2;
 }
 
 .tuner__range-needle--in-tune {

@@ -115,6 +115,15 @@ export function TunerPage() {
                     aria-hidden
                   />
                 ))}
+                {STANDARD_GUITAR_STRINGS.map((s) => (
+                  <span
+                    key={`tick-${s.id}`}
+                    className="tuner__range-string-tick"
+                    style={{ left: `${audibleRangePosition(s.frequency)}%` }}
+                    title={`${s.label} · ${formatFrequency(s.frequency)}`}
+                    aria-hidden
+                  />
+                ))}
                 {rangePct != null ? (
                   <span
                     className={
@@ -136,6 +145,41 @@ export function TunerPage() {
                     {mark.label}
                   </span>
                 ))}
+              </div>
+            </div>
+
+            <div className="tuner__strings">
+              <p className="diagram-label" id={`${baseId}-strings-label`}>
+                Guitar strings
+              </p>
+              <div
+                className="tuner__string-grid"
+                role="list"
+                aria-labelledby={`${baseId}-strings-label`}
+              >
+                {STANDARD_GUITAR_STRINGS.map((s) => {
+                  const inRange =
+                    liveHz != null &&
+                    Math.abs(centsOffTarget(liveHz, s.frequency)) <=
+                      CENTS_HIGHLIGHT_RANGE
+                  return (
+                    <div
+                      key={s.id}
+                      role="listitem"
+                      className={
+                        inRange
+                          ? 'tuner__string-btn tuner__string-btn--active'
+                          : 'tuner__string-btn'
+                      }
+                      aria-current={inRange ? 'true' : undefined}
+                    >
+                      <span className="tuner__string-btn-label">{s.label}</span>
+                      <span className="tuner__string-btn-hz">
+                        {formatFrequency(s.frequency)}
+                      </span>
+                    </div>
+                  )
+                })}
               </div>
             </div>
 
@@ -198,41 +242,6 @@ export function TunerPage() {
                     style={{ left: `${needlePct}%` }}
                   />
                 </div>
-              </div>
-            </div>
-
-            <div className="tuner__strings">
-              <p className="diagram-label" id={`${baseId}-strings-label`}>
-                Guitar strings
-              </p>
-              <div
-                className="tuner__string-grid"
-                role="list"
-                aria-labelledby={`${baseId}-strings-label`}
-              >
-                {STANDARD_GUITAR_STRINGS.map((s) => {
-                  const inRange =
-                    liveHz != null &&
-                    Math.abs(centsOffTarget(liveHz, s.frequency)) <=
-                      CENTS_HIGHLIGHT_RANGE
-                  return (
-                    <div
-                      key={s.id}
-                      role="listitem"
-                      className={
-                        inRange
-                          ? 'tuner__string-btn tuner__string-btn--active'
-                          : 'tuner__string-btn'
-                      }
-                      aria-current={inRange ? 'true' : undefined}
-                    >
-                      <span className="tuner__string-btn-label">{s.label}</span>
-                      <span className="tuner__string-btn-hz">
-                        {formatFrequency(s.frequency)}
-                      </span>
-                    </div>
-                  )
-                })}
               </div>
             </div>
           </div>
