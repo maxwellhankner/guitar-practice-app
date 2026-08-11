@@ -110,9 +110,21 @@ export function useTunerMic() {
       audioRef.current = active
       setStatus('listening')
 
+      /**
+       * Response feel (~60fps):
+       * - Was ~16ms (0.6 new each frame) — too jumpy
+       * - Now ~150ms Hz / ~180ms cents, with a short note-change debounce
+       */
+      const HZ_SMOOTH = 0.88 // keep 88% old → ~130–150ms settle
+      const CENTS_SMOOTH = 0.9 // keep 90% old → ~180ms settle
+      const NOTE_CONFIRM_FRAMES = 6 // ~100ms before switching displayed note
+      const MISS_HOLD_FRAMES = 12 // ~200ms hold through tiny gaps
+
       let smoothHz: number | null = null
       let smoothCents: number | null = null
-      let lastTargetKey: string | null = null
+      let displayedTarget: TunerTarget | null = null
+      let pendingTargetKey: string | null = null
+      let pendingTargetFrames = 0
       let missedFrames = 0
 
       const publish = (frequency: number) => {
@@ -120,22 +132,44 @@ export function useTunerMic() {
         if (!pitch) {
           return
         }
-        const target = chromaticTarget(pitch)
-        const cents = centsOffTarget(frequency, target.frequency)
-        const targetKey = target.id
-        if (targetKey !== lastTargetKey) {
-          smoothCents = cents
-          lastTargetKey = targetKey
-        } else if (smoothCents == null) {
-          smoothCents = cents
+        const detectedTarget = chromaticTarget(pitch)
+        const detectedKey = detectedTarget.id
+
+        if (displayedTarget == null) {
+          displayedTarget = detectedTarget
+          pendingTargetKey = null
+          pendingTargetFrames = 0
+        } else if (detectedKey === displayedTarget.id) {
+          pendingTargetKey = null
+          pendingTargetFrames = 0
+        } else if (detectedKey === pendingTargetKey) {
+          pendingTargetFrames += 1
+          if (pendingTargetFrames >= NOTE_CONFIRM_FRAMES) {
+            displayedTarget = detectedTarget
+            pendingTargetKey = null
+            pendingTargetFrames = 0
+          }
         } else {
-          smoothCents = smoothCents * 0.55 + cents * 0.45
+          pendingTargetKey = detectedKey
+          pendingTargetFrames = 1
         }
+
+        const target = displayedTarget
+        const cents = centsOffTarget(frequency, target.frequency)
+        smoothCents =
+          smoothCents == null
+            ? cents
+            : smoothCents * CENTS_SMOOTH + cents * (1 - CENTS_SMOOTH)
+
         setReading({
           pitch: {
             ...pitch,
             frequency,
+            noteName: target.noteName,
+            octave: target.octave,
+            noteIndex: pitch.noteIndex,
             cents: pitch.cents,
+            nearestNoteHz: target.frequency,
           },
           target,
           cents: smoothCents,
@@ -158,16 +192,20 @@ export function useTunerMic() {
 
         if (frequency > 0) {
           missedFrames = 0
-          // Live-track frequency while sounding; light smoothing only.
           smoothHz =
-            smoothHz == null ? frequency : smoothHz * 0.4 + frequency * 0.6
+            smoothHz == null
+              ? frequency
+              : smoothHz * HZ_SMOOTH + frequency * (1 - HZ_SMOOTH)
           publish(smoothHz)
-        } else if (smoothHz != null && missedFrames < 8) {
-          // Hold briefly through tiny gaps so the needle doesn't stall mid-note.
+        } else if (smoothHz != null && missedFrames < MISS_HOLD_FRAMES) {
           missedFrames += 1
           publish(smoothHz)
         } else {
           smoothHz = null
+          smoothCents = null
+          displayedTarget = null
+          pendingTargetKey = null
+          pendingTargetFrames = 0
           missedFrames = 0
         }
 
