@@ -159,10 +159,10 @@
       ],
       "filterPlayableOnly": false,
       "displayNotes": false,
-      "fretCount": 5,
+      "fretCount": 4,
       "scaleSelection": null,
       "diagramLayout": "horizontal",
-      "horizontalSplitRatio": 0.5,
+      "horizontalSplitRatio": 0.6971917423585346,
       "verticalSplitRatio": 0.598089599609375,
       "fretboardOrientation": "landscape",
       "panelsSwapped": false,
@@ -211,9 +211,15 @@
         "F",
         "Fm"
       ],
-      "selectedKey": null,
+      "selectedKey": "G",
       "selectedChord": null,
-      "builtProgression": null
+      "builtProgression": [
+        "G",
+        "D",
+        "Em",
+        "C"
+      ],
+      "selectedSongId": "im-yours"
     }
   ],
   "$schema": "./node_modules/json-server/schema.json"
