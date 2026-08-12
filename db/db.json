@@ -211,15 +211,10 @@
         "F",
         "Fm"
       ],
-      "selectedKey": "G",
+      "selectedKey": null,
       "selectedChord": null,
-      "builtProgression": [
-        "G",
-        "D",
-        "Em",
-        "C"
-      ],
-      "selectedSongId": "im-yours"
+      "builtProgression": null,
+      "selectedSongId": null
     }
   ],
   "$schema": "./node_modules/json-server/schema.json"
