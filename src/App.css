@@ -4,11 +4,13 @@
   min-height: 0;
   max-width: 100%;
   overflow: hidden;
+  overscroll-behavior: none;
 }
 
 .app-page--tuner {
   display: block;
   overflow: auto;
+  overscroll-behavior: none;
 }
 
 .app-page__options--tuner {
@@ -21,7 +23,7 @@
 .tuner {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: var(--section-stack-gap);
   min-width: 0;
 }
 
@@ -170,7 +172,7 @@
 .tuner__range {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--section-label-content-gap);
   min-width: 0;
 }
 
@@ -210,8 +212,8 @@
   width: 1px;
   translate: -50% 0;
   border-radius: 1px;
-  background: #e8c84a;
-  box-shadow: 0 0 0 0.5px color-mix(in srgb, #e8c84a 35%, transparent);
+  background: var(--accent-line);
+  box-shadow: 0 0 0 0.5px color-mix(in srgb, var(--accent-line) 35%, transparent);
   pointer-events: none;
   z-index: 1;
 }
@@ -320,7 +322,7 @@
 .tuner__strings {
   display: flex;
   flex-direction: column;
-  gap: 0.625rem;
+  gap: var(--section-label-content-gap);
 }
 
 .tuner__string-grid {
@@ -400,6 +402,8 @@
   --options-text-roman: 0.875rem;
   --options-text-micro: 0.6875rem;
   --options-text-progression-chord: 0.875rem;
+  --section-label-content-gap: 0.625rem;
+  --section-stack-gap: 1.25rem;
   height: 100%;
   display: grid;
   overflow: hidden;
@@ -440,6 +444,7 @@
   align-items: stretch;
   overflow-y: auto;
   overflow-x: hidden;
+  overscroll-behavior: none;
 }
 
 .app-page--panels-swapped:not(.app-page--split) .app-page__options {
@@ -503,6 +508,7 @@
   max-width: var(--app-content-max-width);
   overflow-x: hidden;
   overflow-y: auto;
+  overscroll-behavior: none;
 }
 
 .app-page__divider {
@@ -954,7 +960,7 @@
   max-width: 100%;
   overflow-x: hidden;
   overflow-y: auto;
-  overscroll-behavior: contain;
+  overscroll-behavior: none;
   scrollbar-width: none;
   padding: var(--options-title-inset-top) 1.5rem 2.5rem;
   background: var(--page-bg);
@@ -973,6 +979,7 @@
   background: var(--card-bg);
   overflow-x: auto;
   overflow-y: hidden;
+  overscroll-behavior: none;
   scrollbar-width: none;
 }
 
@@ -1004,6 +1011,7 @@
 .app-page__diagram--layout-vertical {
   overflow-y: auto;
   overflow-x: hidden;
+  overscroll-behavior: none;
 }
 
 .app-page__diagram-wrap {
@@ -1053,6 +1061,7 @@
   align-content: stretch;
   overflow-x: hidden;
   overflow-y: auto;
+  overscroll-behavior: none;
 }
 
 .app-page__diagram-stage--progression[data-arrangement='column']
@@ -1167,7 +1176,7 @@
 .diagram-controls {
   display: flex;
   flex-direction: column;
-  gap: 0.875rem;
+  gap: var(--section-stack-gap);
   min-width: 0;
   max-width: 100%;
 }
@@ -1175,7 +1184,7 @@
 .diagram-field {
   display: flex;
   flex-direction: column;
-  gap: 0.625rem;
+  gap: var(--section-label-content-gap);
   min-width: 0;
   max-width: 100%;
 }
@@ -1354,36 +1363,42 @@
 .diagram-chords-build {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--section-stack-gap);
   width: 100%;
 }
 
 .diagram-chords-build__key-row,
-.diagram-chords-build__progression-row {
+.diagram-chords-build__progression-row,
+.diagram-chords-build__songs-row {
   width: 100%;
 }
 
-.diagram-field--songs {
-  margin-top: 0.25rem;
+.diagram-chords-build__progression-row,
+.diagram-chords-build__songs-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--section-label-content-gap);
 }
 
 .diagram-chords-build__sub-label {
   margin: 0;
-  font-size: var(--options-text-sub-label);
+  font-size: var(--options-text-label);
   font-weight: 600;
   line-height: 1;
   color: var(--muted);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
 }
 
-.diagram-chords-build__progression-header {
+.diagram-chords-build__progression-header,
+.diagram-chords-build__songs-header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  margin-bottom: 0.625rem;
+  margin: 0;
   line-height: 1;
+  min-height: 1.25rem;
 }
 
 .diagram-chords-build__progression-heading {
@@ -1413,11 +1428,9 @@
 .diagram-strum-pattern {
   display: grid;
   width: 100%;
-  grid-template-columns: repeat(
-    var(--progression-step-count, 1),
-    minmax(0, 1fr)
-  );
-  gap: 0.375rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  column-gap: 0.375rem;
+  row-gap: 0.75rem;
   margin: 0 0 0.375rem;
   min-width: 0;
 }
@@ -1496,22 +1509,12 @@
   }
 }
 
-.diagram-chords-build__progression-row {
-  margin-top: 0.25rem;
-}
-
-.diagram-chords-build__progression-row .diagram-progression-grid {
-  margin-bottom: 0.5rem;
-}
-
 .diagram-chords-build__progression-steps {
   display: grid;
   width: 100%;
-  grid-template-columns: repeat(
-    var(--progression-step-count, 1),
-    minmax(0, 1fr)
-  );
-  gap: 0.375rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  column-gap: 0.375rem;
+  row-gap: 0.75rem;
   margin-top: 0;
   align-items: start;
 }
@@ -1522,11 +1525,6 @@
 }
 
 .diagram-progression-step {
-  min-width: 0;
-  width: 100%;
-}
-
-.diagram-progression-step__chord-wrap {
   --progression-chord-border: 1px;
   --progression-chord-accent-inset: 1px;
   --progression-chord-edge: calc(
@@ -1534,7 +1532,7 @@
   );
   --progression-chord-font: var(--options-text-progression-chord);
   --progression-chord-line-height: 1.5;
-  --progression-chord-padding-y: 0.3rem;
+  --progression-chord-padding-y: 0.42rem;
   --progression-chord-padding-x: 0.125rem;
   --progression-chord-inner-y: calc(
     var(--progression-chord-padding-y) * 2 + var(--progression-chord-font) *
@@ -1546,9 +1544,47 @@
   );
   --progression-action-radius: calc(var(--progression-action-size) * 0.18);
   --progression-action-icon: calc(var(--progression-action-size) * 0.62);
+  /* Roman label min box + label padding + outer roman padding. */
+  --progression-roman-slot-height: calc(1.375rem + 0.25rem + 0.6rem);
+  min-width: 0;
+  width: 100%;
+}
+
+.diagram-progression-step__chord-wrap {
   position: relative;
   width: 100%;
   overflow: visible;
+}
+
+.diagram-progression-step__chord-wrap--reorderable {
+  cursor: grab;
+  touch-action: manipulation;
+}
+
+.diagram-progression-step__chord-wrap--reorder-active {
+  cursor: grabbing;
+  touch-action: none;
+  user-select: none;
+}
+
+.diagram-progression-step__chord-wrap--reorder-active
+  .diagram-progression-step__hover-controls {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.diagram-progression-step--dragging .diagram-chord-btn {
+  opacity: 0.4;
+}
+
+.diagram-progression-step--swap-origin .diagram-chord-btn {
+  opacity: 0.85;
+}
+
+.diagram-progression-step--drop-target .diagram-chord-btn {
+  box-shadow:
+    inset 0 0 0 1px var(--accent-line),
+    inset 0 0 0 2px color-mix(in srgb, var(--accent-line) 55%, transparent);
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -1567,11 +1603,19 @@
   line-height: var(--progression-chord-line-height);
   padding-block: var(--progression-chord-padding-y);
   padding-inline: var(--progression-chord-padding-x);
+  height: var(--progression-chord-inner-y);
+  min-height: var(--progression-chord-inner-y);
+}
+
+.diagram-progression-step__alts .diagram-chord-btn {
+  height: var(--progression-chord-inner-y);
+  min-height: var(--progression-chord-inner-y);
+  --chord-btn-pad-block: var(--progression-chord-padding-y);
 }
 
 .diagram-progression-step__hover-controls {
   position: absolute;
-  top: calc(var(--progression-chord-edge) + var(--progression-action-gap));
+  top: var(--progression-action-gap);
   height: var(--progression-action-size);
   z-index: 2;
   display: flex;
@@ -1579,26 +1623,17 @@
   gap: var(--progression-action-gap);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.12s ease;
 }
 
 .diagram-progression-step__hover-controls--left {
-  left: calc(var(--progression-chord-edge) + var(--progression-action-gap));
+  left: var(--progression-action-gap);
 }
 
 .diagram-progression-step__hover-controls--right {
-  right: calc(var(--progression-chord-edge) + var(--progression-action-gap));
+  right: var(--progression-action-gap);
 }
 
-@media (hover: hover) and (pointer: fine) {
-  .diagram-progression-step__chord-wrap:hover
-    .diagram-progression-step__hover-controls {
-    opacity: 1;
-    pointer-events: auto;
-  }
-}
-
-.diagram-progression-step__hover-controls:focus-within {
+.diagram-progression-step__hover-controls--visible {
   opacity: 1;
   pointer-events: auto;
 }
@@ -1652,6 +1687,22 @@
   box-shadow:
     0 0 0 1px var(--accent-line),
     inset 0 0 0 1px var(--accent-line);
+}
+
+.diagram-progression-step__alts-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: var(--progression-chord-inner-y);
+  min-height: var(--progression-chord-inner-y);
+  color: var(--muted);
+  padding-inline: 0.125rem;
+}
+
+.diagram-progression-step__alts-toggle--open {
+  color: var(--heading);
+  border-color: color-mix(in srgb, var(--heading) 28%, var(--card-border));
 }
 
 .diagram-progression-step__alts {
@@ -1797,6 +1848,19 @@
   padding-inline: 0.125rem;
 }
 
+.diagram-chord-root-column__variants-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  padding-inline: 0.125rem;
+}
+
+.diagram-chord-root-column__variants-toggle--open {
+  color: var(--heading);
+  border-color: color-mix(in srgb, var(--heading) 28%, var(--card-border));
+}
+
 .diagram-chord-cell {
   position: relative;
   min-width: 0;
@@ -1842,6 +1906,56 @@
   padding: 0.3rem 0.125rem;
   user-select: none;
   pointer-events: none;
+}
+
+.diagram-progression-step > .diagram-chord-roman,
+.diagram-progression-step > .app-tooltip-anchor:has(.diagram-progression-step__delete) {
+  box-sizing: border-box;
+  height: var(--progression-roman-slot-height);
+  min-height: var(--progression-roman-slot-height);
+  flex-shrink: 0;
+}
+
+.diagram-progression-step > .app-tooltip-anchor:has(.diagram-progression-step__delete) {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: stretch;
+}
+
+.diagram-progression-step__delete {
+  pointer-events: auto;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  margin: 0;
+  padding: 0.3rem 0.125rem;
+  border: none;
+  border-radius: 0.25rem;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  line-height: 1;
+}
+
+.diagram-progression-step__delete-icon {
+  width: 0.875rem !important;
+  height: 0.875rem !important;
+  flex-shrink: 0;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .diagram-progression-step__delete:hover {
+    color: #c44;
+  }
+}
+
+.diagram-progression-step__delete:focus-visible {
+  outline: none;
+  color: #c44;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #c44 55%, var(--card-border));
 }
 
 .diagram-chord-roman__label {
@@ -1892,8 +2006,8 @@
 }
 
 .diagram-chord-slot--empty {
-  height: calc(1.25 * var(--options-text-btn-md) + 0.6rem);
-  min-height: calc(1.25 * var(--options-text-btn-md) + 0.6rem);
+  height: calc(1.25 * var(--options-text-btn-md) + 0.84rem);
+  min-height: calc(1.25 * var(--options-text-btn-md) + 0.84rem);
   box-sizing: border-box;
 }
 
@@ -1916,7 +2030,7 @@
 }
 
 .diagram-chord-btn {
-  --chord-btn-pad-block: 0.3rem;
+  --chord-btn-pad-block: 0.42rem;
   --chord-btn-line-height: 1.25;
   display: inline-flex;
   align-items: center;
@@ -1936,10 +2050,6 @@
   height: calc(
     var(--chord-btn-line-height) * 1em + 2 * var(--chord-btn-pad-block)
   );
-  transition:
-    background 0.12s ease,
-    border-color 0.12s ease,
-    box-shadow 0.12s ease;
 }
 
 .diagram-chord-btn__label {
@@ -1952,8 +2062,8 @@
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .diagram-chord-btn:hover,
-  .diagram-chord-btn--selected:hover,
+  .diagram-chord-btn:hover:not(.diagram-chord-btn--progression.diagram-chord-btn--selected),
+  .diagram-chord-btn--selected:hover:not(.diagram-chord-btn--progression),
   .diagram-chord-btn--dim:hover,
   .diagram-chord-btn:disabled:hover,
   .diagram-chord-btn--unplayable:hover,
@@ -1975,8 +2085,15 @@
   box-shadow: inset 0 0 0 1px var(--accent-line);
 }
 
+.diagram-chord-btn--progression.diagram-chord-btn--selected {
+  border-color: var(--accent-line);
+  background: color-mix(in srgb, var(--accent-line) 22%, #0a0800);
+  box-shadow: inset 0 0 0 1px var(--accent-line);
+  color: color-mix(in srgb, #fff 92%, var(--accent-line));
+}
+
 .diagram-chord-btn--compact {
-  --chord-btn-pad-block: 0.15rem;
+  --chord-btn-pad-block: 0.22rem;
   font-size: var(--options-text-btn-compact);
   padding-inline: 0.2rem;
   font-weight: 600;
@@ -2024,13 +2141,12 @@
 
 /* —— Responsive layout (tablet / mobile) —— */
 
-@media (max-width: 56rem), (max-height: 40rem) {
+@media (max-width: 56rem) {
   .app-page {
     --key-grid-cols: 6;
     --chord-select-cols: 6;
     --fret-grid-cols: 5;
     --progression-seed-cols: 4;
-    --diatonic-cols: 4;
     --options-text-title: 1.375rem;
     --options-title-inset-top: 1.125rem;
     --options-title-gap-below: 1rem;
@@ -2048,6 +2164,19 @@
 
   .app-page--diagram-hidden .app-page__options {
     padding-bottom: 0;
+  }
+
+  .diagram-chords-build__key-row .diagram-chord-in-key--columns {
+    gap: 0.25rem;
+  }
+
+  .diagram-chords-build__key-row .diagram-chord-btn {
+    font-size: var(--options-text-btn-sm);
+    padding-inline: 0.0625rem;
+  }
+
+  .diagram-chords-build__key-row .diagram-chord-roman__label {
+    font-size: var(--options-text-btn-xs);
   }
 
   @media (orientation: landscape) {
@@ -2205,6 +2334,7 @@
     align-items: stretch;
     overflow-x: hidden;
     overflow-y: auto;
+    overscroll-behavior: none;
   }
 
   .app-page__diagram-wrap,
@@ -2257,7 +2387,7 @@
     padding-bottom: var(--divider-docked-bottom-inset);
   }
 
-  /* Stacked panels in portrait; landscape uses side-by-side via JS layout. */
+  /* Portrait safe-area padding; panel orientation follows the user setting. */
   @media (orientation: portrait) {
   body {
     padding-bottom: 0;
@@ -2280,69 +2410,11 @@
       var(--card-bg) bottom / 100% var(--divider-docked-bottom-inset) no-repeat,
       var(--menu-bar-bg);
   }
-
-  .app-page--split {
-    grid-template-columns: minmax(0, 1fr) !important;
-    grid-template-rows: minmax(0, 44%) auto minmax(0, 56%) !important;
-  }
-
-  .app-page--split .app-page__options {
-    grid-row: 1 !important;
-    grid-column: 1 !important;
-  }
-
-  .app-page--split .app-page__divider {
-    grid-row: 2 !important;
-    grid-column: 1 !important;
-  }
-
-  .app-page--split .app-page__diagram {
-    grid-row: 3 !important;
-    grid-column: 1 !important;
-  }
-
-  .app-page--panels-swapped.app-page--split .app-page__options {
-    grid-row: 3 !important;
-  }
-
-  .app-page--panels-swapped.app-page--split .app-page__diagram {
-    grid-row: 1 !important;
-  }
-
-  .app-page--split .app-page__divider--vertical {
-    width: 100%;
-    min-width: 0;
-    height: var(--divider-bar-thickness);
-    min-height: var(--divider-bar-thickness);
-    border: none;
-    border-top: 1px solid var(--card-border);
-    border-bottom: 1px solid var(--card-border);
-    cursor: ns-resize;
-    flex-direction: row-reverse;
-    align-items: center;
-    justify-content: center;
-  }
   }
 
   .diagram-chords-build__progression-steps-scroll {
     width: 100%;
     min-width: 0;
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
-    padding-bottom: 0.125rem;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .diagram-strum-pattern,
-  .diagram-chords-build__progression-steps {
-    width: max(
-      100%,
-      calc(var(--progression-step-count, 1) / 4 * 100%)
-    );
-    grid-template-columns: repeat(
-      var(--progression-step-count, 1),
-      minmax(0, 1fr)
-    );
   }
 
   .diagram-progression-step__alts {
@@ -2367,6 +2439,11 @@
     display: block;
     margin: 0.125rem 0;
   }
+
+  .diagram-select-stack--chords,
+  .diagram-select-stack--keys {
+    gap: 1.75rem;
+  }
 }
 
 @media (max-width: 24rem) {
@@ -2375,7 +2452,6 @@
     --chord-select-cols: 4;
     --fret-grid-cols: 4;
     --progression-seed-cols: 3;
-    --diatonic-cols: 3;
   }
 
   .diagram-key-select-grid {

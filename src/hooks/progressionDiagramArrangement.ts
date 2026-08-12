@@ -1,34 +1,24 @@
 export type ProgressionDiagramArrangement = 'row' | 'column' | 'grid'
 
 /**
- * Progression fretboard layout from device, panel split, and fret orientation.
+ * Progression fretboard layout from panel split and fret orientation.
+ * Viewport width must not change arrangement (same as large-screen layout).
  *
- * | Device  | Panel      | Frets      | Arrangement |
- * |---------|------------|------------|-------------|
- * | Desktop | horizontal | horizontal | row         |
- * | Desktop | horizontal | vertical   | row         |
- * | Desktop | vertical   | horizontal | column      |
- * | Desktop | vertical   | vertical   | grid        |
- * | Mobile  | horizontal | horizontal | column      |
- * | Mobile  | horizontal | vertical   | grid        |
- * | Mobile  | vertical   | horizontal | grid        |
- * | Mobile  | vertical   | vertical   | row         |
+ * | Panel      | Frets      | Arrangement |
+ * |------------|------------|-------------|
+ * | horizontal | horizontal | row         |
+ * | horizontal | vertical   | row         |
+ * | vertical   | horizontal | column      |
+ * | vertical   | vertical   | grid        |
  */
 export function progressionDiagramArrangement(
-  isMobile: boolean,
   panelVertical: boolean,
   fretsPortrait: boolean,
 ): ProgressionDiagramArrangement {
-  if (!isMobile) {
-    if (!panelVertical) {
-      return 'row'
-    }
-    return fretsPortrait ? 'grid' : 'column'
-  }
   if (!panelVertical) {
-    return fretsPortrait ? 'grid' : 'column'
+    return 'row'
   }
-  return fretsPortrait ? 'row' : 'grid'
+  return fretsPortrait ? 'grid' : 'column'
 }
 
 /** Max height cap for horizontal fretboards in grid (% of the board's grid cell). */

@@ -128,6 +128,50 @@ export function swapAdjacentProgressionSteps(
   return next
 }
 
+/** Swap two steps by index. */
+export function swapProgressionSteps(
+  steps: readonly ChordPresetId[],
+  aIndex: number,
+  bIndex: number,
+): ChordPresetId[] {
+  if (
+    aIndex < 0 ||
+    bIndex < 0 ||
+    aIndex >= steps.length ||
+    bIndex >= steps.length ||
+    aIndex === bIndex
+  ) {
+    return [...steps]
+  }
+  const next = [...steps]
+  ;[next[aIndex], next[bIndex]] = [next[bIndex]!, next[aIndex]!]
+  return next
+}
+
+/** Move a step from one index to another (insert semantics). */
+export function moveProgressionStep(
+  steps: readonly ChordPresetId[],
+  fromIndex: number,
+  toIndex: number,
+): ChordPresetId[] {
+  if (
+    fromIndex < 0 ||
+    fromIndex >= steps.length ||
+    toIndex < 0 ||
+    toIndex >= steps.length ||
+    fromIndex === toIndex
+  ) {
+    return [...steps]
+  }
+  const next = [...steps]
+  const [moved] = next.splice(fromIndex, 1)
+  if (moved == null) {
+    return [...steps]
+  }
+  next.splice(toIndex, 0, moved)
+  return next
+}
+
 export function deleteProgressionStep(
   steps: readonly ChordPresetId[],
   index: number,

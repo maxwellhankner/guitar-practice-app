@@ -13,7 +13,6 @@ import {
   Guitar,
   ListChecks,
   Music,
-  Plus,
   RotateCcw,
   Rows2,
   RotateCcwSquare,
@@ -27,8 +26,8 @@ import { Tooltip } from '../components/Tooltip'
 import {
   CHORD_PRESETS,
   ROOT_NAMES,
-  chordIdsForRoot,
-  parseChordPresetId,
+  primaryChordIdsForRoot,
+  extraChordIdsForRoot,
   Fretboard,
   chordsForProgression,
   diatonicSlotsInKey,
@@ -46,20 +45,19 @@ import {
   seedProgressionFromSong,
   allowedChordsForBuiltProgression,
   progressionHighlightedTriadsInKey,
-  swapAdjacentProgressionSteps,
+  swapProgressionSteps,
   deleteProgressionStep,
   insertProgressionStep,
   progressionAltOptions,
   triadIdForStep,
   transposeProgressionToKey,
-  isRootInKey,
   MAX_PROGRESSION_STEPS,
   KEY_DEFS,
   KEY_MAJOR_IDS,
   KEY_MINOR_IDS,
   PROGRESSIONS,
-  BASIC_PROGRESSION_IDS,
-  COLORED_PROGRESSION_IDS,
+  basicProgressionIdsForKey,
+  coloredProgressionIdsForKey,
   SONGS,
   SONG_IDS,
   chordsForSong,
@@ -95,6 +93,11 @@ type BoardSelection = { kind: 'chord'; id: ChordPresetId }
 
 /** A–D / Am–Dm vs D#–G# / D#m–G#m on mobile key grids. */
 const KEY_MOBILE_GROUP_SIZE = 6
+
+/** Hold before a progression chord can be dragged to reorder. */
+const PROGRESSION_REORDER_HOLD_MS = 320
+/** Pointer travel that cancels a pending long-press. */
+const PROGRESSION_REORDER_CANCEL_PX = 12
 
 const SCALE_MENU_OPTIONS: {
   value: ScaleSelection
@@ -158,12 +161,20 @@ export function HomePage() {
     ChordPresetId[] | null
   >(null)
   const [selectedSongId, setSelectedSongId] = useState<SongId | null>(null)
-  const [pendingAddAfterIndex, setPendingAddAfterIndex] = useState<
-    number | null
-  >(null)
   const [findKeyMode, setFindKeyMode] = useState(false)
   const [findKeyChords, setFindKeyChords] = useState<ChordPresetId[]>([])
   const [editKnownChordsMode, setEditKnownChordsMode] = useState(false)
+  const [chordVariantsOpen, setChordVariantsOpen] = useState(false)
+  const [progressionAltsOpen, setProgressionAltsOpen] = useState(false)
+  const [progressionDragFrom, setProgressionDragFrom] = useState<number | null>(
+    null,
+  )
+  const [progressionDragOver, setProgressionDragOver] = useState<number | null>(
+    null,
+  )
+  const [selectedProgressionStep, setSelectedProgressionStep] = useState<
+    number | null
+  >(null)
   const [liveSplitRatio, setLiveSplitRatio] = useState<number | null>(null)
   const [fretPickerOpen, setFretPickerOpen] = useState(false)
   const [accentPickerOpen, setAccentPickerOpen] = useState(false)
@@ -172,7 +183,15 @@ export function HomePage() {
   const fretPickerRef = useRef<HTMLDivElement>(null)
   const accentPickerRef = useRef<HTMLDivElement>(null)
   const scalePickerRef = useRef<HTMLDivElement>(null)
-  const addProgressionPickerRef = useRef<HTMLDivElement>(null)
+  const progressionReorderRef = useRef<{
+    fromIndex: number
+    pointerId: number
+    startX: number
+    startY: number
+    holdTimer: ReturnType<typeof setTimeout> | null
+    active: boolean
+    overIndex: number
+  } | null>(null)
   const practiceHydratedRef = useRef(false)
   const lastSyncedPracticeRef = useRef<PracticeSelectionSnapshot | null>(null)
   const pendingPracticePersistRef = useRef<PracticeSelectionSnapshot | null>(
@@ -210,6 +229,15 @@ export function HomePage() {
     selectedSongId: savedSelectedSongId,
     setPracticeSelection,
   } = useUserSettings()
+
+  useEffect(() => {
+    return () => {
+      const pending = progressionReorderRef.current
+      if (pending?.holdTimer != null) {
+        clearTimeout(pending.holdTimer)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     if (!settingsReady) {
@@ -340,7 +368,7 @@ export function HomePage() {
   const clearSelectedKey = () => {
     setBuiltProgression(null)
     setSelectedSongId(null)
-    setPendingAddAfterIndex(null)
+    setSelectedProgressionStep(null)
     setSelection(null)
     setSelectedKey(null)
   }
@@ -414,36 +442,6 @@ export function HomePage() {
     }
   }, [scalePickerOpen])
 
-  useEffect(() => {
-    if (pendingAddAfterIndex == null) {
-      return
-    }
-    const onPointerDown = (event: PointerEvent) => {
-      if (addProgressionPickerRef.current?.contains(event.target as Node)) {
-        return
-      }
-      if (
-        (event.target as HTMLElement).closest(
-          '[aria-label="Add chord to the right"]',
-        )
-      ) {
-        return
-      }
-      setPendingAddAfterIndex(null)
-    }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setPendingAddAfterIndex(null)
-      }
-    }
-    document.addEventListener('pointerdown', onPointerDown)
-    document.addEventListener('keydown', onKeyDown)
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown)
-      document.removeEventListener('keydown', onKeyDown)
-    }
-  }, [pendingAddAfterIndex])
-
   const diatonicSlots = useMemo(() => {
     if (activeKey == null) {
       return null
@@ -465,18 +463,46 @@ export function HomePage() {
   const hasBuiltProgression =
     builtProgression != null && builtProgression.length > 0
 
+  const focusedProgressionStep =
+    builtProgression != null &&
+    selectedProgressionStep != null &&
+    selectedProgressionStep >= 0 &&
+    selectedProgressionStep < builtProgression.length
+      ? selectedProgressionStep
+      : null
+
+  const progressionBoards = useMemo(() => {
+    if (!hasBuiltProgression || builtProgression == null) {
+      return [] as { chordId: ChordPresetId; stepIndex: number }[]
+    }
+    if (focusedProgressionStep != null) {
+      return [
+        {
+          chordId: builtProgression[focusedProgressionStep]!,
+          stepIndex: focusedProgressionStep,
+        },
+      ]
+    }
+    return builtProgression.map((chordId, stepIndex) => ({
+      chordId,
+      stepIndex,
+    }))
+  }, [builtProgression, hasBuiltProgression, focusedProgressionStep])
+
   const effectiveDiagramLayout = useMobileDiagramLayout(diagramLayout)
   const isMobileViewport = useIsMobileViewport()
   const diagramLayoutVertical = effectiveDiagramLayout === 'vertical'
   const fretboardPortrait = fretboardOrientation === 'portrait'
   const progressionArrangement = progressionDiagramArrangement(
-    isMobileViewport,
     diagramLayoutVertical,
     fretboardPortrait,
   )
   const progressionBoardMaxHeightCss =
     hasBuiltProgression && activeKey != null
-      ? progressionBoardMaxHeight(builtProgression.length, progressionArrangement)
+      ? progressionBoardMaxHeight(
+          progressionBoards.length,
+          progressionArrangement,
+        )
       : undefined
   const pickerPopupPlacement = diagramLayoutVertical
     ? panelsSwapped
@@ -662,7 +688,7 @@ export function HomePage() {
     }
     setSelectedSongId(null)
     setBuiltProgression(seedProgressionFromPreset(activeKey, progressionId))
-    setPendingAddAfterIndex(null)
+    setSelectedProgressionStep(null)
   }
 
   const seedFromSong = (songId: SongId) => {
@@ -673,7 +699,8 @@ export function HomePage() {
     }
     setSelectedSongId(songId)
     setBuiltProgression(seedProgressionFromSong(keyId, songId))
-    setPendingAddAfterIndex(null)
+    setSelectedProgressionStep(null)
+    setProgressionAltsOpen(false)
     setSelection(null)
   }
 
@@ -687,7 +714,6 @@ export function HomePage() {
         setSelection(null)
         setFindKeyMode(false)
         setFindKeyChords([])
-        setPendingAddAfterIndex(null)
       }
       return !on
     })
@@ -739,6 +765,7 @@ export function HomePage() {
     setFindKeyMode(false)
     setFindKeyChords([])
     setSelection(null)
+    setSelectedProgressionStep(null)
     setSelectedKey(keyId)
     if (transposedProgression != null) {
       if (progressionFromFindKey != null) {
@@ -751,22 +778,41 @@ export function HomePage() {
   const clearBuiltProgression = () => {
     setBuiltProgression(null)
     setSelectedSongId(null)
-    setPendingAddAfterIndex(null)
+    setSelectedProgressionStep(null)
+    setProgressionAltsOpen(false)
     setSelection(null)
   }
 
   const handleKeyRowChordClick = (chordId: ChordPresetId) => {
-    setPendingAddAfterIndex(null)
     detachSongAssociation()
 
-    if (
-      builtProgression != null &&
-      builtProgression.length >= MAX_PROGRESSION_STEPS
-    ) {
+    const current = builtProgression
+    if (current != null && current.length >= MAX_PROGRESSION_STEPS) {
       return
     }
 
-    setBuiltProgression((cur) => (cur == null ? [chordId] : [...cur, chordId]))
+    const insertAfter =
+      selectedProgressionStep != null &&
+      current != null &&
+      selectedProgressionStep >= 0 &&
+      selectedProgressionStep < current.length
+        ? selectedProgressionStep
+        : null
+
+    if (current == null || current.length === 0) {
+      setBuiltProgression([chordId])
+      setSelection({ kind: 'chord', id: chordId })
+      return
+    }
+
+    if (insertAfter != null) {
+      setBuiltProgression(insertProgressionStep(current, insertAfter, chordId))
+      setSelectedProgressionStep(insertAfter + 1)
+      setSelection({ kind: 'chord', id: chordId })
+      return
+    }
+
+    setBuiltProgression([...current, chordId])
     setSelection({ kind: 'chord', id: chordId })
   }
 
@@ -784,12 +830,159 @@ export function HomePage() {
     })
   }
 
-  const handleSwapAdjacentSteps = (leftIndex: number) => {
-    detachSongAssociation()
-    setBuiltProgression((cur) =>
-      cur == null ? cur : swapAdjacentProgressionSteps(cur, leftIndex),
-    )
-    setPendingAddAfterIndex(null)
+  const clearProgressionReorder = () => {
+    const pending = progressionReorderRef.current
+    if (pending?.holdTimer != null) {
+      clearTimeout(pending.holdTimer)
+    }
+    progressionReorderRef.current = null
+    setProgressionDragFrom(null)
+    setProgressionDragOver(null)
+  }
+
+  const stepIndexFromPoint = (clientX: number, clientY: number) => {
+    const el = document.elementFromPoint(clientX, clientY)
+    const step = el?.closest('[data-progression-step-index]')
+    if (step == null) {
+      return null
+    }
+    const index = Number(step.getAttribute('data-progression-step-index'))
+    return Number.isInteger(index) ? index : null
+  }
+
+  const handleProgressionReorderPointerDown = (
+    event: React.PointerEvent<HTMLDivElement>,
+    stepIndex: number,
+  ) => {
+    if (selectedSongId != null || event.button !== 0) {
+      return
+    }
+    if (
+      (event.target as HTMLElement).closest(
+        '.diagram-progression-step__delete',
+      )
+    ) {
+      return
+    }
+
+    clearProgressionReorder()
+    const pointerId = event.pointerId
+    const startX = event.clientX
+    const startY = event.clientY
+    const target = event.currentTarget
+    progressionReorderRef.current = {
+      fromIndex: stepIndex,
+      pointerId,
+      startX,
+      startY,
+      holdTimer: setTimeout(() => {
+        const pending = progressionReorderRef.current
+        if (pending == null || pending.pointerId !== pointerId) {
+          return
+        }
+        pending.active = true
+        pending.holdTimer = null
+        pending.overIndex = stepIndex
+        detachSongAssociation()
+        setProgressionDragFrom(stepIndex)
+        setProgressionDragOver(stepIndex)
+        try {
+          target.setPointerCapture(pointerId)
+        } catch {
+          /* pointer may already be released */
+        }
+      }, PROGRESSION_REORDER_HOLD_MS),
+      active: false,
+      overIndex: stepIndex,
+    }
+  }
+
+  const handleProgressionReorderPointerMove = (
+    event: React.PointerEvent<HTMLDivElement>,
+  ) => {
+    const pending = progressionReorderRef.current
+    if (pending == null || pending.pointerId !== event.pointerId) {
+      return
+    }
+
+    if (!pending.active) {
+      const dx = event.clientX - pending.startX
+      const dy = event.clientY - pending.startY
+      if (
+        dx * dx + dy * dy >
+        PROGRESSION_REORDER_CANCEL_PX * PROGRESSION_REORDER_CANCEL_PX
+      ) {
+        clearProgressionReorder()
+      }
+      return
+    }
+
+    event.preventDefault()
+    const overIndex = stepIndexFromPoint(event.clientX, event.clientY)
+    if (overIndex != null) {
+      pending.overIndex = overIndex
+      setProgressionDragOver(overIndex)
+    }
+  }
+
+  const handleProgressionReorderPointerEnd = (
+    event: React.PointerEvent<HTMLDivElement>,
+  ) => {
+    const pending = progressionReorderRef.current
+    if (pending == null || pending.pointerId !== event.pointerId) {
+      return
+    }
+
+    const { fromIndex, active, overIndex } = pending
+
+    if (active) {
+      try {
+        event.currentTarget.releasePointerCapture(event.pointerId)
+      } catch {
+        /* already released */
+      }
+      // Swallow the click that follows a completed long-press drag.
+      const target = event.currentTarget
+      const blockClick = (clickEvent: Event) => {
+        clickEvent.preventDefault()
+        clickEvent.stopPropagation()
+        target.removeEventListener('click', blockClick, true)
+      }
+      target.addEventListener('click', blockClick, true)
+    }
+
+    clearProgressionReorder()
+
+    if (active && overIndex !== fromIndex) {
+      setBuiltProgression((cur) =>
+        cur == null ? cur : swapProgressionSteps(cur, fromIndex, overIndex),
+      )
+      setSelectedProgressionStep((cur) => {
+        if (cur == null) {
+          return null
+        }
+        if (cur === fromIndex) {
+          return overIndex
+        }
+        if (cur === overIndex) {
+          return fromIndex
+        }
+        return cur
+      })
+    }
+  }
+
+  const toggleProgressionStepSelection = (
+    stepIndex: number,
+    chordId: ChordPresetId,
+  ) => {
+    if (selectedProgressionStep === stepIndex) {
+      setSelectedProgressionStep(null)
+      setSelection(null)
+      return
+    }
+    setSelectedProgressionStep(stepIndex)
+    setSelection({ kind: 'chord', id: chordId })
   }
 
   const handleDeleteStep = (stepIndex: number) => {
@@ -800,6 +993,18 @@ export function HomePage() {
     setBuiltProgression((cur) =>
       cur == null ? cur : deleteProgressionStep(cur, stepIndex),
     )
+    setSelectedProgressionStep((cur) => {
+      if (cur == null) {
+        return null
+      }
+      if (cur === stepIndex || willBeEmpty) {
+        return null
+      }
+      if (cur > stepIndex) {
+        return cur - 1
+      }
+      return cur
+    })
     setSelection((sel) => {
       if (sel?.kind !== 'chord') {
         return sel
@@ -812,41 +1017,6 @@ export function HomePage() {
       }
       return sel
     })
-    setPendingAddAfterIndex(null)
-  }
-
-  const handleAddRoot = (afterIndex: number, rootName: RootName) => {
-    if (selectedKey == null) {
-      return
-    }
-    if (
-      builtProgression != null &&
-      builtProgression.length >= MAX_PROGRESSION_STEPS
-    ) {
-      return
-    }
-    detachSongAssociation()
-    let chordId = rootName as ChordPresetId
-    if (isRootInKey(selectedKey, rootName)) {
-      for (const slot of diatonicSlotsInKey(selectedKey)) {
-        if (
-          slot.chordId != null &&
-          parseChordPresetId(slot.chordId).rootName === rootName
-        ) {
-          chordId = slot.chordId
-          break
-        }
-      }
-    } else {
-      setSelectedKey(rootName as KeyId)
-    }
-    setBuiltProgression((cur) => {
-      if (cur == null || cur.length >= MAX_PROGRESSION_STEPS) {
-        return cur
-      }
-      return insertProgressionStep(cur, afterIndex, chordId)
-    })
-    setPendingAddAfterIndex(null)
   }
 
   const renderProgressionSeedButton = (
@@ -911,9 +1081,8 @@ export function HomePage() {
     return `Requires ${missing.join(', ')}`
   }
 
-  const renderSongSeedButton = (songId: SongId) => {
+  const renderSongSeedButton = (keyId: KeyId, songId: SongId) => {
     const song = SONGS[songId]
-    const keyId = song.defaultKey
     const unresolved = !isSongResolvableInKey(keyId, songId)
     const blocked =
       filterPlayableOnly &&
@@ -956,20 +1125,56 @@ export function HomePage() {
     )
   }
 
-  const renderSongSeeds = () => (
-    <div
-      className="diagram-field diagram-field--songs"
-      role="group"
-      aria-labelledby={`${baseId}-songs-label`}
-    >
-      <p className="diagram-label" id={`${baseId}-songs-label`}>
-        Songs
-      </p>
-      <div className="diagram-chord-grid diagram-song-seeds">
-        {SONG_IDS.map((songId) => renderSongSeedButton(songId))}
+  const renderSongSeeds = (seedKey?: KeyId | null) => {
+    const embedded = seedKey != null
+    const songIds = embedded
+      ? SONG_IDS.filter((songId) => SONGS[songId].defaultKey === seedKey)
+      : SONG_IDS
+
+    if (songIds.length === 0) {
+      return null
+    }
+
+    const songButtons = songIds.map((songId) =>
+      renderSongSeedButton(seedKey ?? SONGS[songId].defaultKey, songId),
+    )
+
+    if (embedded) {
+      return (
+        <div
+          className="diagram-chords-build__songs-row"
+          role="group"
+          aria-labelledby={`${baseId}-songs-label`}
+        >
+          <div className="diagram-chords-build__songs-header">
+            <p className="diagram-label" id={`${baseId}-songs-label`}>
+              Songs
+            </p>
+          </div>
+          <div className="diagram-chord-grid diagram-song-seeds">
+            {songButtons}
+          </div>
+        </div>
+      )
+    }
+
+    return (
+      <div
+        className="diagram-field"
+        role="group"
+        aria-labelledby={`${baseId}-songs-label`}
+      >
+        <div className="diagram-field__label-row">
+          <p className="diagram-label" id={`${baseId}-songs-label`}>
+            Songs
+          </p>
+        </div>
+        <div className="diagram-chord-grid diagram-song-seeds">
+          {songButtons}
+        </div>
       </div>
-    </div>
-  )
+    )
+  }
 
   const renderProgressionSeeds = (keyId: KeyId) => (
     <div
@@ -977,10 +1182,10 @@ export function HomePage() {
       role="group"
       aria-label="Progression seeds"
     >
-      {BASIC_PROGRESSION_IDS.map((progressionId) =>
+      {basicProgressionIdsForKey(keyId).map((progressionId) =>
         renderProgressionSeedButton(keyId, progressionId),
       )}
-      {COLORED_PROGRESSION_IDS.map((progressionId) =>
+      {coloredProgressionIdsForKey(keyId).map((progressionId) =>
         renderProgressionSeedButton(keyId, progressionId, true),
       )}
     </div>
@@ -997,6 +1202,7 @@ export function HomePage() {
       selectable?: boolean
       selected?: boolean
       dimmed?: boolean
+      titleSuffix?: string
       onSelect?: () => void
     },
   ) => {
@@ -1008,13 +1214,17 @@ export function HomePage() {
           (selectedKey == null &&
             selection?.kind === 'chord' &&
             selection.id === id))
-    const title =
+    const baseTitle =
       options?.keyId != null
         ? `${CHORD_PRESETS[id].name}${options.roman != null ? ` · ${options.roman}` : (() => {
             const { label, kind } = romanLabelForChordInKey(options.keyId, id)
             return kind !== 'foreign' ? ` · ${label}` : ''
           })()} in ${KEY_DEFS[options.keyId].name}`
         : CHORD_PRESETS[id].name
+    const title =
+      options?.titleSuffix != null
+        ? `${baseTitle} — ${options.titleSuffix}`
+        : baseTitle
 
     return (
       <ChordPlayabilityCell
@@ -1096,25 +1306,54 @@ export function HomePage() {
     )
   }
 
-  const renderChordRootColumn = (root: RootName) => (
-    <div
-      key={root}
-      className="diagram-chord-root-column"
-      aria-label={`${root} chords`}
-    >
-      {chordIdsForRoot(root).map((id) =>
-        renderChordCell(
-          id,
-          findKeyMode
-            ? {
-                selected: findKeyChords.includes(id),
-                onSelect: () => toggleFindKeyChord(id),
-              }
-            : undefined,
-        ),
-      )}
-    </div>
-  )
+  const renderChordRootColumn = (root: RootName) => {
+    const renderId = (id: ChordPresetId) =>
+      renderChordCell(
+        id,
+        findKeyMode
+          ? {
+              selected: findKeyChords.includes(id),
+              onSelect: () => toggleFindKeyChord(id),
+            }
+          : undefined,
+      )
+
+    return (
+      <div
+        key={root}
+        className="diagram-chord-root-column"
+        aria-label={`${root} chords`}
+      >
+        {primaryChordIdsForRoot(root).map(renderId)}
+        <button
+          type="button"
+          className={[
+            'diagram-chord-btn',
+            'diagram-chord-root-column__variants-toggle',
+            chordVariantsOpen
+              ? 'diagram-chord-root-column__variants-toggle--open'
+              : '',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+          aria-expanded={chordVariantsOpen}
+          aria-label={
+            chordVariantsOpen ? 'Hide chord variants' : 'Show chord variants'
+          }
+          onClick={() => setChordVariantsOpen((open) => !open)}
+        >
+          {chordVariantsOpen ? (
+            <ChevronUp size={14} aria-hidden />
+          ) : (
+            <ChevronDown size={14} aria-hidden />
+          )}
+        </button>
+        {chordVariantsOpen
+          ? extraChordIdsForRoot(root).map(renderId)
+          : null}
+      </div>
+    )
+  }
 
   const showDiagramPanel = !diagramHidden
 
@@ -1667,7 +1906,7 @@ export function HomePage() {
             <div className="diagram-field">
               <div className="diagram-field__label-row">
                 <p className="diagram-label" id={`${baseId}-key-label`}>
-                  Key
+                  {selectedKey != null ? 'Key' : 'Keys'}
                 </p>
                 <div
                   className={
@@ -1705,32 +1944,40 @@ export function HomePage() {
                 </div>
               </div>
               <div
-                className="diagram-select-stack"
+                className={[
+                  'diagram-select-stack',
+                  isMobileViewport ? 'diagram-select-stack--keys' : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
                 role="group"
                 aria-labelledby={`${baseId}-key-label`}
               >
                 {isMobileViewport ? (
                   <>
-                    <div className="diagram-chord-grid diagram-key-select-grid">
-                      {KEY_MAJOR_IDS.slice(0, KEY_MOBILE_GROUP_SIZE).map(
-                        renderKeyButton,
-                      )}
+                    <div className="diagram-select-stack diagram-select-stack--key-group">
+                      <div className="diagram-chord-grid diagram-key-select-grid">
+                        {KEY_MAJOR_IDS.slice(0, KEY_MOBILE_GROUP_SIZE).map(
+                          renderKeyButton,
+                        )}
+                      </div>
+                      <div className="diagram-chord-grid diagram-key-select-grid">
+                        {KEY_MINOR_IDS.slice(0, KEY_MOBILE_GROUP_SIZE).map(
+                          renderKeyButton,
+                        )}
+                      </div>
                     </div>
-                    <div className="diagram-chord-grid diagram-key-select-grid">
-                      {KEY_MINOR_IDS.slice(0, KEY_MOBILE_GROUP_SIZE).map(
-                        renderKeyButton,
-                      )}
-                    </div>
-                    <hr className="diagram-select-stack-divider" aria-hidden />
-                    <div className="diagram-chord-grid diagram-key-select-grid">
-                      {KEY_MAJOR_IDS.slice(KEY_MOBILE_GROUP_SIZE).map(
-                        renderKeyButton,
-                      )}
-                    </div>
-                    <div className="diagram-chord-grid diagram-key-select-grid">
-                      {KEY_MINOR_IDS.slice(KEY_MOBILE_GROUP_SIZE).map(
-                        renderKeyButton,
-                      )}
+                    <div className="diagram-select-stack diagram-select-stack--key-group">
+                      <div className="diagram-chord-grid diagram-key-select-grid">
+                        {KEY_MAJOR_IDS.slice(KEY_MOBILE_GROUP_SIZE).map(
+                          renderKeyButton,
+                        )}
+                      </div>
+                      <div className="diagram-chord-grid diagram-key-select-grid">
+                        {KEY_MINOR_IDS.slice(KEY_MOBILE_GROUP_SIZE).map(
+                          renderKeyButton,
+                        )}
+                      </div>
                     </div>
                   </>
                 ) : (
@@ -1844,7 +2091,9 @@ export function HomePage() {
                           className="diagram-chords-build__sub-label"
                           id={`${baseId}-progression-label`}
                         >
-                          Progression
+                          {selectedSongId != null
+                            ? 'Song'
+                            : `Progression${hasBuiltProgression ? '' : 's'}`}
                         </p>
                         {selectedSongId != null ? (
                           <p className="diagram-chords-build__song-label">
@@ -1936,7 +2185,17 @@ export function HomePage() {
                               } as React.CSSProperties
                             }
                           >
-                          {builtProgression.map((chordId, stepIndex) => {
+                          {builtProgression.map((sourceChordId, stepIndex) => {
+                            const chordId =
+                              progressionDragFrom != null &&
+                              progressionDragOver != null &&
+                              progressionDragFrom !== progressionDragOver
+                                ? stepIndex === progressionDragFrom
+                                  ? builtProgression[progressionDragOver]!
+                                  : stepIndex === progressionDragOver
+                                    ? builtProgression[progressionDragFrom]!
+                                    : sourceChordId
+                                : sourceChordId
                             const triadId = triadIdForStep(activeKey, chordId)
                             const romanInfo = romanLabelForProgressionStep(
                               activeKey,
@@ -1947,86 +2206,73 @@ export function HomePage() {
                             const altOptions = songLocked
                               ? []
                               : progressionAltOptions(activeKey, chordId)
-                            const canAdd =
-                              !songLocked &&
-                              builtProgression.length < MAX_PROGRESSION_STEPS
-                            const canSwapLeft = !songLocked && stepIndex > 0
-                            const canSwapRight =
-                              !songLocked &&
-                              stepIndex < builtProgression.length - 1
-                            const pickingRoot =
-                              !songLocked && pendingAddAfterIndex === stepIndex
+                            const stepSelected =
+                              selectedProgressionStep === stepIndex
+                            const isHeldSlot =
+                              progressionDragFrom != null &&
+                              (progressionDragOver === progressionDragFrom
+                                ? stepIndex === progressionDragFrom
+                                : stepIndex === progressionDragOver)
+                            const isSwapOrigin =
+                              progressionDragFrom != null &&
+                              progressionDragOver != null &&
+                              progressionDragFrom !== progressionDragOver &&
+                              stepIndex === progressionDragFrom
 
                             return (
                               <div
-                                key={`progression-step-${stepIndex}-${chordId}`}
+                                key={`progression-step-${stepIndex}`}
+                                data-progression-step-index={stepIndex}
                                 className={[
                                   'diagram-chord-in-key__column',
                                   'diagram-progression-step',
                                   songLocked
                                     ? ''
                                     : 'diagram-chord-in-key__column--editable',
+                                  stepSelected
+                                    ? 'diagram-progression-step--selected'
+                                    : '',
+                                  isHeldSlot
+                                    ? 'diagram-progression-step--dragging'
+                                    : '',
+                                  isSwapOrigin
+                                    ? 'diagram-progression-step--swap-origin'
+                                    : '',
                                 ]
                                   .filter(Boolean)
                                   .join(' ')}
                               >
                                 <div
-                                  ref={
-                                    pickingRoot
-                                      ? addProgressionPickerRef
-                                      : undefined
-                                  }
                                   className={[
                                     'diagram-progression-step__chord-wrap',
-                                    pickingRoot
-                                      ? 'diagram-progression-step__chord-wrap--add-open'
+                                    !songLocked
+                                      ? 'diagram-progression-step__chord-wrap--reorderable'
+                                      : '',
+                                    progressionDragFrom != null
+                                      ? 'diagram-progression-step__chord-wrap--reorder-active'
                                       : '',
                                   ]
                                     .filter(Boolean)
                                     .join(' ')}
+                                  onPointerDown={(event) =>
+                                    handleProgressionReorderPointerDown(
+                                      event,
+                                      stepIndex,
+                                    )
+                                  }
+                                  onPointerMove={
+                                    handleProgressionReorderPointerMove
+                                  }
+                                  onPointerUp={
+                                    handleProgressionReorderPointerEnd
+                                  }
+                                  onPointerCancel={
+                                    handleProgressionReorderPointerEnd
+                                  }
+                                  onContextMenu={(event) => {
+                                    event.preventDefault()
+                                  }}
                                 >
-                                  {!songLocked ? (
-                                  <div
-                                    className="diagram-progression-step__hover-controls diagram-progression-step__hover-controls--left"
-                                  >
-                                    {canSwapLeft ? (
-                                      <Tooltip
-                                        label={`Swap with step ${stepIndex}`}
-                                      >
-                                        <button
-                                          type="button"
-                                          className="diagram-progression-step__action"
-                                          aria-label={`Swap with step ${stepIndex}`}
-                                          onClick={() =>
-                                            handleSwapAdjacentSteps(stepIndex - 1)
-                                          }
-                                        >
-                                          <ArrowLeftRight
-                                            className="diagram-progression-step__action-icon"
-                                            strokeWidth={2.5}
-                                            aria-hidden
-                                          />
-                                        </button>
-                                      </Tooltip>
-                                    ) : null}
-                                    <Tooltip label="Remove chord">
-                                      <button
-                                        type="button"
-                                        className="diagram-progression-step__action diagram-progression-step__action--danger"
-                                        aria-label={`Remove step ${stepIndex + 1}`}
-                                        onClick={() =>
-                                          handleDeleteStep(stepIndex)
-                                        }
-                                      >
-                                        <Trash2
-                                          className="diagram-progression-step__action-icon"
-                                          strokeWidth={2.5}
-                                          aria-hidden
-                                        />
-                                      </button>
-                                    </Tooltip>
-                                  </div>
-                                  ) : null}
                                   {renderChordCell(chordId, {
                                     keyId: activeKey,
                                     roman:
@@ -2034,120 +2280,104 @@ export function HomePage() {
                                         ? romanInfo.label
                                         : undefined,
                                     inProgression: true,
-                                    selectable: false,
+                                    selectable: true,
+                                    selected: stepSelected,
+                                    onSelect: () =>
+                                      toggleProgressionStepSelection(
+                                        stepIndex,
+                                        chordId,
+                                      ),
+                                    titleSuffix: songLocked
+                                      ? stepSelected
+                                        ? 'click to deselect'
+                                        : 'click to focus'
+                                      : stepSelected
+                                        ? 'click to deselect · add from chords above'
+                                        : 'click to select · hold to reorder',
                                   })}
-                                  {!songLocked ? (
-                                  <div
-                                    className="diagram-progression-step__hover-controls diagram-progression-step__hover-controls--right"
-                                  >
-                                    {canAdd ? (
-                                      <Tooltip
-                                        label="Add chord to the right"
-                                        disabled={pickingRoot}
-                                      >
-                                        <button
-                                          type="button"
-                                          className={
-                                            pickingRoot
-                                              ? 'diagram-progression-step__action diagram-progression-step__action--active'
-                                              : 'diagram-progression-step__action'
-                                          }
-                                          aria-label="Add chord to the right"
-                                          aria-expanded={pickingRoot}
-                                          aria-haspopup="listbox"
-                                          onClick={() =>
-                                            setPendingAddAfterIndex((cur) =>
-                                              cur === stepIndex ? null : stepIndex,
-                                            )
-                                          }
-                                        >
-                                          <Plus
-                                            className="diagram-progression-step__action-icon"
-                                            strokeWidth={2.5}
-                                            aria-hidden
-                                          />
-                                        </button>
-                                      </Tooltip>
-                                    ) : null}
-                                    {canSwapRight ? (
-                                      <Tooltip
-                                        label={`Swap with step ${stepIndex + 2}`}
-                                      >
-                                        <button
-                                          type="button"
-                                          className="diagram-progression-step__action"
-                                          aria-label={`Swap with step ${stepIndex + 2}`}
-                                          onClick={() =>
-                                            handleSwapAdjacentSteps(stepIndex)
-                                          }
-                                        >
-                                          <ArrowLeftRight
-                                            className="diagram-progression-step__action-icon"
-                                            strokeWidth={2.5}
-                                            aria-hidden
-                                          />
-                                        </button>
-                                      </Tooltip>
-                                    ) : null}
-                                  </div>
-                                  ) : null}
-                                  {pickingRoot ? (
-                                    <div
-                                      className="diagram-progression-add-menu"
-                                      role="listbox"
-                                      aria-label="Choose root for new chord"
-                                    >
-                                      {ROOT_NAMES.map((rootName) => {
-                                        const inKey = isRootInKey(
-                                          activeKey,
-                                          rootName,
-                                        )
-                                        return (
-                                          <button
-                                            key={rootName}
-                                            type="button"
-                                            role="option"
-                                            className={[
-                                              'diagram-progression-add-menu__option',
-                                              inKey
-                                                ? ''
-                                                : 'diagram-progression-add-menu__option--out-of-key',
-                                            ]
-                                              .filter(Boolean)
-                                              .join(' ')}
-                                            onClick={() =>
-                                              handleAddRoot(stepIndex, rootName)
-                                            }
-                                          >
-                                            {rootName}
-                                          </button>
-                                        )
-                                      })}
-                                    </div>
-                                  ) : null}
                                 </div>
-                                {renderRoman(
-                                  chordId,
-                                  scaleRomanLabel(chordId, romanInfo.label),
-                                  romanInfo.kind === 'foreign'
-                                    ? 'diagram-chord-roman--foreign'
-                                    : undefined,
-                                  isChordInSelectedScale(chordId),
+                                {!songLocked && stepSelected ? (
+                                  <Tooltip label="Remove chord">
+                                    <button
+                                      type="button"
+                                      className="diagram-chord-roman diagram-progression-step__delete"
+                                      aria-label={`Remove step ${stepIndex + 1}`}
+                                      onClick={() =>
+                                        handleDeleteStep(stepIndex)
+                                      }
+                                    >
+                                      <Trash2
+                                        className="diagram-progression-step__delete-icon"
+                                        strokeWidth={2.5}
+                                        aria-hidden
+                                      />
+                                    </button>
+                                  </Tooltip>
+                                ) : (
+                                  renderRoman(
+                                    chordId,
+                                    scaleRomanLabel(
+                                      chordId,
+                                      romanInfo.label,
+                                    ),
+                                    romanInfo.kind === 'foreign'
+                                      ? 'diagram-chord-roman--foreign'
+                                      : undefined,
+                                    isChordInSelectedScale(chordId),
+                                  )
                                 )}
-                                {altOptions.length > 0 ? (
+                                {!songLocked ? (
+                                  <button
+                                    type="button"
+                                    className={[
+                                      'diagram-chord-btn',
+                                      'diagram-progression-step__alts-toggle',
+                                      progressionAltsOpen
+                                        ? 'diagram-progression-step__alts-toggle--open'
+                                        : '',
+                                    ]
+                                      .filter(Boolean)
+                                      .join(' ')}
+                                    aria-expanded={progressionAltsOpen}
+                                    aria-label={
+                                      progressionAltsOpen
+                                        ? 'Hide alternate chords'
+                                        : 'Show alternate chords'
+                                    }
+                                    onClick={() =>
+                                      setProgressionAltsOpen((open) => !open)
+                                    }
+                                  >
+                                    {progressionAltsOpen ? (
+                                      <ChevronUp size={14} aria-hidden />
+                                    ) : (
+                                      <ChevronDown size={14} aria-hidden />
+                                    )}
+                                  </button>
+                                ) : null}
+                                {!songLocked &&
+                                progressionAltsOpen &&
+                                altOptions.length > 0 ? (
                                   <div className="diagram-progression-step__alts">
-                                    {altOptions.map(({ chordId: altId, suggested }) =>
-                                      renderChordCell(altId, {
-                                        keyId: activeKey,
-                                        compact: true,
-                                        dimmed: !suggested,
-                                        selected: altId === chordId,
-                                        onSelect: () =>
-                                          updateProgressionStep(
-                                            stepIndex,
-                                            altId,
-                                          ),
-                                      }),
+                                    {altOptions.map(
+                                      ({ chordId: altId, suggested }) =>
+                                        renderChordCell(altId, {
+                                          keyId: activeKey,
+                                          compact: true,
+                                          dimmed: !suggested,
+                                          selected: altId === chordId,
+                                          onSelect: () => {
+                                            updateProgressionStep(
+                                              stepIndex,
+                                              altId,
+                                            )
+                                            setSelectedProgressionStep(stepIndex)
+                                            setSelection({
+                                              kind: 'chord',
+                                              id: altId,
+                                            })
+                                          },
+                                        }),
                                     )}
                                   </div>
                                 ) : null}
@@ -2159,17 +2389,18 @@ export function HomePage() {
                       </>
                     ) : null}
                   </div>
+
+                  {!hasBuiltProgression ? renderSongSeeds(activeKey) : null}
                 </div>
               ) : isMobileViewport ? (
                 <div
-                  className="diagram-select-stack"
+                  className="diagram-select-stack diagram-select-stack--chords"
                   role="group"
                   aria-labelledby={`${baseId}-chord-label`}
                 >
                   <div className="diagram-chord-select-grid diagram-chord-select-grid--by-root">
                     {ROOT_NAMES.slice(0, 6).map(renderChordRootColumn)}
                   </div>
-                  <hr className="diagram-select-stack-divider" aria-hidden />
                   <div className="diagram-chord-select-grid diagram-chord-select-grid--by-root">
                     {ROOT_NAMES.slice(6).map(renderChordRootColumn)}
                   </div>
@@ -2212,7 +2443,7 @@ export function HomePage() {
                   data-arrangement={progressionArrangement}
                   style={
                     {
-                      '--progression-step-count': builtProgression.length,
+                      '--progression-step-count': progressionBoards.length,
                       ...(progressionBoardMaxHeightCss != null
                         ? {
                             '--progression-board-max-height':
@@ -2222,7 +2453,7 @@ export function HomePage() {
                     } as React.CSSProperties
                   }
                 >
-                  {builtProgression.map((chordId, stepIndex) => {
+                  {progressionBoards.map(({ chordId, stepIndex }) => {
                     const boardStartFret = startFretForFingering(
                       resolveChord(chordId),
                       fretCount,

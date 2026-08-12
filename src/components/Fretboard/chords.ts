@@ -230,6 +230,17 @@ export const CHORD_VARIANT_ORDER = [
 
 export type ChordVariant = (typeof CHORD_VARIANT_ORDER)[number]
 
+/** Always-visible variants on the main chord grid (above the variants toggle). */
+export const CHORD_PRIMARY_VARIANT_ORDER = [
+  'major',
+  'minor',
+] as const satisfies readonly ChordVariant[]
+
+/** Variants revealed when the main-grid variants toggle is open. */
+export const CHORD_EXTRA_VARIANT_ORDER = CHORD_VARIANT_ORDER.filter(
+  (variant) => variant !== 'major' && variant !== 'minor',
+)
+
 export function chordIdForRootVariant(
   rootName: RootName,
   variant: ChordVariant,
@@ -272,6 +283,18 @@ export function chordIdForRootVariant(
 
 export function chordIdsForRoot(rootName: RootName): ChordPresetId[] {
   return CHORD_VARIANT_ORDER.map((variant) =>
+    chordIdForRootVariant(rootName, variant),
+  )
+}
+
+export function primaryChordIdsForRoot(rootName: RootName): ChordPresetId[] {
+  return CHORD_PRIMARY_VARIANT_ORDER.map((variant) =>
+    chordIdForRootVariant(rootName, variant),
+  )
+}
+
+export function extraChordIdsForRoot(rootName: RootName): ChordPresetId[] {
+  return CHORD_EXTRA_VARIANT_ORDER.map((variant) =>
     chordIdForRootVariant(rootName, variant),
   )
 }

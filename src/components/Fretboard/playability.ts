@@ -1,9 +1,9 @@
 import { type ChordPresetId } from './chords'
 import { type KeyId } from './keys'
 import {
-  PROGRESSION_IDS,
   chordsForProgression,
   isProgressionResolvableInKey,
+  progressionIdsForKey,
   type ProgressionId,
 } from './progressions'
 import {
@@ -76,7 +76,7 @@ export function isKeyPlayable(
   keyId: KeyId,
   known: ReadonlySet<ChordPresetId>,
 ): boolean {
-  return PROGRESSION_IDS.some((progressionId) =>
+  return progressionIdsForKey(keyId).some((progressionId) =>
     isProgressionPlayableInKey(keyId, progressionId, known),
   )
 }
