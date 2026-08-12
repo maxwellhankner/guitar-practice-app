@@ -509,6 +509,14 @@
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: none;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.app-page--diagram-hidden .app-page__options .app-page__inner::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 .app-page__divider {
@@ -962,12 +970,15 @@
   overflow-y: auto;
   overscroll-behavior: none;
   scrollbar-width: none;
+  -ms-overflow-style: none;
   padding: var(--options-title-inset-top) 1.5rem 2.5rem;
   background: var(--page-bg);
 }
 
 .app-page__options::-webkit-scrollbar {
   display: none;
+  width: 0;
+  height: 0;
 }
 
 .app-page__diagram {
@@ -981,10 +992,13 @@
   overflow-y: hidden;
   overscroll-behavior: none;
   scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 .app-page__diagram::-webkit-scrollbar {
   display: none;
+  width: 0;
+  height: 0;
 }
 
 .app-page__diagram-empty {
@@ -1062,6 +1076,14 @@
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: none;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.app-page__diagram-stage--progression[data-arrangement='column']::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 .app-page__diagram-stage--progression[data-arrangement='column']
