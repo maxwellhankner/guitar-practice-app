@@ -1,0 +1,67 @@
+.figure {
+  margin: 0;
+  min-width: 0;
+}
+
+.figure figcaption {
+  margin-bottom: 0.5rem;
+}
+
+.svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.frame {
+  fill: var(--card-bg);
+  stroke: var(--card-border);
+}
+
+.grid {
+  stroke: var(--card-border);
+  stroke-width: 1;
+}
+
+.noteLabel {
+  fill: var(--muted);
+  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  dominant-baseline: middle;
+}
+
+.line {
+  fill: none;
+  stroke: var(--accent-line);
+  stroke-width: 2.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.mark {
+  fill: var(--card-bg);
+  stroke: var(--accent-line);
+  stroke-width: 2;
+}
+
+.markLabel {
+  fill: var(--heading);
+  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  text-anchor: middle;
+}
+
+.head {
+  fill: var(--accent-line);
+}
+
+.empty {
+  fill: var(--muted);
+  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  text-anchor: middle;
+  dominant-baseline: middle;
+}

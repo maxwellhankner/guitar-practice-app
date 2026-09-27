@@ -159,10 +159,10 @@
       ],
       "filterPlayableOnly": false,
       "displayNotes": false,
-      "fretCount": 4,
+      "fretCount": 6,
       "scaleSelection": null,
       "diagramLayout": "horizontal",
-      "horizontalSplitRatio": 0.5888296664070612,
+      "horizontalSplitRatio": 0.594989417007141,
       "verticalSplitRatio": 0.598089599609375,
       "fretboardOrientation": "landscape",
       "panelsSwapped": false,
@@ -211,14 +211,9 @@
         "F",
         "Fm"
       ],
-      "selectedKey": "G",
+      "selectedKey": null,
       "selectedChord": null,
-      "builtProgression": [
-        "G",
-        "D",
-        "C",
-        "G"
-      ],
+      "builtProgression": null,
       "selectedSongId": null
     }
   ],

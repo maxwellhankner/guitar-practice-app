@@ -1,0 +1,93 @@
+.figure {
+  margin: 0;
+  min-width: 0;
+}
+
+.caption {
+  margin: 0 0 0.35rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.figureFit {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.figureFit .svg {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: calc(100% - 1.25rem);
+}
+
+.svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  --vb-board: #1a1410;
+  --vb-nut: #e8e0d4;
+  --vb-fret: #8a7f72;
+  --vb-string: #6a6560;
+  --vb-inlay: rgba(255, 245, 228, 0.42);
+}
+
+.board {
+  fill: var(--vb-board);
+}
+
+.nut {
+  stroke: var(--vb-nut);
+  stroke-width: 4;
+}
+
+.fret {
+  stroke: var(--vb-fret);
+  stroke-width: 1.25;
+}
+
+.inlay {
+  fill: var(--vb-inlay);
+}
+
+.string {
+  stroke: var(--vb-string);
+  stroke-width: 1.15;
+}
+
+.stringName,
+.fretNum {
+  fill: var(--muted, #a39e94);
+  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.stringName {
+  dominant-baseline: middle;
+}
+
+.fretNum {
+  text-anchor: middle;
+}
+
+.dot {
+  fill: #2c2824;
+  stroke: var(--accent-line);
+  stroke-width: 1.5;
+}
+
+.order {
+  fill: var(--accent-line);
+  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: central;
+}

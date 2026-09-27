@@ -1,3 +1,5 @@
+import fs from 'node:fs'
+import path from 'node:path'
 import { createLogger, defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
@@ -10,11 +12,24 @@ logger.info = (msg, options) => {
   logInfo(msg, options)
 }
 
+// GitHub Pages serves this repo at /guitar-practice-app/. Local dev does not.
+const pagesBase = '/guitar-practice-app/'
+
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ command, isPreview }) => ({
   customLogger: logger,
-  base: '/guitar-practice-app/',
-  plugins: [react()],
+  base: command === 'build' || isPreview ? pagesBase : '/',
+  plugins: [
+    react(),
+    {
+      name: 'github-pages-spa-fallback',
+      apply: 'build',
+      closeBundle() {
+        const dist = path.resolve('dist')
+        fs.copyFileSync(path.join(dist, 'index.html'), path.join(dist, '404.html'))
+      },
+    },
+  ],
   server: {
     open: true,
     // Listen on LAN so you can open the Network URL on a phone on the same Wi‑Fi
@@ -29,4 +44,4 @@ export default defineConfig({
       },
     },
   },
-})
+}))

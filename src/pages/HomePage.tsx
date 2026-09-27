@@ -1,5 +1,4 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
 import {
   ArrowLeftRight,
   ArrowUpDown,
@@ -10,7 +9,6 @@ import {
   ChevronRight,
   ChevronUp,
   Columns2,
-  Guitar,
   ListChecks,
   Music,
   RotateCcw,
@@ -1756,6 +1754,8 @@ export function HomePage() {
       {diagramHidden
         ? renderShowDiagramControl(menuBarTooltipPlacement)
         : renderHideDiagramControl(menuBarTooltipPlacement)}
+      {showDiagramPanel ? (
+        <>
       <Tooltip
         placement={menuBarTooltipPlacement}
         label={
@@ -1848,16 +1848,8 @@ export function HomePage() {
       {renderScaleControl(menuPickerPopupPlacement, menuBarTooltipPlacement)}
       {renderKnownFilterControl(menuBarTooltipPlacement)}
       {renderNotesControl(menuBarTooltipPlacement)}
-      <Tooltip placement={menuBarTooltipPlacement} label="Tuner">
-        <Link
-          to="/tuner"
-          className="app-page__divider-tuner-toggle"
-          aria-label="Open tuner"
-          onPointerDown={(event) => event.stopPropagation()}
-        >
-          <Guitar size={16} strokeWidth={2.5} aria-hidden />
-        </Link>
-      </Tooltip>
+        </>
+      ) : null}
     </div>
   )
 

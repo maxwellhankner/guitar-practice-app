@@ -1,6 +1,6 @@
 .app-shell {
   display: grid;
-  grid-template-rows: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
   height: 100%;
   max-height: 100%;
   min-height: 0;
@@ -17,7 +17,50 @@
 }
 
 .mobile-chin {
-  display: none;
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  gap: 0.25rem;
+  flex-shrink: 0;
+  padding: 0.4rem 0.75rem;
+  border-top: 1px solid var(--card-border);
+  background: var(--menu-bar-bg);
+  z-index: 20;
+}
+
+.mobile-chin__item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-width: 6.5rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 0.5rem;
+  color: var(--muted);
+  text-decoration: none;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.mobile-chin__item--active {
+  color: var(--heading);
+  background: color-mix(in srgb, var(--accent-line) 14%, transparent);
+}
+
+.mobile-chin__item--active .mobile-chin__icon {
+  color: var(--accent-line);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .mobile-chin__item:hover {
+    color: var(--heading);
+  }
+}
+
+.mobile-chin__icon {
+  flex-shrink: 0;
 }
 
 .app-page--tuner {
@@ -515,6 +558,10 @@
 
 .tuner__string-btn--active .tuner__string-btn-hz {
   opacity: 1;
+}
+
+.app-page--vocalizer .app-page__divider--horizontal {
+  cursor: default;
 }
 
 .app-page {
@@ -2313,7 +2360,7 @@
     /* Browser tab: trust env(); often 0 until installed as PWA. */
     --mobile-chin-safe-bottom: env(safe-area-inset-bottom, 0px);
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     align-items: stretch;
     flex-shrink: 0;
     min-height: calc(

@@ -1,13 +1,14 @@
 import { NavLink } from 'react-router-dom'
-import { Compass, Guitar, Settings } from 'lucide-react'
+import { Compass, Guitar, Mic, Settings } from 'lucide-react'
 
 const ITEMS = [
   { to: '/', label: 'Explore', icon: Compass, end: true },
   { to: '/tuner', label: 'Tune', icon: Guitar, end: false },
+  { to: '/vocalizer', label: 'Hum', icon: Mic, end: false },
   { to: '/settings', label: 'Settings', icon: Settings, end: false },
 ] as const
 
-/** Bottom tab bar for mobile viewports only (shown via CSS). */
+/** Main menu: Explore, Tune, Hum, Settings. */
 export function MobileChinNav() {
   return (
     <nav className="mobile-chin" aria-label="Main">
