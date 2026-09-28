@@ -231,6 +231,11 @@
   stroke-width: 1.15;
 }
 
+.stringActive {
+  stroke: var(--accent-line);
+  stroke-width: 2.4;
+}
+
 .stringMuted {
   stroke: var(--fb-string-muted);
   stroke-width: 1.15;
@@ -273,6 +278,10 @@
 
 .openNote {
   text-anchor: middle;
+}
+
+.openNoteActive {
+  fill: var(--accent-line);
 }
 
 .openStringRingChord {

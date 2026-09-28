@@ -214,6 +214,10 @@
   min-width: 0;
 }
 
+.tuner__actions--single {
+  grid-template-columns: 1fr;
+}
+
 .tuner__mic-btn,
 .tuner__exit-btn {
   display: inline-flex;
@@ -289,12 +293,24 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.25rem;
-  padding: 1.5rem 1rem 1.1rem;
+  gap: 0.15rem;
+  padding: 0.75rem 0.75rem 0.7rem;
   border: 1px solid var(--card-border);
   border-radius: 0.875rem;
   background: var(--card-bg);
   text-align: center;
+}
+
+.tuner__display-mic {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin-top: 0.65rem;
+}
+
+.tuner__display-mic .tuner__mic-btn {
+  width: auto;
+  padding-inline: 1.25rem;
 }
 
 .tuner__display--in-tune {
@@ -304,7 +320,7 @@
 
 .tuner__note {
   margin: 0;
-  font-size: clamp(3rem, 12vw, 4.5rem);
+  font-size: clamp(2.25rem, 7vw, 3.25rem);
   font-weight: 650;
   letter-spacing: -0.04em;
   line-height: 1;
@@ -328,17 +344,17 @@
 }
 
 .tuner__freq-primary {
-  margin-top: 0.15rem;
+  margin-top: 0.1rem;
   color: var(--heading);
-  font-size: clamp(1.25rem, 4vw, 1.75rem);
+  font-size: clamp(1rem, 2.8vw, 1.25rem);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
 }
 
 .tuner__cents {
-  margin-top: 0.35rem;
-  margin-bottom: 0.85rem;
+  margin-top: 0.15rem;
+  margin-bottom: 0.35rem;
   color: var(--heading);
   font-size: var(--options-text-label);
   font-variant-numeric: tabular-nums;
@@ -558,10 +574,6 @@
 
 .tuner__string-btn--active .tuner__string-btn-hz {
   opacity: 1;
-}
-
-.app-page--vocalizer .app-page__divider--horizontal {
-  cursor: default;
 }
 
 .app-page {

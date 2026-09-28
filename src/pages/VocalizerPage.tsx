@@ -1,9 +1,10 @@
 import { useMemo } from 'react'
-import { Link } from 'react-router-dom'
-import { Mic, MicOff } from 'lucide-react'
 import { playWayForPhrase } from '../audio/humPlacement'
+import { DiagramDivider } from '../components/DiagramDivider'
+import { Fretboard } from '../components/Fretboard'
 import { HumChart } from '../components/HumChart'
-import { VocalizerBoard } from '../components/VocalizerBoard'
+import { NoteMeter } from '../components/NoteMeter'
+import { useDiagramPanel } from '../hooks/useDiagramPanel'
 import { useHumCapture } from '../hooks/useHumCapture'
 import styles from './VocalizerPage.module.css'
 
@@ -11,7 +12,7 @@ export function VocalizerPage() {
   const {
     status,
     errorMessage,
-    liveNote,
+    meter,
     notes,
     trace,
     marks,
@@ -21,13 +22,37 @@ export function VocalizerPage() {
     clearNotes,
   } = useHumCapture()
 
+  const panel = useDiagramPanel()
+  const {
+    ready,
+    mainRef,
+    shellClassName,
+    gridStyle,
+    showDiagramPanel,
+    fretCount,
+    fretboardOrientation,
+    displayNotes,
+  } = panel
   const listening = status === 'listening'
   const way = useMemo(() => playWayForPhrase(notes), [notes])
 
+  if (!ready) {
+    return (
+      <main className="app-page">
+        <section className="app-page__options" aria-busy="true">
+          <div className="app-page__inner">
+            <p className="app-page__loading">Loading…</p>
+          </div>
+        </section>
+      </main>
+    )
+  }
+
   return (
     <main
-      className="app-page app-page--vocalizer"
-      style={{ gridTemplateRows: 'minmax(0, 0.65fr) auto minmax(0, 0.35fr)' }}
+      ref={mainRef}
+      className={shellClassName}
+      style={gridStyle}
     >
       <section
         className="app-page__options app-page__options--tuner"
@@ -41,7 +66,14 @@ export function VocalizerPage() {
               </p>
             ) : null}
 
-            <HumChart points={trace} marks={marks} listening={listening} />
+            <NoteMeter
+              label="Note meter"
+              listening={listening}
+              requesting={status === 'requesting'}
+              onStart={start}
+              onStop={stop}
+              reading={meter}
+            />
 
             <div>
               <div className="tuner__range-label-row">
@@ -73,68 +105,34 @@ export function VocalizerPage() {
               ) : null}
             </div>
 
-            <div className="tuner__note-meter">
-              <p className="diagram-label">Hearing</p>
-              <div className="tuner__display" aria-live="polite">
-                <p className="tuner__note">
-                  {liveNote ? liveNote.noteName : '—'}
-                  {liveNote ? (
-                    <span className="tuner__octave">{liveNote.octave}</span>
-                  ) : null}
-                </p>
-                <p className="tuner__freq-primary">
-                  {listening ? 'Listening…' : 'Mic off'}
-                </p>
-              </div>
-            </div>
-
-            <div className="tuner__actions">
-              {listening ? (
-                <button
-                  type="button"
-                  className="tuner__mic-btn tuner__mic-btn--stop"
-                  onClick={stop}
-                >
-                  <MicOff aria-hidden size={18} strokeWidth={2} />
-                  Stop listening
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className="tuner__mic-btn"
-                  onClick={() => void start()}
-                  disabled={status === 'requesting'}
-                >
-                  <Mic aria-hidden size={18} strokeWidth={2} />
-                  {status === 'requesting' ? 'Waiting for permission…' : 'Hum'}
-                </button>
-              )}
-              <Link to="/" className="tuner__exit-btn" onClick={() => stop()}>
-                Exit
-              </Link>
-            </div>
+            <HumChart points={trace} marks={marks} listening={listening} />
           </div>
         </div>
       </section>
 
-      <div
-        className="app-page__divider app-page__divider--horizontal"
-        role="separator"
-        aria-orientation="horizontal"
-        aria-label="Fretboard"
-      />
+      <DiagramDivider panel={panel} />
 
-      <section className="app-page__diagram" aria-label="Fretboard preview">
-        <div className="app-page__diagram-wrap">
-          <div className="app-page__diagram-stage app-page__diagram-stage--single">
-            <VocalizerBoard
-              label={way?.label ?? 'Fretboard'}
-              positions={way?.positions ?? []}
-              fit
-            />
+      {showDiagramPanel ? (
+        <section className="app-page__diagram" aria-label="Fretboard preview">
+          <div className="app-page__diagram-wrap">
+            <div className="app-page__diagram-stage app-page__diagram-stage--single">
+              <Fretboard
+                chord={null}
+                title={way?.label ?? 'Fretboard'}
+                markers={(way?.positions ?? []).map((position) => ({
+                  stringIndex: position.stringIndex,
+                  fret: position.fret,
+                  label: position.orders.join(','),
+                }))}
+                fretCount={fretCount}
+                orientation={fretboardOrientation}
+                displayNotes={displayNotes}
+                fitContainer
+              />
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      ) : null}
     </main>
   )
 }

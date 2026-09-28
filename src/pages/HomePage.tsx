@@ -1,26 +1,19 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import {
-  ArrowLeftRight,
-  ArrowUpDown,
   ArrowDown,
   ArrowUp,
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   ChevronUp,
-  Columns2,
   ListChecks,
-  Music,
   RotateCcw,
-  Rows2,
-  RotateCcwSquare,
   Search,
   Pencil,
   Share2,
   Trash2,
 } from 'lucide-react'
 import { ChordPlayabilityCell } from '../components/ChordPlayabilityCell'
-import { Tooltip } from '../components/Tooltip'
+import { DiagramDivider } from '../components/DiagramDivider'
+import { Tooltip, type TooltipPlacement } from '../components/Tooltip'
 import {
   CHORD_PRESETS,
   ROOT_NAMES,
@@ -65,7 +58,6 @@ import {
   chordRomanNumeralOnScale,
   scalePatternForKey,
   startFretForFingering,
-  FRET_COUNT_OPTIONS,
   type ChordPresetId,
   type KeyId,
   type ProgressionId,
@@ -73,19 +65,8 @@ import {
   type ScaleSelection,
   type SongId,
 } from '../components/Fretboard'
-import { useUserSettings } from '../hooks/useUserSettings'
-import { useMobileDiagramLayout } from '../hooks/useMobileDiagramLayout'
-import { useIsMobileViewport } from '../hooks/useIsMobileViewport'
+import { useDiagramPanel } from '../hooks/useDiagramPanel'
 import { progressionDiagramArrangement, progressionBoardMaxHeight } from '../hooks/progressionDiagramArrangement'
-import {
-  ACCENT_COLOR_OPTIONS,
-  accentColorLabel,
-} from '../theme/accentColors'
-import {
-  PANEL_SPLIT_MAX,
-  PANEL_SPLIT_MIN,
-  clampSplitRatio,
-} from '../db/userSettingsRepository'
 
 type BoardSelection = { kind: 'chord'; id: ChordPresetId }
 
@@ -173,14 +154,9 @@ export function HomePage() {
   const [selectedProgressionStep, setSelectedProgressionStep] = useState<
     number | null
   >(null)
-  const [liveSplitRatio, setLiveSplitRatio] = useState<number | null>(null)
-  const [fretPickerOpen, setFretPickerOpen] = useState(false)
-  const [accentPickerOpen, setAccentPickerOpen] = useState(false)
   const [scalePickerOpen, setScalePickerOpen] = useState(false)
-  const mainRef = useRef<HTMLElement>(null)
-  const fretPickerRef = useRef<HTMLDivElement>(null)
-  const accentPickerRef = useRef<HTMLDivElement>(null)
   const scalePickerRef = useRef<HTMLDivElement>(null)
+  const panel = useDiagramPanel()
   const progressionReorderRef = useRef<{
     fromIndex: number
     pointerId: number
@@ -199,34 +175,26 @@ export function HomePage() {
     ready: settingsReady,
     knownChords,
     filterPlayableOnly,
-    displayNotes,
     fretCount,
     scaleSelection,
-    diagramLayout,
-    horizontalSplitRatio,
-    verticalSplitRatio,
+    displayNotes,
     fretboardOrientation,
-    panelsSwapped,
-    diagramHidden,
+    isMobileViewport,
+    diagramLayoutVertical,
+    fretboardPortrait,
+    showDiagramPanel,
+    mainRef,
+    shellClassName,
+    gridStyle,
     setChordKnown,
     setFilterPlayableOnly,
-    setDisplayNotes,
-    setFretCount,
     setScaleSelection,
-    setDiagramLayout,
-    setHorizontalSplitRatio,
-    setVerticalSplitRatio,
-    setFretboardOrientation,
-    setPanelsSwapped,
-    setDiagramHidden,
-    accentColorId,
-    setAccentColorId,
     selectedKey: savedSelectedKey,
     selectedChord: savedSelectedChord,
     builtProgression: savedBuiltProgression,
     selectedSongId: savedSelectedSongId,
     setPracticeSelection,
-  } = useUserSettings()
+  } = panel
 
   useEffect(() => {
     return () => {
@@ -372,52 +340,6 @@ export function HomePage() {
   }
 
   useEffect(() => {
-    if (!fretPickerOpen) {
-      return
-    }
-    const onPointerDown = (event: PointerEvent) => {
-      if (fretPickerRef.current?.contains(event.target as Node)) {
-        return
-      }
-      setFretPickerOpen(false)
-    }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setFretPickerOpen(false)
-      }
-    }
-    document.addEventListener('pointerdown', onPointerDown)
-    document.addEventListener('keydown', onKeyDown)
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown)
-      document.removeEventListener('keydown', onKeyDown)
-    }
-  }, [fretPickerOpen])
-
-  useEffect(() => {
-    if (!accentPickerOpen) {
-      return
-    }
-    const onPointerDown = (event: PointerEvent) => {
-      if (accentPickerRef.current?.contains(event.target as Node)) {
-        return
-      }
-      setAccentPickerOpen(false)
-    }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setAccentPickerOpen(false)
-      }
-    }
-    document.addEventListener('pointerdown', onPointerDown)
-    document.addEventListener('keydown', onKeyDown)
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown)
-      document.removeEventListener('keydown', onKeyDown)
-    }
-  }, [accentPickerOpen])
-
-  useEffect(() => {
     if (!scalePickerOpen) {
       return
     }
@@ -487,10 +409,6 @@ export function HomePage() {
     }))
   }, [builtProgression, hasBuiltProgression, focusedProgressionStep])
 
-  const effectiveDiagramLayout = useMobileDiagramLayout(diagramLayout)
-  const isMobileViewport = useIsMobileViewport()
-  const diagramLayoutVertical = effectiveDiagramLayout === 'vertical'
-  const fretboardPortrait = fretboardOrientation === 'portrait'
   const progressionArrangement = progressionDiagramArrangement(
     diagramLayoutVertical,
     fretboardPortrait,
@@ -502,80 +420,6 @@ export function HomePage() {
           progressionArrangement,
         )
       : undefined
-  const pickerPopupPlacement = diagramLayoutVertical
-    ? panelsSwapped
-      ? 'app-page__divider-popup--left'
-      : 'app-page__divider-popup--right'
-    : panelsSwapped
-      ? 'app-page__divider-popup--above'
-      : 'app-page__divider-popup--below'
-  const dividerTooltipPlacement = diagramLayoutVertical
-    ? panelsSwapped
-      ? 'left'
-      : 'right'
-    : panelsSwapped
-      ? 'above'
-      : 'below'
-  const savedPanelSplitRatio = diagramLayoutVertical
-    ? verticalSplitRatio
-    : horizontalSplitRatio
-  const panelSplitRatio = liveSplitRatio ?? savedPanelSplitRatio
-  const diagramShare = 1 - panelSplitRatio
-  const gridSplitTemplate = panelsSwapped
-    ? `${diagramShare}fr auto ${panelSplitRatio}fr`
-    : `${panelSplitRatio}fr auto ${diagramShare}fr`
-
-  const startDividerResize = (
-    event: React.PointerEvent<HTMLElement>,
-  ) => {
-    event.preventDefault()
-    const main = mainRef.current
-    const divider = event.currentTarget.closest('.app-page__divider')
-    if (main == null || !(divider instanceof HTMLElement)) {
-      return
-    }
-
-    const rect = main.getBoundingClientRect()
-    const vertical = diagramLayoutVertical
-    let currentRatio = savedPanelSplitRatio
-
-    divider.setPointerCapture(event.pointerId)
-
-    const onPointerMove = (moveEvent: PointerEvent) => {
-      const raw = vertical
-        ? (moveEvent.clientX - rect.left) / rect.width
-        : (moveEvent.clientY - rect.top) / rect.height
-      const next = panelsSwapped ? 1 - raw : raw
-      currentRatio = clampSplitRatio(next)
-      setLiveSplitRatio(currentRatio)
-    }
-
-    const onPointerUp = (upEvent: PointerEvent) => {
-      if (vertical) {
-        void setVerticalSplitRatio(currentRatio)
-      } else {
-        void setHorizontalSplitRatio(currentRatio)
-      }
-      setLiveSplitRatio(null)
-      divider.releasePointerCapture(upEvent.pointerId)
-      divider.removeEventListener('pointermove', onPointerMove)
-      divider.removeEventListener('pointerup', onPointerUp)
-      divider.removeEventListener('pointercancel', onPointerUp)
-    }
-
-    divider.addEventListener('pointermove', onPointerMove)
-    divider.addEventListener('pointerup', onPointerUp)
-    divider.addEventListener('pointercancel', onPointerUp)
-  }
-
-  const handleDividerPointerDown = (
-    event: React.PointerEvent<HTMLElement>,
-  ) => {
-    if ((event.target as HTMLElement).closest('button')) {
-      return
-    }
-    startDividerResize(event)
-  }
 
   const findKeyRanks = useMemo(() => {
     if (!findKeyMode || findKeyChords.length === 0) {
@@ -1353,145 +1197,10 @@ export function HomePage() {
     )
   }
 
-  const showDiagramPanel = !diagramHidden
-
-  const renderFretCountControl = (
-    popupPlacement: string,
-    tooltipPlacement: typeof dividerTooltipPlacement | 'below',
-  ) => (
-    <div ref={fretPickerRef} className="app-page__divider-frets">
-      <Tooltip
-        placement={tooltipPlacement}
-        label="Fret count"
-        disabled={fretPickerOpen}
-      >
-        <button
-          type="button"
-          className="app-page__divider-frets-toggle"
-          aria-label={`Fret count: ${fretCount}`}
-          aria-expanded={fretPickerOpen}
-          aria-haspopup="listbox"
-          onPointerDown={(event) => event.stopPropagation()}
-          onClick={() => {
-            setAccentPickerOpen(false)
-            setScalePickerOpen(false)
-            setFretPickerOpen((open) => !open)
-          }}
-        >
-          <span className="app-page__divider-frets-value" aria-hidden>
-            {fretCount}
-          </span>
-        </button>
-      </Tooltip>
-      {fretPickerOpen ? (
-        <div
-          className={`app-page__divider-frets-menu ${popupPlacement}`}
-          role="listbox"
-          aria-label="Fret count"
-        >
-          {FRET_COUNT_OPTIONS.map((n) => {
-            const selected = fretCount === n
-            return (
-              <button
-                key={n}
-                type="button"
-                role="option"
-                aria-selected={selected}
-                className={[
-                  'app-page__divider-frets-option',
-                  selected ? 'app-page__divider-frets-option--selected' : '',
-                ]
-                  .filter(Boolean)
-                  .join(' ')}
-                onPointerDown={(event) => event.stopPropagation()}
-                onClick={() => {
-                  void setFretCount(n)
-                  setFretPickerOpen(false)
-                }}
-              >
-                {n}
-              </button>
-            )
-          })}
-        </div>
-      ) : null}
-    </div>
-  )
-
-  const renderAccentColorControl = (
-    popupPlacement: string,
-    tooltipPlacement: typeof dividerTooltipPlacement | 'below',
-  ) => (
-    <div ref={accentPickerRef} className="app-page__divider-accent">
-      <Tooltip
-        placement={tooltipPlacement}
-        label="Accent color"
-        disabled={accentPickerOpen}
-      >
-        <button
-          type="button"
-          className="app-page__divider-accent-toggle"
-          aria-label={`Accent color: ${accentColorLabel(accentColorId)}`}
-          aria-expanded={accentPickerOpen}
-          aria-haspopup="listbox"
-          onPointerDown={(event) => event.stopPropagation()}
-          onClick={() => {
-            setFretPickerOpen(false)
-            setScalePickerOpen(false)
-            setAccentPickerOpen((open) => !open)
-          }}
-        >
-          <span
-            className="app-page__divider-accent-swatch"
-            style={{ backgroundColor: 'var(--accent-line)' }}
-            aria-hidden
-          />
-        </button>
-      </Tooltip>
-      {accentPickerOpen ? (
-        <div
-          className={`app-page__divider-accent-menu ${popupPlacement}`}
-          role="listbox"
-          aria-label="Accent color"
-        >
-          {ACCENT_COLOR_OPTIONS.map((option) => {
-            const selected = accentColorId === option.id
-            return (
-              <button
-                key={option.id}
-                type="button"
-                role="option"
-                aria-selected={selected}
-                aria-label={option.label}
-                title={option.label}
-                className={[
-                  'app-page__divider-accent-option',
-                  selected ? 'app-page__divider-accent-option--selected' : '',
-                ]
-                  .filter(Boolean)
-                  .join(' ')}
-                onPointerDown={(event) => event.stopPropagation()}
-                onClick={() => {
-                  void setAccentColorId(option.id)
-                  setAccentPickerOpen(false)
-                }}
-              >
-                <span
-                  className="app-page__divider-accent-option-swatch"
-                  style={{ backgroundColor: option.swatch }}
-                  aria-hidden
-                />
-              </button>
-            )
-          })}
-        </div>
-      ) : null}
-    </div>
-  )
-
   const renderScaleControl = (
     popupPlacement: string,
-    tooltipPlacement: typeof dividerTooltipPlacement | 'below',
+    tooltipPlacement: TooltipPlacement,
+    closeOtherPickers: () => void,
   ) => {
     const scaleTooltip =
       scaleSelection != null
@@ -1518,8 +1227,7 @@ export function HomePage() {
             aria-haspopup="listbox"
             onPointerDown={(event) => event.stopPropagation()}
             onClick={() => {
-              setFretPickerOpen(false)
-              setAccentPickerOpen(false)
+              closeOtherPickers()
               setScalePickerOpen((open) => !open)
             }}
           >
@@ -1568,7 +1276,7 @@ export function HomePage() {
   }
 
   const renderKnownFilterControl = (
-    tooltipPlacement: typeof dividerTooltipPlacement | 'below',
+    tooltipPlacement: TooltipPlacement,
   ) => (
     <Tooltip
       placement={tooltipPlacement}
@@ -1605,254 +1313,6 @@ export function HomePage() {
     </Tooltip>
   )
 
-  const renderNotesControl = (
-    tooltipPlacement: typeof dividerTooltipPlacement | 'below',
-  ) => (
-    <Tooltip
-      placement={tooltipPlacement}
-      label={displayNotes ? 'Hide note names' : 'Show note names'}
-    >
-      <button
-        type="button"
-        className={[
-          'app-page__divider-notes-toggle',
-          displayNotes ? 'app-page__divider-tool--active' : '',
-        ]
-          .filter(Boolean)
-          .join(' ')}
-        aria-label={displayNotes ? 'Hide note names' : 'Show note names'}
-        aria-pressed={displayNotes}
-        onPointerDown={(event) => event.stopPropagation()}
-        onClick={() => void setDisplayNotes(!displayNotes)}
-      >
-        <Music size={16} strokeWidth={2.5} aria-hidden />
-      </button>
-    </Tooltip>
-  )
-
-  const usesVerticalSplitLayout =
-    diagramLayoutVertical &&
-    (showDiagramPanel || !isMobileViewport || diagramHidden)
-  const menuBarLayout = usesVerticalSplitLayout ? 'vertical' : 'horizontal'
-  const diagramPanelChevronDirection = diagramLayoutVertical
-    ? panelsSwapped
-      ? 'left'
-      : 'right'
-    : panelsSwapped
-      ? 'up'
-      : 'down'
-  const diagramPanelChevronOpposite = {
-    up: 'down',
-    down: 'up',
-    left: 'right',
-    right: 'left',
-  } as const
-  const diagramPanelPositionLabel =
-    diagramPanelChevronDirection === 'down'
-      ? 'below'
-      : diagramPanelChevronDirection === 'up'
-        ? 'above'
-        : diagramPanelChevronDirection === 'right'
-          ? 'to the right'
-          : 'to the left'
-
-  const renderDiagramPanelChevron = (
-    direction: keyof typeof diagramPanelChevronOpposite = diagramPanelChevronDirection,
-  ) => {
-    const iconProps = { size: 16, strokeWidth: 2.5, 'aria-hidden': true as const }
-    switch (direction) {
-      case 'up':
-        return <ChevronUp {...iconProps} />
-      case 'down':
-        return <ChevronDown {...iconProps} />
-      case 'left':
-        return <ChevronLeft {...iconProps} />
-      case 'right':
-        return <ChevronRight {...iconProps} />
-    }
-  }
-
-  const renderHideDiagramControl = (
-    tooltipPlacement: typeof dividerTooltipPlacement | 'below',
-  ) => (
-    <Tooltip
-      placement={tooltipPlacement}
-      label={`Hide guitar diagram ${diagramPanelPositionLabel}`}
-    >
-      <button
-        type="button"
-        className="app-page__divider-diagram-toggle"
-        aria-label={`Hide guitar diagram ${diagramPanelPositionLabel}`}
-        onPointerDown={(event) => event.stopPropagation()}
-        onClick={() => {
-          setFretPickerOpen(false)
-          void setDiagramHidden(true)
-        }}
-      >
-        {renderDiagramPanelChevron()}
-      </button>
-    </Tooltip>
-  )
-
-  const renderShowDiagramControl = (
-    tooltipPlacement: typeof dividerTooltipPlacement | 'below',
-  ) => (
-    <Tooltip
-      placement={tooltipPlacement}
-      label={`Show guitar diagram ${diagramPanelPositionLabel}`}
-    >
-      <button
-        type="button"
-        className="app-page__divider-diagram-toggle"
-        aria-label={`Show guitar diagram ${diagramPanelPositionLabel}`}
-        onPointerDown={(event) => event.stopPropagation()}
-        onClick={() => void setDiagramHidden(false)}
-      >
-        {renderDiagramPanelChevron(
-          diagramPanelChevronOpposite[diagramPanelChevronDirection],
-        )}
-      </button>
-    </Tooltip>
-  )
-
-  const menuBarTooltipPlacement = diagramHidden
-    ? usesVerticalSplitLayout
-      ? 'left'
-      : 'above'
-    : dividerTooltipPlacement
-  const menuPickerPopupPlacement = diagramHidden
-    ? usesVerticalSplitLayout
-      ? 'app-page__divider-popup--left'
-      : 'app-page__divider-popup--above'
-    : pickerPopupPlacement
-
-  const renderMenuBar = () => (
-    <div
-      className={[
-        'app-page__divider',
-        menuBarLayout === 'vertical'
-          ? 'app-page__divider--vertical'
-          : 'app-page__divider--horizontal',
-        diagramHidden ? 'app-page__divider--docked' : '',
-      ]
-        .filter(Boolean)
-        .join(' ')}
-      role={showDiagramPanel ? 'separator' : 'toolbar'}
-      aria-label={showDiagramPanel ? 'Resize panels' : 'Diagram tools'}
-      {...(showDiagramPanel
-        ? {
-            'aria-orientation': diagramLayoutVertical
-              ? ('vertical' as const)
-              : ('horizontal' as const),
-            'aria-valuenow': Math.round(panelSplitRatio * 100),
-            'aria-valuemin': Math.round(PANEL_SPLIT_MIN * 100),
-            'aria-valuemax': Math.round(PANEL_SPLIT_MAX * 100),
-            onPointerDown: handleDividerPointerDown,
-          }
-        : {})}
-    >
-      {diagramHidden
-        ? renderShowDiagramControl(menuBarTooltipPlacement)
-        : renderHideDiagramControl(menuBarTooltipPlacement)}
-      {showDiagramPanel ? (
-        <>
-      <Tooltip
-        placement={menuBarTooltipPlacement}
-        label={
-          diagramLayoutVertical
-            ? 'Arrange diagrams in a row'
-            : 'Stack diagrams vertically'
-        }
-      >
-        <button
-          type="button"
-          className="app-page__divider-layout-toggle"
-          aria-label={
-            diagramLayoutVertical
-              ? 'Arrange diagrams in a row'
-              : 'Stack diagrams vertically'
-          }
-          onPointerDown={(event) => event.stopPropagation()}
-          onClick={() =>
-            void setDiagramLayout(
-              diagramLayout === 'horizontal' ? 'vertical' : 'horizontal',
-            )
-          }
-        >
-          {diagramLayoutVertical ? (
-            <Rows2 size={16} strokeWidth={2.5} aria-hidden />
-          ) : (
-            <Columns2 size={16} strokeWidth={2.5} aria-hidden />
-          )}
-        </button>
-      </Tooltip>
-      <Tooltip
-        placement={menuBarTooltipPlacement}
-        label={
-          diagramLayoutVertical
-            ? 'Swap left and right panels'
-            : 'Swap top and bottom panels'
-        }
-      >
-        <button
-          type="button"
-          className="app-page__divider-swap-toggle"
-          aria-label={
-            diagramLayoutVertical
-              ? 'Swap left and right panels'
-              : 'Swap top and bottom panels'
-          }
-          aria-pressed={panelsSwapped}
-          onPointerDown={(event) => event.stopPropagation()}
-          onClick={() => void setPanelsSwapped(!panelsSwapped)}
-        >
-          {diagramLayoutVertical ? (
-            <ArrowLeftRight size={16} strokeWidth={2.5} aria-hidden />
-          ) : (
-            <ArrowUpDown size={16} strokeWidth={2.5} aria-hidden />
-          )}
-        </button>
-      </Tooltip>
-      <Tooltip
-        placement={menuBarTooltipPlacement}
-        label={
-          fretboardPortrait
-            ? 'Standard fretboard orientation'
-            : 'Rotate fretboard vertically'
-        }
-      >
-        <button
-          type="button"
-          className="app-page__divider-orientation-toggle"
-          aria-label={
-            fretboardPortrait
-              ? 'Standard fretboard orientation'
-              : 'Rotate fretboard vertically'
-          }
-          aria-pressed={fretboardPortrait}
-          onPointerDown={(event) => event.stopPropagation()}
-          onClick={() =>
-            void setFretboardOrientation(
-              fretboardPortrait ? 'landscape' : 'portrait',
-            )
-          }
-        >
-          <RotateCcwSquare size={16} strokeWidth={2.5} aria-hidden />
-        </button>
-      </Tooltip>
-      {renderFretCountControl(menuPickerPopupPlacement, menuBarTooltipPlacement)}
-      {renderAccentColorControl(
-        menuPickerPopupPlacement,
-        menuBarTooltipPlacement,
-      )}
-      {renderScaleControl(menuPickerPopupPlacement, menuBarTooltipPlacement)}
-      {renderKnownFilterControl(menuBarTooltipPlacement)}
-      {renderNotesControl(menuBarTooltipPlacement)}
-        </>
-      ) : null}
-    </div>
-  )
-
   if (!settingsReady) {
     return (
       <main className="app-page">
@@ -1866,29 +1326,7 @@ export function HomePage() {
   }
 
   return (
-    <main
-      ref={mainRef}
-      className={[
-        usesVerticalSplitLayout ? 'app-page app-page--split' : 'app-page',
-        showDiagramPanel && panelsSwapped ? 'app-page--panels-swapped' : '',
-        diagramHidden ? 'app-page--diagram-hidden' : '',
-      ]
-        .filter(Boolean)
-        .join(' ')}
-      style={
-        showDiagramPanel
-          ? diagramLayoutVertical
-            ? {
-                gridTemplateColumns: gridSplitTemplate,
-                gridTemplateRows: 'minmax(0, 1fr)',
-              }
-            : {
-                gridTemplateRows: gridSplitTemplate,
-                gridTemplateColumns: 'minmax(0, 1fr)',
-              }
-          : undefined
-      }
-    >
+    <main ref={mainRef} className={shellClassName} style={gridStyle}>
       <section
         className="app-page__options"
         aria-label="Practice"
@@ -2413,7 +1851,16 @@ export function HomePage() {
         </div>
       </section>
 
-      {renderMenuBar()}
+      <DiagramDivider
+        panel={panel}
+        onCloseExtraPickers={() => setScalePickerOpen(false)}
+        middleTools={({ closePickers, tooltipPlacement, popupPlacement }) => (
+          <>
+            {renderScaleControl(popupPlacement, tooltipPlacement, closePickers)}
+            {renderKnownFilterControl(tooltipPlacement)}
+          </>
+        )}
+      />
 
       {showDiagramPanel ? (
           <section

@@ -95,6 +95,15 @@ export type FretboardScalePattern = {
   positions: readonly { stringIndex: number; fret: number }[]
 }
 
+export type FretboardMarker = {
+  /** 0 = low E … 5 = high E */
+  stringIndex: number
+  /** 0 = open string */
+  fret: number
+  /** Drawn in the dot, the same way a finger number is. */
+  label: string
+}
+
 type FretboardProps = {
   fretCount?: number
   /** First column is this fret number (default 1 = nut + open position). */
@@ -103,6 +112,8 @@ type FretboardProps = {
   displayNotes?: boolean
   /** When `null`, only the blank fretboard is shown (no chord fingering dots). */
   chord: ChordFingering | ChordPresetId | null
+  /** Extra numbered dots, such as a hummed phrase. Drawn with the chord dots. */
+  markers?: readonly FretboardMarker[]
   /**
    * When set, draws faint scale dots behind chord fingering (layers with `chord`).
    */
@@ -114,6 +125,8 @@ type FretboardProps = {
   fitContainer?: boolean
   /** Landscape = nut on the left; portrait = nut at top, headstock up. */
   orientation?: FretboardOrientation
+  /** Open strings to emphasize, low E = 0 … high E = 5. */
+  activeStrings?: readonly number[]
 }
 
 function rotate90Point(
@@ -328,6 +341,7 @@ type UprightTextProps = {
   centerY: number
   className?: string
   dominantBaseline?: 'auto' | 'central' | 'middle' | 'alphabetic'
+  fontSize?: number
   children: ReactNode
 }
 
@@ -339,6 +353,7 @@ function UprightText({
   centerY,
   className,
   dominantBaseline,
+  fontSize,
   children,
 }: UprightTextProps) {
   const pos = portraitTextPosition(x, y, centerX, centerY, portrait)
@@ -348,6 +363,7 @@ function UprightText({
       y={pos.y}
       className={className}
       dominantBaseline={dominantBaseline}
+      fontSize={fontSize}
     >
       {children}
     </text>
@@ -361,6 +377,7 @@ function layoutGeometry(
   displayNotes: boolean,
   scalePattern: FretboardScalePattern | null,
   caption?: string,
+  markers?: readonly FretboardMarker[],
 ) {
   /** Open-string note names + open/scale rings (merged column). */
   const markerW = 24
@@ -397,17 +414,36 @@ function layoutGeometry(
   const boardX = gridLeft
   const boardW = gridW + 4
 
+  const markerOpenStrings = new Set(
+    (markers ?? [])
+      .filter(
+        (marker) =>
+          marker.fret === 0 &&
+          marker.stringIndex >= 0 &&
+          marker.stringIndex < STRINGS,
+      )
+      .map((marker) => marker.stringIndex),
+  )
+
   const openNoteLabels = Array.from({ length: STRINGS }, (_, stringIndex) => ({
     key: `note-${stringIndex}`,
     x: openNoteCenterX,
     y: yForString(stringIndex),
     text: OPEN_STRING_NAMES[stringIndex]!,
-  }))
+  })).filter(
+    (label) =>
+      displayNotes || !markerOpenStrings.has(Number(label.key.slice(5))),
+  )
 
   const dots: { cx: number; cy: number; key: string }[] = []
   const scaleDots: { cx: number; cy: number; key: string }[] = []
-  const fingerLabels: { cx: number; cy: number; text: string; key: string }[] =
-    []
+  const fingerLabels: {
+    cx: number
+    cy: number
+    text: string
+    key: string
+    fontSize?: number
+  }[] = []
   const barres: {
     x: number
     y: number
@@ -544,6 +580,56 @@ function layoutGeometry(
       }
     }
 
+  }
+
+  for (const marker of markers ?? []) {
+    if (marker.stringIndex < 0 || marker.stringIndex >= STRINGS) {
+      continue
+    }
+    const cy = yForString(marker.stringIndex)
+    if (marker.fret === 0) {
+      if (displayNotes) {
+        openStringRings.push({
+          cx: openNoteCenterX,
+          cy,
+          key: `marker-open-${marker.stringIndex}`,
+          variant: 'chord',
+        })
+      } else {
+        dots.push({
+          cx: openNoteCenterX,
+          cy,
+          key: `marker-open-${marker.stringIndex}`,
+        })
+        fingerLabels.push({
+          cx: openNoteCenterX,
+          cy,
+          text: marker.label,
+          key: `marker-label-open-${marker.stringIndex}`,
+          fontSize: marker.label.length > 1 ? 6.5 : undefined,
+        })
+      }
+      continue
+    }
+    const col = marker.fret - startFret
+    if (col < 0 || col >= fretCount) {
+      continue
+    }
+    const cx = gridLeft + (col + 0.5) * cellW
+    dots.push({
+      cx,
+      cy,
+      key: `marker-s${marker.stringIndex}-f${marker.fret}`,
+    })
+    if (!displayNotes) {
+      fingerLabels.push({
+        cx,
+        cy,
+        text: marker.label,
+        key: `marker-label-s${marker.stringIndex}-f${marker.fret}`,
+        fontSize: marker.label.length > 1 ? 6.5 : undefined,
+      })
+    }
   }
 
   const fretLabels = Array.from({ length: fretCount }, (_, i) => ({
@@ -686,6 +772,7 @@ function layoutGeometry(
     dotR,
     startFret,
     stringStartX,
+    openNoteX: openNoteCenterX,
     captionLabel,
     captionPad,
   }
@@ -696,11 +783,13 @@ export function Fretboard({
   startFret: startFretProp,
   displayNotes = false,
   chord,
+  markers,
   scalePattern = null,
   title,
   className,
   fitContainer = false,
   orientation = 'landscape',
+  activeStrings,
 }: FretboardProps) {
   const resolved = chord == null ? null : resolveChord(chord)
   const startFret = Math.max(1, startFretProp ?? 1)
@@ -730,6 +819,7 @@ export function Fretboard({
         displayNotes,
         hasScale ? scalePattern : null,
         displayTitle,
+        markers,
       ),
     [
       fretCount,
@@ -739,6 +829,7 @@ export function Fretboard({
       scalePattern,
       hasScale,
       displayTitle,
+      markers,
     ],
   )
 
@@ -825,8 +916,11 @@ export function Fretboard({
 
           {geo.stringYs.map((y, i) => {
             const stringIndex = STRINGS - 1 - i
+            const isActive = activeStrings?.includes(stringIndex) ?? false
             const isMuted =
-              resolved != null && resolved.strings[stringIndex] === 'x'
+              !isActive &&
+              resolved != null &&
+              resolved.strings[stringIndex] === 'x'
             return (
               <line
                 key={`str-${i}`}
@@ -834,7 +928,28 @@ export function Fretboard({
                 y1={y}
                 x2={geo.vbW - 12}
                 y2={y}
-                className={isMuted ? styles.stringMuted : styles.string}
+                className={
+                  isActive
+                    ? styles.stringActive
+                    : isMuted
+                      ? styles.stringMuted
+                      : styles.string
+                }
+              />
+            )
+          })}
+
+          {(activeStrings ?? []).map((stringIndex) => {
+            if (stringIndex < 0 || stringIndex >= STRINGS) {
+              return null
+            }
+            return (
+              <circle
+                key={`active-open-${stringIndex}`}
+                cx={geo.openNoteX}
+                cy={geo.stringYs[STRINGS - 1 - stringIndex]}
+                r={geo.dotR}
+                className={styles.openStringRingChord}
               />
             )
           })}
@@ -908,20 +1023,26 @@ export function Fretboard({
           ))}
         </g>
 
-        {geo.openNoteLabels.map((n) => (
-          <UprightText
-            key={n.key}
-            x={n.x}
-            y={n.y}
-            portrait={portrait}
-            centerX={centerX}
-            centerY={centerY}
-            className={styles.openNote}
-            dominantBaseline="central"
-          >
-            {n.text}
-          </UprightText>
-        ))}
+        {geo.openNoteLabels.map((n) => {
+          const stringIndex = Number(n.key.slice(5))
+          const isActive = activeStrings?.includes(stringIndex) ?? false
+          return (
+            <UprightText
+              key={n.key}
+              x={n.x}
+              y={n.y}
+              portrait={portrait}
+              centerX={centerX}
+              centerY={centerY}
+              className={
+                isActive ? `${styles.openNote} ${styles.openNoteActive}` : styles.openNote
+              }
+              dominantBaseline="central"
+            >
+              {n.text}
+            </UprightText>
+          )
+        })}
 
         {geo.openPositionLabel != null ? (
           <UprightText
@@ -962,6 +1083,7 @@ export function Fretboard({
             centerY={centerY}
             className={styles.fingerNumber}
             dominantBaseline="central"
+            fontSize={fl.fontSize}
           >
             {fl.text}
           </UprightText>

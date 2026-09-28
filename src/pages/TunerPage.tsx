@@ -1,6 +1,4 @@
-import { useId } from 'react'
-import { Link } from 'react-router-dom'
-import { Mic, MicOff } from 'lucide-react'
+import { useMemo } from 'react'
 import {
   AUDIBLE_MAX_HZ,
   AUDIBLE_MIN_HZ,
@@ -9,14 +7,14 @@ import {
   formatFrequency,
   STANDARD_GUITAR_STRINGS,
 } from '../audio/pitchDetect'
+import { DiagramDivider } from '../components/DiagramDivider'
+import { Fretboard } from '../components/Fretboard'
+import { NoteMeter } from '../components/NoteMeter'
+import { useDiagramPanel } from '../hooks/useDiagramPanel'
 import { useTunerMic } from '../hooks/useTunerMic'
 
 /** Matches the flat/sharp dial span (±50 cents). */
 const CENTS_HIGHLIGHT_RANGE = 50
-
-function clampCents(cents: number): number {
-  return Math.max(-CENTS_HIGHLIGHT_RANGE, Math.min(CENTS_HIGHLIGHT_RANGE, cents))
-}
 
 const RANGE_MARKS = [
   { hz: 70, label: '70' },
@@ -28,20 +26,55 @@ const RANGE_MARKS = [
 ] as const
 
 export function TunerPage() {
-  const baseId = useId()
   const { status, errorMessage, reading, start, stop } = useTunerMic()
+  const panel = useDiagramPanel()
+  const {
+    ready,
+    mainRef,
+    shellClassName,
+    gridStyle,
+    showDiagramPanel,
+    fretCount,
+    fretboardOrientation,
+    displayNotes,
+  } = panel
 
   const listening = status === 'listening'
-  const cents = reading ? clampCents(reading.cents) : 0
   const inTune = reading != null && Math.abs(reading.cents) <= 5
-  const needlePct = ((cents + CENTS_HIGHLIGHT_RANGE) / (CENTS_HIGHLIGHT_RANGE * 2)) * 100
   const rangePct = reading
     ? audibleRangePosition(reading.pitch.frequency)
     : null
   const liveHz = reading?.pitch.frequency ?? null
+  const activeStrings = useMemo(
+    () =>
+      STANDARD_GUITAR_STRINGS.flatMap((string, index) =>
+        liveHz != null &&
+        Math.abs(centsOffTarget(liveHz, string.frequency)) <=
+          CENTS_HIGHLIGHT_RANGE
+          ? [index]
+          : [],
+      ),
+    [liveHz],
+  )
+  const activeString =
+    activeStrings.length === 1
+      ? STANDARD_GUITAR_STRINGS[activeStrings[0]!]
+      : null
+
+  if (!ready) {
+    return (
+      <main className="app-page">
+        <section className="app-page__options" aria-busy="true">
+          <div className="app-page__inner">
+            <p className="app-page__loading">Loading…</p>
+          </div>
+        </section>
+      </main>
+    )
+  }
 
   return (
-    <main className="app-page app-page--tuner">
+    <main ref={mainRef} className={shellClassName} style={gridStyle}>
       <section
         className="app-page__options app-page__options--tuner"
         aria-label="Tuner"
@@ -53,6 +86,27 @@ export function TunerPage() {
                 {errorMessage}
               </p>
             ) : null}
+
+            <NoteMeter
+              label="Note meter"
+              listening={listening}
+              requesting={status === 'requesting'}
+              onStart={start}
+              onStop={stop}
+              reading={
+                reading
+                  ? {
+                      noteName: reading.pitch.noteName,
+                      octave: reading.pitch.octave,
+                      frequency: reading.pitch.frequency,
+                      cents: reading.cents,
+                      targetNoteName: reading.target.noteName,
+                      targetOctave: reading.target.octave,
+                      targetFrequency: reading.target.frequency,
+                    }
+                  : null
+              }
+            />
 
             <div
               className="tuner__range"
@@ -108,141 +162,33 @@ export function TunerPage() {
                 ))}
               </div>
             </div>
-
-            <div className="tuner__strings">
-              <p className="diagram-label" id={`${baseId}-strings-label`}>
-                Guitar strings
-              </p>
-              <div
-                className="tuner__string-grid"
-                role="list"
-                aria-labelledby={`${baseId}-strings-label`}
-              >
-                {STANDARD_GUITAR_STRINGS.map((s) => {
-                  const inRange =
-                    liveHz != null &&
-                    Math.abs(centsOffTarget(liveHz, s.frequency)) <=
-                      CENTS_HIGHLIGHT_RANGE
-                  return (
-                    <div
-                      key={s.id}
-                      role="listitem"
-                      className={
-                        inRange
-                          ? 'tuner__string-btn tuner__string-btn--active'
-                          : 'tuner__string-btn'
-                      }
-                      aria-current={inRange ? 'true' : undefined}
-                    >
-                      <span className="tuner__string-btn-label">{s.label}</span>
-                      <span className="tuner__string-btn-hz">
-                        {formatFrequency(s.frequency)}
-                      </span>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-
-            <div className="tuner__note-meter">
-              <p className="diagram-label">Note meter</p>
-              <div
-                className={
-                  inTune
-                    ? 'tuner__display tuner__display--in-tune'
-                    : 'tuner__display'
-                }
-                aria-live="polite"
-              >
-                <p className="tuner__note">
-                  {reading ? `${reading.pitch.noteName}` : '—'}
-                  {reading ? (
-                    <span className="tuner__octave">{reading.pitch.octave}</span>
-                  ) : null}
-                </p>
-                <p className="tuner__freq-primary">
-                  {reading
-                    ? formatFrequency(reading.pitch.frequency)
-                    : listening
-                      ? 'Listening…'
-                      : 'Mic off'}
-                </p>
-                <p className="tuner__target">
-                  {reading
-                    ? `Target ${reading.target.noteName}${reading.target.octave} · ${formatFrequency(reading.target.frequency)}`
-                    : listening
-                      ? 'Play a note…'
-                      : null}
-                </p>
-                <p className="tuner__cents">
-                  {reading
-                    ? `${reading.cents >= 0 ? '+' : ''}${reading.cents.toFixed(0)} cents`
-                    : '±0 cents'}
-                </p>
-
-                <div
-                  className="tuner__meter"
-                  role="meter"
-                  aria-valuemin={-CENTS_HIGHLIGHT_RANGE}
-                  aria-valuemax={CENTS_HIGHLIGHT_RANGE}
-                  aria-valuenow={reading ? Math.round(reading.cents) : 0}
-                  aria-label="Cents sharp or flat"
-                >
-                  <div className="tuner__meter-track">
-                    <span className="tuner__meter-mark tuner__meter-mark--left">
-                      ♭
-                    </span>
-                    <span className="tuner__meter-center" aria-hidden />
-                    <span className="tuner__meter-mark tuner__meter-mark--right">
-                      ♯
-                    </span>
-                    <span
-                      className={
-                        inTune
-                          ? 'tuner__needle tuner__needle--in-tune'
-                          : 'tuner__needle'
-                      }
-                      style={{ left: `${needlePct}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="tuner__actions">
-              {listening ? (
-                <button
-                  type="button"
-                  className="tuner__mic-btn tuner__mic-btn--stop"
-                  onClick={stop}
-                >
-                  <MicOff aria-hidden size={18} strokeWidth={2} />
-                  Stop listening
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className="tuner__mic-btn"
-                  onClick={() => void start()}
-                  disabled={status === 'requesting'}
-                >
-                  <Mic aria-hidden size={18} strokeWidth={2} />
-                  {status === 'requesting'
-                    ? 'Waiting for permission…'
-                    : 'Enable microphone'}
-                </button>
-              )}
-              <Link
-                to="/"
-                className="tuner__exit-btn"
-                onClick={() => stop()}
-              >
-                Exit
-              </Link>
-            </div>
           </div>
         </div>
       </section>
+
+      <DiagramDivider panel={panel} />
+
+      {showDiagramPanel ? (
+        <section className="app-page__diagram" aria-label="Fretboard preview">
+          <div className="app-page__diagram-wrap">
+            <div className="app-page__diagram-stage app-page__diagram-stage--single">
+              <Fretboard
+                chord={null}
+                title={
+                  activeString
+                    ? `${activeString.noteName}${activeString.octave}`
+                    : 'Fretboard'
+                }
+                activeStrings={activeStrings}
+                fretCount={fretCount}
+                orientation={fretboardOrientation}
+                displayNotes={displayNotes}
+                fitContainer
+              />
+            </div>
+          </div>
+        </section>
+      ) : null}
     </main>
   )
 }

@@ -11,6 +11,7 @@ import {
 } from '../audio/pitchDetect'
 import { type HummedNote } from '../audio/humPlacement'
 import { type ChartMark, type PitchPoint } from '../audio/humTrace'
+import { type NoteMeterReading } from '../components/NoteMeter'
 
 export type HumStatus = 'idle' | 'requesting' | 'listening' | 'denied' | 'error'
 
@@ -45,6 +46,7 @@ export function useHumCapture() {
   const [status, setStatus] = useState<HumStatus>('idle')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [liveNote, setLiveNote] = useState<HummedNote | null>(null)
+  const [meter, setMeter] = useState<NoteMeterReading | null>(null)
   const [notes, setNotes] = useState<HummedNote[]>([])
   const [trace, setTrace] = useState<PitchPoint[]>([])
   const [marks, setMarks] = useState<ChartMark[]>([])
@@ -88,6 +90,7 @@ export function useHumCapture() {
   function stop() {
     stopInternal()
     setLiveNote(null)
+    setMeter(null)
     setStatus('idle')
     setErrorMessage(null)
   }
@@ -157,6 +160,7 @@ export function useHumCapture() {
       let stableSince = 0
       let lastCommitKey: string | null = null
       let silentSince: number | null = null
+      let lastMeterAt = 0
 
       const tick = (now: number) => {
         const current = audioRef.current
@@ -182,6 +186,18 @@ export function useHumCapture() {
             if (key !== liveKey) {
               liveKey = key
               setLiveNote(noteFromPitch(pitch))
+            }
+            if (now - lastMeterAt >= 40) {
+              lastMeterAt = now
+              setMeter({
+                noteName: pitch.noteName,
+                octave: pitch.octave,
+                frequency: smoothHz,
+                cents: pitch.cents,
+                targetNoteName: pitch.noteName,
+                targetOctave: pitch.octave,
+                targetFrequency: pitch.nearestNoteHz,
+              })
             }
             if (key !== stableKey) {
               stableKey = key
@@ -221,6 +237,7 @@ export function useHumCapture() {
             if (liveKey != null) {
               liveKey = null
               setLiveNote(null)
+              setMeter(null)
             }
           }
         }
@@ -292,6 +309,7 @@ export function useHumCapture() {
     status,
     errorMessage,
     liveNote,
+    meter,
     notes,
     trace,
     marks,
