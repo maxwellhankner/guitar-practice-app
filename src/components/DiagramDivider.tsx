@@ -7,6 +7,8 @@ import {
   ChevronRight,
   ChevronUp,
   Columns2,
+  Maximize2,
+  Minimize2,
   Music,
   RotateCcwSquare,
   Rows2,
@@ -32,6 +34,7 @@ export function DiagramDivider({
   onCloseExtraPickers,
 }: DiagramDividerProps) {
   const [fretPickerOpen, setFretPickerOpen] = useState(false)
+  const [fullscreen, setFullscreen] = useState(false)
   const fretPickerRef = useRef<HTMLDivElement>(null)
 
   const closePickers = () => {
@@ -61,6 +64,22 @@ export function DiagramDivider({
       document.removeEventListener('keydown', onKeyDown)
     }
   }, [fretPickerOpen])
+
+  useEffect(() => {
+    const syncFullscreen = () => {
+      setFullscreen(document.fullscreenElement != null)
+    }
+    document.addEventListener('fullscreenchange', syncFullscreen)
+    return () => document.removeEventListener('fullscreenchange', syncFullscreen)
+  }, [])
+
+  const toggleFullscreen = () => {
+    if (document.fullscreenElement) {
+      void document.exitFullscreen()
+      return
+    }
+    void document.documentElement.requestFullscreen()
+  }
 
   const {
     showDiagramPanel,
@@ -180,6 +199,30 @@ export function DiagramDivider({
           </button>
         </Tooltip>
       )}
+      <Tooltip
+        placement={menuBarTooltipPlacement}
+        label={fullscreen ? 'Exit full screen' : 'Full screen'}
+      >
+        <button
+          type="button"
+          className={[
+            'app-page__divider-fullscreen-toggle',
+            fullscreen ? 'app-page__divider-tool--active' : '',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+          aria-label={fullscreen ? 'Exit full screen' : 'Full screen'}
+          aria-pressed={fullscreen}
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={toggleFullscreen}
+        >
+          {fullscreen ? (
+            <Minimize2 size={16} strokeWidth={2.5} aria-hidden />
+          ) : (
+            <Maximize2 size={16} strokeWidth={2.5} aria-hidden />
+          )}
+        </button>
+      </Tooltip>
       {showDiagramPanel ? (
         <>
           <Tooltip

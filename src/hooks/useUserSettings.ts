@@ -6,6 +6,7 @@ import {
   clampSplitRatio,
   fetchUserSettings,
   setAccentColorId,
+  setFretboardColorId,
   setChordKnown,
   setDiagramLayout,
   setDisplayNotes,
@@ -19,13 +20,16 @@ import {
   setDiagramHidden,
   setPracticeSelection,
   type AccentColorId,
+  type FretboardColorId,
   type DiagramLayout,
   type FretboardOrientation,
   type PracticeSelection,
   type UserSettings,
 } from '../db/userSettingsRepository'
 import { DEFAULT_ACCENT_COLOR_ID } from '../theme/accentColors'
+import { DEFAULT_FRETBOARD_COLOR_ID } from '../theme/fretboardColors'
 import { useAccentTheme } from './useAccentTheme'
+import { useFretboardTheme } from './useFretboardTheme'
 import { useDevSettingsSync } from './useDevSettingsSync'
 
 export function useUserSettings() {
@@ -137,6 +141,14 @@ export function useUserSettings() {
     setSettings(next)
   }, [])
 
+  const setFretboardColorIdState = useCallback(async (value: FretboardColorId) => {
+    setSettings((prev) =>
+      prev != null ? { ...prev, fretboardColorId: value } : prev,
+    )
+    const next = await setFretboardColorId(value)
+    setSettings(next)
+  }, [])
+
   const setPracticeSelectionState = useCallback(
     async (partial: PracticeSelection) => {
       setSettings((prev) => (prev != null ? { ...prev, ...partial } : prev))
@@ -147,6 +159,7 @@ export function useUserSettings() {
   )
 
   useAccentTheme(settings?.accentColorId)
+  useFretboardTheme(settings?.fretboardColorId)
 
   return {
     ready: settings != null,
@@ -163,6 +176,7 @@ export function useUserSettings() {
     panelsSwapped: settings?.panelsSwapped ?? false,
     diagramHidden: settings?.diagramHidden ?? false,
     accentColorId: settings?.accentColorId ?? DEFAULT_ACCENT_COLOR_ID,
+    fretboardColorId: settings?.fretboardColorId ?? DEFAULT_FRETBOARD_COLOR_ID,
     selectedKey: settings?.selectedKey ?? null,
     selectedChord: settings?.selectedChord ?? null,
     builtProgression: settings?.builtProgression ?? null,
@@ -179,6 +193,7 @@ export function useUserSettings() {
     setPanelsSwapped: setPanelsSwappedState,
     setDiagramHidden: setDiagramHiddenState,
     setAccentColorId: setAccentColorIdState,
+    setFretboardColorId: setFretboardColorIdState,
     setPracticeSelection: setPracticeSelectionState,
   }
 }

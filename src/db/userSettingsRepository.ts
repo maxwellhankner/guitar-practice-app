@@ -19,10 +19,16 @@ import {
   sanitizeAccentColorId,
   type AccentColorId,
 } from '../theme/accentColors'
+import {
+  DEFAULT_FRETBOARD_COLOR_ID,
+  sanitizeFretboardColorId,
+  type FretboardColorId,
+} from '../theme/fretboardColors'
 import { defaultKnownChords } from './defaultKnownChords'
 
 export type { FretboardOrientation } from '../components/Fretboard/types'
 export type { AccentColorId } from '../theme/accentColors'
+export type { FretboardColorId } from '../theme/fretboardColors'
 
 const SETTINGS_PATH = '/userSettings/default'
 const DOC_ID = 'default'
@@ -58,6 +64,8 @@ export type UserSettings = {
   diagramHidden: boolean
   /** Rainbow accent used for selections, borders, and highlights. */
   accentColorId: AccentColorId
+  /** Neck color for every fretboard. */
+  fretboardColorId: FretboardColorId
   /** Last selected key, if any. */
   selectedKey: KeyId | null
   /** Last selected chord for the fretboard, if any. */
@@ -98,6 +106,7 @@ const DEFAULT_SETTINGS: UserSettings = {
   panelsSwapped: false,
   diagramHidden: false,
   accentColorId: DEFAULT_ACCENT_COLOR_ID,
+  fretboardColorId: DEFAULT_FRETBOARD_COLOR_ID,
   selectedKey: null,
   selectedChord: null,
   builtProgression: null,
@@ -168,6 +177,10 @@ function mergeSettings(
       partial.accentColorId != null
         ? sanitizeAccentColorId(partial.accentColorId)
         : current.accentColorId,
+    fretboardColorId:
+      partial.fretboardColorId != null
+        ? sanitizeFretboardColorId(partial.fretboardColorId)
+        : current.fretboardColorId,
     selectedKey:
       partial.selectedKey !== undefined
         ? sanitizeSelectedKey(partial.selectedKey)
@@ -285,6 +298,7 @@ function fromRecord(record: UserSettingsRecordInput): UserSettings {
         ? record.diagramHidden
         : DEFAULT_SETTINGS.diagramHidden,
     accentColorId: sanitizeAccentColorId(record.accentColorId),
+    fretboardColorId: sanitizeFretboardColorId(record.fretboardColorId),
     selectedKey: sanitizeSelectedKey(record.selectedKey),
     selectedChord: sanitizeSelectedChord(record.selectedChord),
     builtProgression: sanitizeBuiltProgression(record.builtProgression),
@@ -465,6 +479,14 @@ export async function setAccentColorId(
   value: AccentColorId,
 ): Promise<UserSettings> {
   return saveUserSettings({ accentColorId: sanitizeAccentColorId(value) })
+}
+
+export async function setFretboardColorId(
+  value: FretboardColorId,
+): Promise<UserSettings> {
+  return saveUserSettings({
+    fretboardColorId: sanitizeFretboardColorId(value),
+  })
 }
 
 export type PracticeSelection = {

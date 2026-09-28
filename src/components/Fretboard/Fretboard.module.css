@@ -3,13 +3,7 @@
  * Colors follow page theme via global custom properties where helpful.
  */
 .wrap {
-  /* Dark-only fretboard palette (light theme disabled for now). */
-  --fb-board: #1a1410;
-  --fb-nut: #e8e0d4;
-  --fb-fret: #8a7f72;
-  --fb-string: #565656;
-  --fb-string-muted: #3a3a3a;
-  --fb-dot: #2c2824;
+  /* Neck colors come from :root (fretboardTheme.css). */
   --fb-dot-stroke: var(--fretboard-dot-stroke, var(--accent-line));
   --fb-scale-dot-stroke: var(--fretboard-scale-dot-stroke, #7a756e);
   --fb-marker: var(--heading, #f2efe9);
@@ -17,8 +11,6 @@
   --fb-cell-note: var(--accent-line);
   /** Open-string names (left) + chromatic labels in cells */
   --fb-note-font-size: 8px;
-  --fb-inlay: rgba(255, 245, 228, 0.42);
-  --fb-inlay-edge: rgba(255, 255, 255, 0.12);
   height: 100%;
   width: fit-content;
   flex-shrink: 0;
@@ -258,7 +250,7 @@
 
 .hintRing {
   fill: none;
-  stroke: #8a847c;
+  stroke: var(--fb-hint, #8a847c);
   stroke-width: 1.35;
   pointer-events: none;
 }

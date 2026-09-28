@@ -1,0 +1,109 @@
+/* Neck colors. Rosewood matches the original dark board. */
+:root,
+:root[data-fretboard='rosewood'] {
+  --fb-board: #1a1410;
+  --fb-nut: #e8e0d4;
+  --fb-fret: #8a7f72;
+  --fb-string: #565656;
+  --fb-string-muted: #3a3a3a;
+  --fb-dot: #2c2824;
+  --fb-inlay: rgba(255, 245, 228, 0.42);
+  --fb-inlay-edge: rgba(255, 255, 255, 0.12);
+  --fb-hint: #8a847c;
+}
+
+:root[data-fretboard='maple'] {
+  --fb-board: #f2e2c4;
+  --fb-nut: #fffaf2;
+  --fb-fret: #6e6254;
+  --fb-string: #3e3832;
+  --fb-string-muted: #c8baa6;
+  --fb-dot: #2c261f;
+  --fb-inlay: rgba(60, 42, 24, 0.38);
+  --fb-inlay-edge: rgba(40, 28, 16, 0.2);
+  --fb-hint: #6d6256;
+}
+
+:root[data-fretboard='oak'] {
+  --fb-board: #d4b07c;
+  --fb-nut: #f6efe3;
+  --fb-fret: #6a5644;
+  --fb-string: #3d342c;
+  --fb-string-muted: #b08a5c;
+  --fb-dot: #2e261c;
+  --fb-inlay: rgba(55, 38, 18, 0.42);
+  --fb-inlay-edge: rgba(40, 28, 14, 0.22);
+  --fb-hint: #6d5640;
+}
+
+:root[data-fretboard='mahogany'] {
+  --fb-board: #6e382c;
+  --fb-nut: #f0e6d8;
+  --fb-fret: #e4d5c4;
+  --fb-string: #2c2826;
+  --fb-string-muted: #4a3330;
+  --fb-dot: #2a1814;
+  --fb-inlay: rgba(255, 236, 214, 0.45);
+  --fb-inlay-edge: rgba(255, 255, 255, 0.14);
+  --fb-hint: #e6d2c4;
+}
+
+:root[data-fretboard='walnut'] {
+  --fb-board: #5c4332;
+  --fb-nut: #efe4d4;
+  --fb-fret: #d9cbb8;
+  --fb-string: #2a2622;
+  --fb-string-muted: #3f342c;
+  --fb-dot: #2a2218;
+  --fb-inlay: rgba(255, 240, 220, 0.4);
+  --fb-inlay-edge: rgba(255, 255, 255, 0.12);
+  --fb-hint: #e4d4c2;
+}
+
+:root[data-fretboard='orange'] {
+  --fb-board: #d86a32;
+  --fb-nut: #fff3e6;
+  --fb-fret: #fff1e0;
+  --fb-string: #3a2418;
+  --fb-string-muted: #a85a32;
+  --fb-dot: #3a2014;
+  --fb-inlay: rgba(255, 244, 230, 0.55);
+  --fb-inlay-edge: rgba(255, 255, 255, 0.2);
+  --fb-hint: #fff6ee;
+}
+
+:root[data-fretboard='black'] {
+  --fb-board: #0c0c0c;
+  --fb-nut: #e8e0d4;
+  --fb-fret: #9c948c;
+  --fb-string: #5a5a5a;
+  --fb-string-muted: #2a2a2a;
+  --fb-dot: #2e2e2e;
+  --fb-inlay: rgba(255, 255, 255, 0.55);
+  --fb-inlay-edge: rgba(255, 255, 255, 0.2);
+  --fb-hint: #a39e94;
+}
+
+:root[data-fretboard='blue'] {
+  --fb-board: #3f7ea6;
+  --fb-nut: #f4f7f8;
+  --fb-fret: #e8eef2;
+  --fb-string: #1c2830;
+  --fb-string-muted: #2d4e62;
+  --fb-dot: #1a2832;
+  --fb-inlay: rgba(255, 255, 255, 0.5);
+  --fb-inlay-edge: rgba(255, 255, 255, 0.18);
+  --fb-hint: #f2f7fa;
+}
+
+:root[data-fretboard='green'] {
+  --fb-board: #3e8f78;
+  --fb-nut: #f3faf6;
+  --fb-fret: #e7f3ee;
+  --fb-string: #1a2c26;
+  --fb-string-muted: #2a5c4c;
+  --fb-dot: #163028;
+  --fb-inlay: rgba(255, 255, 255, 0.48);
+  --fb-inlay-edge: rgba(255, 255, 255, 0.18);
+  --fb-hint: #f3faf6;
+}

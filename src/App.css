@@ -801,6 +801,7 @@
 .app-page__divider-scale-toggle,
 .app-page__divider-known-toggle,
 .app-page__divider-notes-toggle,
+.app-page__divider-fullscreen-toggle,
 .app-page__divider-tuner-toggle {
   display: inline-flex;
   align-items: center;
@@ -851,6 +852,7 @@
 .app-page__divider-scale-toggle svg,
 .app-page__divider-known-toggle svg,
 .app-page__divider-notes-toggle svg,
+.app-page__divider-fullscreen-toggle svg,
 .app-page__divider-tuner-toggle svg {
   width: var(--divider-icon-size);
   height: var(--divider-icon-size);
@@ -863,6 +865,7 @@
 .app-page__divider-scale-toggle,
 .app-page__divider-known-toggle,
 .app-page__divider-notes-toggle,
+.app-page__divider-fullscreen-toggle,
 .app-page__divider-tuner-toggle {
   z-index: 1;
   appearance: none;
@@ -884,6 +887,7 @@
   .app-page__divider-scale-toggle:hover,
   .app-page__divider-known-toggle:hover,
   .app-page__divider-notes-toggle:hover,
+  .app-page__divider-fullscreen-toggle:hover,
   .app-page__divider-tuner-toggle:hover {
     color: var(--heading);
     background: var(--page-bg);
@@ -897,6 +901,7 @@
 .app-page__divider-scale-toggle:focus-visible,
 .app-page__divider-known-toggle:focus-visible,
 .app-page__divider-notes-toggle:focus-visible,
+.app-page__divider-fullscreen-toggle:focus-visible,
 .app-page__divider-tuner-toggle:focus-visible {
   outline: none;
   border-color: var(--accent-line);
@@ -906,6 +911,12 @@
   color: var(--heading);
   border-color: var(--accent-line);
   box-shadow: inset 0 0 0 1px var(--accent-line);
+}
+
+@media (max-width: 56rem) {
+  .app-page__divider > .app-tooltip-anchor:has(.app-page__divider-fullscreen-toggle) {
+    display: none;
+  }
 }
 
 .app-tooltip-anchor {
