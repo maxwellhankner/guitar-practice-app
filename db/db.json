@@ -159,15 +159,15 @@
       ],
       "filterPlayableOnly": false,
       "displayNotes": false,
-      "fretCount": 6,
+      "fretCount": 7,
       "scaleSelection": null,
       "diagramLayout": "horizontal",
-      "horizontalSplitRatio": 0.594989417007141,
+      "horizontalSplitRatio": 0.5948032929778543,
       "verticalSplitRatio": 0.598089599609375,
       "fretboardOrientation": "landscape",
       "panelsSwapped": false,
       "diagramHidden": false,
-      "accentColorId": "gold",
+      "accentColorId": "teal",
       "knownChords": [
         "A",
         "Am",
@@ -214,7 +214,8 @@
       "selectedKey": null,
       "selectedChord": null,
       "builtProgression": null,
-      "selectedSongId": null
+      "selectedSongId": null,
+      "fretboardColorId": "walnut"
     }
   ],
   "$schema": "./node_modules/json-server/schema.json"

@@ -31,13 +31,6 @@ See [README](README.md) for setup and deploy.
 
 ---
 
-## Pitch & ear
-
-- Hum or sing into the mic; app identifies the notes just hummed (melody capture / note readout)
-- Build on existing tuner pitch detection
-
----
-
 ## Songs & progressions
 
 - Full song structure (verse, chorus, bridge, …)
