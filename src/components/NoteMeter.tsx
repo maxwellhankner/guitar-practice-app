@@ -62,17 +62,19 @@ export function NoteMeter({
               ? 'Listening…'
               : 'Mic off'}
         </p>
-        <p className="tuner__target">
-          {reading
-            ? `Target ${reading.targetNoteName}${reading.targetOctave} · ${formatFrequency(reading.targetFrequency)}`
-            : listening
-              ? 'Play a note…'
-              : null}
-        </p>
-        <p className="tuner__cents">
-          {reading
-            ? `${reading.cents >= 0 ? '+' : ''}${reading.cents.toFixed(0)} cents`
-            : '±0 cents'}
+        <p className="tuner__readout">
+          {reading ? (
+            <span className="tuner__target">
+              {`Target ${reading.targetNoteName}${reading.targetOctave} · ${formatFrequency(reading.targetFrequency)}`}
+            </span>
+          ) : listening ? (
+            <span className="tuner__target">Play a note…</span>
+          ) : null}
+          <span className="tuner__cents">
+            {reading
+              ? `${reading.cents >= 0 ? '+' : ''}${reading.cents.toFixed(0)} cents`
+              : '±0 cents'}
+          </span>
         </p>
 
         <div

@@ -127,6 +127,10 @@ type FretboardProps = {
   orientation?: FretboardOrientation
   /** Open strings to emphasize, low E = 0 … high E = 5. */
   activeStrings?: readonly number[]
+  /** When set, each fret cell and open string can be clicked. */
+  onPositionClick?: (position: { stringIndex: number; fret: number }) => void
+  /** Faint rings on placements that can still complete a chord. */
+  hintPositions?: readonly { stringIndex: number; fret: number }[]
 }
 
 function rotate90Point(
@@ -461,7 +465,11 @@ function layoutGeometry(
     key: string
     variant: 'chord' | 'scale'
   }[] = []
-  const openStringMutes: { cx: number; cy: number; key: string }[] = []
+  const openStringMutes: {
+    cx: number
+    cy: number
+    key: string
+  }[] = []
 
   if (scalePattern != null && scalePattern.positions.length > 0) {
     scalePattern.positions.forEach((p) => {
@@ -790,6 +798,8 @@ export function Fretboard({
   fitContainer = false,
   orientation = 'landscape',
   activeStrings,
+  onPositionClick,
+  hintPositions,
 }: FretboardProps) {
   const resolved = chord == null ? null : resolveChord(chord)
   const startFret = Math.max(1, startFretProp ?? 1)
@@ -833,6 +843,40 @@ export function Fretboard({
     ],
   )
 
+  const hintRings = (hintPositions ?? []).flatMap((position) => {
+    if (position.stringIndex < 0 || position.stringIndex >= STRINGS) {
+      return []
+    }
+    const cy = geo.stringYs[STRINGS - 1 - position.stringIndex]
+    if (cy == null) {
+      return []
+    }
+    if (position.fret === 0) {
+      if (geo.startFret !== 1) {
+        return []
+      }
+      return [
+        {
+          cx: geo.openNoteX,
+          cy,
+          key: `hint-${position.stringIndex}-0`,
+        },
+      ]
+    }
+    if (!geo.fretLabels.some((label) => label.n === position.fret)) {
+      return []
+    }
+    return [
+      {
+        cx:
+          geo.gridLeft +
+          (position.fret - geo.startFret + 0.5) * geo.cellW,
+        cy,
+        key: `hint-${position.stringIndex}-${position.fret}`,
+      },
+    ]
+  })
+
   const ariaLabel = `Fretboard diagram, ${displayTitle}`
   const centerX = geo.vbW / 2
   const centerY = geo.vbH / 2
@@ -861,6 +905,7 @@ export function Fretboard({
         styles.wrap,
         fitContainer ? styles.wrapFit : '',
         portrait ? styles.wrapPortrait : '',
+        onPositionClick ? styles.interactive : '',
         className,
       ]
         .filter(Boolean)
@@ -990,6 +1035,17 @@ export function Fretboard({
             )
           })}
 
+          {hintRings.map((ring) => (
+            <circle
+              key={ring.key}
+              cx={ring.cx}
+              cy={ring.cy}
+              r={geo.dotR}
+              className={styles.hintRing}
+              aria-hidden
+            />
+          ))}
+
           {geo.scaleDots.map((d) => (
             <circle
               key={d.key}
@@ -1021,6 +1077,35 @@ export function Fretboard({
               className={styles.dot}
             />
           ))}
+
+          {onPositionClick
+            ? Array.from({ length: STRINGS }, (_, visualIndex) => {
+                const stringIndex = STRINGS - 1 - visualIndex
+                const cy = geo.stringYs[visualIndex]!
+                const rowH = geo.innerH / (STRINGS - 1)
+                const y = cy - rowH / 2
+                const frets =
+                  geo.startFret === 1
+                    ? [0, ...geo.fretLabels.map((label) => label.n)]
+                    : geo.fretLabels.map((label) => label.n)
+                return frets.map((fret) => {
+                  const open = fret === 0
+                  return (
+                    <rect
+                      key={`hit-${stringIndex}-${fret}`}
+                      x={open ? 0 : geo.gridLeft + (fret - geo.startFret) * geo.cellW}
+                      y={y}
+                      width={open ? geo.gridLeft : geo.cellW}
+                      height={rowH}
+                      className={styles.hit}
+                      role="button"
+                      aria-label={`${noteAtFret(stringIndex, fret)}, ${open ? 'open' : `fret ${fret}`}`}
+                      onClick={() => onPositionClick({ stringIndex, fret })}
+                    />
+                  )
+                })
+              })
+            : null}
         </g>
 
         {geo.openNoteLabels.map((n) => {

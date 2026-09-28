@@ -20,6 +20,11 @@ import {
   primaryChordIdsForRoot,
   extraChordIdsForRoot,
   Fretboard,
+  NOTE_NAMES_SHARP,
+  OPEN_STRING_PITCH_CLASS,
+  chordIdsForPitchClasses,
+  hintPitchClassesForSelection,
+  noteAtFret,
   chordsForProgression,
   diatonicSlotsInKey,
   isProgressionResolvableInKey,
@@ -46,6 +51,7 @@ import {
   KEY_DEFS,
   KEY_MAJOR_IDS,
   KEY_MINOR_IDS,
+  relativeKeyId,
   PROGRESSIONS,
   basicProgressionIdsForKey,
   coloredProgressionIdsForKey,
@@ -142,6 +148,11 @@ export function HomePage() {
   const [selectedSongId, setSelectedSongId] = useState<SongId | null>(null)
   const [findKeyMode, setFindKeyMode] = useState(false)
   const [findKeyChords, setFindKeyChords] = useState<ChordPresetId[]>([])
+  const [findChordMode, setFindChordMode] = useState(false)
+  const [findChordPositions, setFindChordPositions] = useState<
+    { stringIndex: number; fret: number }[]
+  >([])
+  const [songQuery, setSongQuery] = useState('')
   const [editKnownChordsMode, setEditKnownChordsMode] = useState(false)
   const [chordVariantsOpen, setChordVariantsOpen] = useState(false)
   const [progressionAltsOpen, setProgressionAltsOpen] = useState(false)
@@ -183,6 +194,7 @@ export function HomePage() {
     diagramLayoutVertical,
     fretboardPortrait,
     showDiagramPanel,
+    setDiagramHidden,
     mainRef,
     shellClassName,
     gridStyle,
@@ -534,6 +546,9 @@ export function HomePage() {
   }
 
   const seedFromSong = (songId: SongId) => {
+    if (findKeyMode) {
+      return
+    }
     const song = SONGS[songId]
     const keyId = activeKey ?? song.defaultKey
     if (activeKey == null) {
@@ -556,6 +571,8 @@ export function HomePage() {
         setSelection(null)
         setFindKeyMode(false)
         setFindKeyChords([])
+        setFindChordMode(false)
+        setFindChordPositions([])
       }
       return !on
     })
@@ -565,6 +582,8 @@ export function HomePage() {
     setFindKeyMode((on) => {
       if (!on) {
         setEditKnownChordsMode(false)
+        setFindChordMode(false)
+        setFindChordPositions([])
       }
       if (on) {
         setFindKeyChords([])
@@ -577,6 +596,99 @@ export function HomePage() {
       return !on
     })
   }
+
+  const toggleFindChordMode = () => {
+    setFindChordMode((on) => {
+      if (!on) {
+        setFindKeyMode(false)
+        setFindKeyChords([])
+        setEditKnownChordsMode(false)
+        void setDiagramHidden(false)
+      } else {
+        setFindChordPositions([])
+      }
+      return !on
+    })
+  }
+
+  const toggleFindChordPosition = (position: {
+    stringIndex: number
+    fret: number
+  }) => {
+    setFindChordPositions((current) => {
+      const index = current.findIndex(
+        (item) =>
+          item.stringIndex === position.stringIndex && item.fret === position.fret,
+      )
+      if (index < 0) {
+        return [...current, position]
+      }
+      return current.filter((_, itemIndex) => itemIndex !== index)
+    })
+  }
+
+  const findChordPitchClasses = useMemo(
+    () =>
+      findChordPositions.map(
+          (position) =>
+            (OPEN_STRING_PITCH_CLASS[position.stringIndex]! + position.fret) % 12,
+        ),
+    [findChordPositions],
+  )
+
+  const findChordMatches = useMemo(
+    () => chordIdsForPitchClasses(findChordPitchClasses),
+    [findChordPitchClasses],
+  )
+
+  const findChordHints = useMemo(() => {
+    const hintPitchClasses = new Set(
+      hintPitchClassesForSelection(findChordPitchClasses),
+    )
+    if (hintPitchClasses.size === 0) {
+      return []
+    }
+    const usedStrings = new Set(
+      findChordPositions.map((position) => position.stringIndex),
+    )
+    const hints: { stringIndex: number; fret: number }[] = []
+    for (
+      let stringIndex = 0;
+      stringIndex < OPEN_STRING_PITCH_CLASS.length;
+      stringIndex++
+    ) {
+      if (usedStrings.has(stringIndex)) {
+        continue
+      }
+      for (let fret = 0; fret <= fretCount; fret++) {
+        const pitchClass =
+          (OPEN_STRING_PITCH_CLASS[stringIndex]! + fret) % 12
+        if (hintPitchClasses.has(pitchClass)) {
+          hints.push({ stringIndex, fret })
+        }
+      }
+    }
+    return hints
+  }, [findChordPitchClasses, findChordPositions, fretCount])
+
+  const findChordTitle = useMemo(() => {
+    if (findChordMatches.length === 1) {
+      return CHORD_PRESETS[findChordMatches[0]!].name ?? findChordMatches[0]!
+    }
+    if (findChordMatches.length > 1) {
+      return findChordMatches.join(' · ')
+    }
+    const seen = new Set<number>()
+    const names: string[] = []
+    for (const pc of findChordPitchClasses) {
+      if (seen.has(pc)) {
+        continue
+      }
+      seen.add(pc)
+      names.push(NOTE_NAMES_SHARP[pc]!)
+    }
+    return names.length > 0 ? names.join(' · ') : 'Fretboard'
+  }, [findChordMatches, findChordPitchClasses])
 
   const toggleFindKeyChord = (chordId: ChordPresetId) => {
     setFindKeyChords((cur) => {
@@ -930,8 +1042,10 @@ export function HomePage() {
       filterPlayableOnly &&
       !unresolved &&
       !isSongPlayableInKey(keyId, songId, knownChords)
-    const disabled = unresolved || blocked
-    const blockedReason = songDisabledReason(keyId, songId)
+    const disabled = unresolved || blocked || findKeyMode
+    const blockedReason = findKeyMode
+      ? 'Unavailable while finding a key'
+      : songDisabledReason(keyId, songId)
     const seedChords = unresolved
       ? null
       : chordsForSong(keyId, songId)
@@ -967,19 +1081,51 @@ export function HomePage() {
     )
   }
 
+  const songSearch = (
+    <input
+      id="song-search"
+      name="song-search"
+      className="diagram-song-search"
+      type="search"
+      placeholder="Search songs"
+      value={songQuery}
+      aria-label="Search songs"
+      autoComplete="off"
+      onChange={(event) => setSongQuery(event.target.value)}
+    />
+  )
+
   const renderSongSeeds = (seedKey?: KeyId | null) => {
     const embedded = seedKey != null
-    const songIds = embedded
+    const availableIds = embedded
       ? SONG_IDS.filter((songId) => SONGS[songId].defaultKey === seedKey)
       : SONG_IDS
 
-    if (songIds.length === 0) {
+    if (availableIds.length === 0) {
       return null
     }
+
+    const needle = songQuery.trim().toLowerCase()
+    const songIds =
+      needle.length === 0
+        ? availableIds
+        : availableIds.filter((songId) => {
+            const song = SONGS[songId]
+            return (
+              song.title.toLowerCase().includes(needle) ||
+              song.artist.toLowerCase().includes(needle)
+            )
+          })
 
     const songButtons = songIds.map((songId) =>
       renderSongSeedButton(seedKey ?? SONGS[songId].defaultKey, songId),
     )
+    const songList =
+      songIds.length === 0 ? (
+        <p className="diagram-song-seeds__empty">No songs match.</p>
+      ) : (
+        <div className="diagram-chord-grid diagram-song-seeds">{songButtons}</div>
+      )
 
     if (embedded) {
       return (
@@ -992,28 +1138,32 @@ export function HomePage() {
             <p className="diagram-label" id={`${baseId}-songs-label`}>
               Songs
             </p>
+            {songSearch}
           </div>
-          <div className="diagram-chord-grid diagram-song-seeds">
-            {songButtons}
-          </div>
+          {songList}
         </div>
       )
     }
 
     return (
       <div
-        className="diagram-field"
+        className={[
+          'diagram-field',
+          findChordMode ? 'diagram-field--locked' : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
         role="group"
         aria-labelledby={`${baseId}-songs-label`}
+        inert={findChordMode ? true : undefined}
       >
         <div className="diagram-field__label-row">
           <p className="diagram-label" id={`${baseId}-songs-label`}>
             Songs
           </p>
+          {songSearch}
         </div>
-        <div className="diagram-chord-grid diagram-song-seeds">
-          {songButtons}
-        </div>
+        {songList}
       </div>
     )
   }
@@ -1099,6 +1249,7 @@ export function HomePage() {
   const renderKeyButton = (keyId: KeyId) => {
     const def = KEY_DEFS[keyId]
     const selected = activeKey === keyId
+    const isRelative = activeKey != null && relativeKeyId(activeKey) === keyId
     const inFindKeyFlow = selectedKey == null && findKeyMode
     const playableBlocked =
       filterPlayableOnly && !isKeyPlayable(keyId, knownChords)
@@ -1121,7 +1272,9 @@ export function HomePage() {
             ? 'Does not match selected chords'
             : playableBlocked
               ? 'No progressions playable with your known chords'
-              : def.name
+              : isRelative
+                ? `${def.name} · relative ${keyId.endsWith('m') ? 'minor' : 'major'}`
+                : def.name
     return (
       <Tooltip key={keyId} label={keyTitle}>
         <button
@@ -1129,6 +1282,7 @@ export function HomePage() {
           className={[
             'diagram-chord-btn',
             selected ? 'diagram-chord-btn--selected' : '',
+            isRelative ? 'diagram-chord-btn--relative' : '',
             playableBlocked ? 'diagram-chord-btn--unplayable' : '',
           ]
             .filter(Boolean)
@@ -1333,7 +1487,15 @@ export function HomePage() {
       >
         <div className="app-page__inner">
           <div className="diagram-controls">
-            <div className="diagram-field">
+            <div
+              className={[
+                'diagram-field',
+                findChordMode ? 'diagram-field--locked' : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              inert={findChordMode ? true : undefined}
+            >
               <div className="diagram-field__label-row">
                 <p className="diagram-label" id={`${baseId}-key-label`}>
                   {selectedKey != null ? 'Key' : 'Keys'}
@@ -1429,31 +1591,60 @@ export function HomePage() {
                 <p className="diagram-label" id={`${baseId}-chord-label`}>
                   Chords
                 </p>
-                {filterPlayableOnly ? (
+                <div className="diagram-field__label-action">
+                  {filterPlayableOnly ? (
+                    <Tooltip
+                      label={
+                        editKnownChordsMode
+                          ? 'Done editing — click chords to select again'
+                          : 'Edit which chords you know'
+                      }
+                    >
+                      <button
+                        type="button"
+                        className={
+                          editKnownChordsMode
+                            ? 'diagram-edit-known diagram-edit-known--active'
+                            : 'diagram-edit-known'
+                        }
+                        aria-pressed={editKnownChordsMode}
+                        aria-label="Edit known chords"
+                        disabled={findChordMode}
+                        onClick={toggleEditKnownChordsMode}
+                      >
+                        <Pencil size={12} aria-hidden />
+                        edit
+                      </button>
+                    </Tooltip>
+                  ) : null}
                   <Tooltip
                     label={
-                      editKnownChordsMode
-                        ? 'Done editing — click chords to select again'
-                        : 'Edit which chords you know'
+                      findChordMode
+                        ? 'Click notes on the fretboard to identify a chord'
+                        : 'Turn on to identify a chord from fretboard notes'
                     }
                   >
                     <button
                       type="button"
                       className={
-                        editKnownChordsMode
-                          ? 'diagram-edit-known diagram-edit-known--active'
-                          : 'diagram-edit-known'
+                        findChordMode
+                          ? 'diagram-find-key diagram-find-key--active'
+                          : 'diagram-find-key'
                       }
-                      aria-pressed={editKnownChordsMode}
-                      aria-label="Edit known chords"
-                      onClick={toggleEditKnownChordsMode}
+                      aria-pressed={findChordMode}
+                      aria-label="Find chord from fretboard notes"
+                      onClick={toggleFindChordMode}
                     >
-                      <Pencil size={12} aria-hidden />
-                      edit
+                      <Search size={12} aria-hidden />
+                      find chord
                     </button>
                   </Tooltip>
-                ) : null}
+                </div>
               </div>
+              <div
+                className={findChordMode ? 'diagram-field--locked' : undefined}
+                inert={findChordMode ? true : undefined}
+              >
               {activeKey != null && diatonicSlots != null ? (
                 <div className="diagram-chords-build">
                   <div
@@ -1844,6 +2035,7 @@ export function HomePage() {
                   {ROOT_NAMES.map(renderChordRootColumn)}
                 </div>
               )}
+              </div>
             </div>
 
             {activeKey == null ? renderSongSeeds() : null}
@@ -1866,7 +2058,9 @@ export function HomePage() {
           <section
             className={[
               'app-page__diagram',
-              hasBuiltProgression ? 'app-page__diagram--progression' : '',
+              hasBuiltProgression && !findChordMode
+                ? 'app-page__diagram--progression'
+                : '',
               diagramLayoutVertical
                 ? 'app-page__diagram--layout-vertical'
                 : 'app-page__diagram--layout-horizontal',
@@ -1876,7 +2070,25 @@ export function HomePage() {
             aria-label="Fretboard preview"
           >
             <div className="app-page__diagram-wrap">
-              {hasBuiltProgression && activeKey != null ? (
+              {findChordMode ? (
+                <div className="app-page__diagram-stage app-page__diagram-stage--single">
+                  <Fretboard
+                    chord={null}
+                    title={findChordTitle}
+                    markers={findChordPositions.map((position) => ({
+                      stringIndex: position.stringIndex,
+                      fret: position.fret,
+                      label: noteAtFret(position.stringIndex, position.fret),
+                    }))}
+                    hintPositions={findChordHints}
+                    fretCount={fretCount}
+                    displayNotes={displayNotes}
+                    orientation={fretboardOrientation}
+                    fitContainer
+                    onPositionClick={toggleFindChordPosition}
+                  />
+                </div>
+              ) : hasBuiltProgression && activeKey != null ? (
                 <div
                   className="app-page__diagram-stage app-page__diagram-stage--progression"
                   data-arrangement={progressionArrangement}

@@ -35,6 +35,17 @@ const MINOR_SCALE_STEPS = [0, 2, 3, 5, 7, 8, 10] as const
 const MAJOR_ROMAN = ['I', 'ii', 'iii', 'IV', 'V', 'vi', 'vii°'] as const
 const MINOR_ROMAN = ['i', 'ii°', 'III', 'iv', 'v', 'VI', 'VII'] as const
 
+/** Relative minor is a minor third down; relative major is a minor third up. */
+export function relativeKeyId(keyId: KeyId): KeyId {
+  const minor = keyId.endsWith('m')
+  const pc = (keyRootPc(keyId) + (minor ? 3 : 9)) % 12
+  const root = rootNameForPc(pc)
+  if (root == null) {
+    throw new Error(`No root for pitch class ${pc}`)
+  }
+  return (minor ? root : `${root}m`) as KeyId
+}
+
 function keyRootPc(keyId: KeyId): number {
   const isMinor = keyId.endsWith('m')
   const rootName = isMinor ? keyId.slice(0, -1) : keyId

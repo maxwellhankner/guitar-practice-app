@@ -10,7 +10,14 @@ import {
   type DetectedPitch,
 } from '../audio/pitchDetect'
 import { type HummedNote } from '../audio/humPlacement'
-import { type ChartMark, type PitchPoint } from '../audio/humTrace'
+import {
+  createSoundTrace,
+  markPause,
+  recordSound,
+  type ChartMark,
+  type PitchPoint,
+  type SoundTrace,
+} from '../audio/humTrace'
 import { type NoteMeterReading } from '../components/NoteMeter'
 
 export type HumStatus = 'idle' | 'requesting' | 'listening' | 'denied' | 'error'
@@ -54,12 +61,13 @@ export function useHumCapture() {
   const notesRef = useRef(notes)
   notesRef.current = notes
   const traceRef = useRef<PitchPoint[]>([])
+  const soundRef = useRef<SoundTrace>(createSoundTrace())
   const marksRef = useRef<ChartMark[]>([])
   const sessionRef = useRef({
-    origin: 0,
     lastSample: 0,
     lastFlush: 0,
     lastMidi: null as number | null,
+    paused: false,
   })
 
   const audioRef = useRef<{
@@ -96,14 +104,16 @@ export function useHumCapture() {
   }
 
   function resetTraceClock() {
-    sessionRef.current.origin = 0
     sessionRef.current.lastSample = 0
     sessionRef.current.lastFlush = 0
     sessionRef.current.lastMidi = null
+    sessionRef.current.paused = false
+    soundRef.current = createSoundTrace()
   }
 
   function replaceTrace(points: PitchPoint[], nextMarks: ChartMark[]) {
     traceRef.current = points
+    soundRef.current.points = points
     marksRef.current = nextMarks
     setTrace(points)
     setMarks(nextMarks)
@@ -210,8 +220,7 @@ export function useHumCapture() {
               lastCommitKey = key
               const hummed = noteFromPitch(pitch)
               const order = notesRef.current.length + 1
-              const session = sessionRef.current
-              const t = session.origin === 0 ? 0 : now - session.origin
+              const t = soundRef.current.soundMs
               const mark: ChartMark = {
                 t,
                 midi: hummed.midi,
@@ -234,6 +243,10 @@ export function useHumCapture() {
             stableKey = null
             lastCommitKey = null
             sessionRef.current.lastMidi = null
+            if (!sessionRef.current.paused) {
+              sessionRef.current.paused = true
+              markPause(soundRef.current)
+            }
             if (liveKey != null) {
               liveKey = null
               setLiveNote(null)
@@ -243,29 +256,26 @@ export function useHumCapture() {
         }
 
         const session = sessionRef.current
-        if (session.origin === 0) {
-          session.origin = now
+        const sounding =
+          smoothHz != null && silentSince == null
+            ? midiFromFrequency(smoothHz)
+            : silentSince != null &&
+                now - silentSince < RELEASE_MS &&
+                session.lastMidi != null
+              ? session.lastMidi
+              : null
+        if (sounding != null && now - session.lastSample >= SAMPLE_MS) {
           session.lastSample = now
-          session.lastFlush = now
-        }
-        if (now - session.lastSample >= SAMPLE_MS) {
-          session.lastSample = now
-          const midi =
-            smoothHz != null && silentSince == null
-              ? midiFromFrequency(smoothHz)
-              : silentSince != null &&
-                  now - silentSince < RELEASE_MS &&
-                  session.lastMidi != null
-                ? session.lastMidi
-                : null
-          if (midi != null) {
-            session.lastMidi = midi
-          }
-          traceRef.current.push({ t: now - session.origin, midi })
+          session.lastMidi = sounding
+          session.paused = false
+          recordSound(soundRef.current, sounding, SAMPLE_MS)
+          traceRef.current = soundRef.current.points
           const newest = traceRef.current[traceRef.current.length - 1]!.t
           const cutoff = newest - MAX_TRACE_MS
           if (traceRef.current[0]!.t < cutoff) {
-            traceRef.current = traceRef.current.filter((point) => point.t >= cutoff)
+            const kept = traceRef.current.filter((point) => point.t >= cutoff)
+            traceRef.current = kept
+            soundRef.current.points = kept
             const keptMarks = marksRef.current.filter((mark) => mark.t >= cutoff)
             if (keptMarks.length !== marksRef.current.length) {
               marksRef.current = keptMarks

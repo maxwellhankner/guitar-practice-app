@@ -247,6 +247,28 @@
   stroke-width: 1.25;
 }
 
+.interactive text {
+  pointer-events: none;
+}
+
+.hit {
+  fill: transparent;
+  cursor: pointer;
+}
+
+.hintRing {
+  fill: none;
+  stroke: #8a847c;
+  stroke-width: 1.35;
+  pointer-events: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .hit:hover {
+    fill: color-mix(in srgb, var(--accent-line) 16%, transparent);
+  }
+}
+
 .scaleDot {
   fill: var(--fb-dot);
   stroke: var(--fb-scale-dot-stroke);

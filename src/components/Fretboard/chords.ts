@@ -486,6 +486,70 @@ export function triadPitchClasses(
   return chordPitchClasses(rootPc, quality)
 }
 
+function samePitchClassSet(
+  selected: readonly number[],
+  chord: readonly number[],
+): boolean {
+  const left = [...new Set(selected)].sort((a, b) => a - b)
+  const right = [...new Set(chord)].sort((a, b) => a - b)
+  return (
+    left.length === right.length && left.every((pc, index) => pc === right[index])
+  )
+}
+
+const CHORD_PITCH_CLASS_SETS: readonly number[][] = CHORD_PRESET_IDS.map((id) => {
+  const { rootPc, quality } = parseChordPresetId(id)
+  return [...new Set(chordPitchClasses(rootPc, quality))]
+})
+
+/**
+ * Pitch classes that complete the next-smallest preset chord containing every
+ * selected note. Empty when nothing is selected, or when no larger chord fits.
+ */
+export function hintPitchClassesForSelection(
+  pitchClasses: readonly number[],
+): number[] {
+  const selected = [...new Set(pitchClasses)]
+  if (selected.length === 0) {
+    return []
+  }
+  const selectedSet = new Set(selected)
+  const matches = CHORD_PITCH_CLASS_SETS.filter((chord) =>
+    selected.every((pc) => chord.includes(pc)),
+  )
+  const larger = matches.filter((chord) => chord.length > selected.length)
+  if (larger.length === 0) {
+    return []
+  }
+  const nextSize = Math.min(...larger.map((chord) => chord.length))
+  const hints = new Set<number>()
+  for (const chord of larger) {
+    if (chord.length !== nextSize) {
+      continue
+    }
+    for (const pc of chord) {
+      if (!selectedSet.has(pc)) {
+        hints.add(pc)
+      }
+    }
+  }
+  return [...hints].sort((a, b) => a - b)
+}
+
+/** Preset ids whose pitch classes are exactly the notes given. */
+export function chordIdsForPitchClasses(
+  pitchClasses: readonly number[],
+): ChordPresetId[] {
+  const selected = [...new Set(pitchClasses)]
+  if (selected.length < 2) {
+    return []
+  }
+  return CHORD_PRESET_IDS.filter((id) => {
+    const { rootPc, quality } = parseChordPresetId(id)
+    return samePitchClassSet(selected, chordPitchClasses(rootPc, quality))
+  }).sort((a, b) => a.length - b.length || a.localeCompare(b))
+}
+
 export function resolveChord(
   chord: ChordFingering | ChordPresetId,
 ): ChordFingering {
