@@ -26,8 +26,10 @@ const RANGE_MARKS = [
 ] as const
 
 export function TunerPage() {
-  const { status, errorMessage, reading, start, stop } = useTunerMic()
   const panel = useDiagramPanel()
+  const { status, errorMessage, reading, start, stop } = useTunerMic(
+    panel.tunerMicCutoff,
+  )
   const {
     ready,
     mainRef,

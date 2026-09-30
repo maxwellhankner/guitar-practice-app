@@ -39,6 +39,40 @@
   font-size: var(--options-text-body);
 }
 
+.keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.keys li {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  min-height: 2.25rem;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid var(--card-border);
+  border-radius: 999px;
+  background: var(--card-bg);
+  color: var(--heading);
+  font-weight: 600;
+}
+
+.keys li.keyLead {
+  border-color: color-mix(in srgb, var(--accent-line) 55%, var(--card-border));
+  color: var(--accent-line);
+}
+
+.keyMatch {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
 .clearBtn {
   padding: 0;
   border: none;

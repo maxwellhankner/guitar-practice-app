@@ -57,6 +57,8 @@
       "diagramHidden": false,
       "accentColorId": "gold",
       "fretboardColorId": "rosewood",
+      "tunerMicCutoff": 0.02,
+      "humMicCutoff": 0.02,
       "selectedKey": null,
       "selectedChord": null,
       "builtProgression": null

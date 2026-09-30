@@ -24,6 +24,11 @@ import {
   sanitizeFretboardColorId,
   type FretboardColorId,
 } from '../theme/fretboardColors'
+import {
+  clampMicCutoff,
+  DEFAULT_HUM_MIC_CUTOFF,
+  DEFAULT_TUNER_MIC_CUTOFF,
+} from '../audio/pitchDetect'
 import { defaultKnownChords } from './defaultKnownChords'
 
 export type { FretboardOrientation } from '../components/Fretboard/types'
@@ -66,6 +71,10 @@ export type UserSettings = {
   accentColorId: AccentColorId
   /** Neck color for every fretboard. */
   fretboardColorId: FretboardColorId
+  /** Desktop tuner mic gate. Mobile is a fraction of this. */
+  tunerMicCutoff: number
+  /** Desktop hum mic gate. Mobile is a fraction of this. */
+  humMicCutoff: number
   /** Last selected key, if any. */
   selectedKey: KeyId | null
   /** Last selected chord for the fretboard, if any. */
@@ -107,6 +116,8 @@ const DEFAULT_SETTINGS: UserSettings = {
   diagramHidden: false,
   accentColorId: DEFAULT_ACCENT_COLOR_ID,
   fretboardColorId: DEFAULT_FRETBOARD_COLOR_ID,
+  tunerMicCutoff: DEFAULT_TUNER_MIC_CUTOFF,
+  humMicCutoff: DEFAULT_HUM_MIC_CUTOFF,
   selectedKey: null,
   selectedChord: null,
   builtProgression: null,
@@ -181,6 +192,14 @@ function mergeSettings(
       partial.fretboardColorId != null
         ? sanitizeFretboardColorId(partial.fretboardColorId)
         : current.fretboardColorId,
+    tunerMicCutoff:
+      partial.tunerMicCutoff != null
+        ? sanitizeMicCutoff(partial.tunerMicCutoff, DEFAULT_TUNER_MIC_CUTOFF)
+        : current.tunerMicCutoff,
+    humMicCutoff:
+      partial.humMicCutoff != null
+        ? sanitizeMicCutoff(partial.humMicCutoff, DEFAULT_HUM_MIC_CUTOFF)
+        : current.humMicCutoff,
     selectedKey:
       partial.selectedKey !== undefined
         ? sanitizeSelectedKey(partial.selectedKey)
@@ -206,6 +225,13 @@ function sanitizeDiagramLayout(value: unknown): DiagramLayout {
 
 function sanitizeFretboardOrientation(value: unknown): FretboardOrientation {
   return value === 'portrait' ? 'portrait' : 'landscape'
+}
+
+function sanitizeMicCutoff(value: unknown, fallback: number): number {
+  if (typeof value !== 'number') {
+    return fallback
+  }
+  return clampMicCutoff(value, fallback)
 }
 
 function sanitizeSplitRatio(value: unknown, fallback: number): number {
@@ -299,6 +325,11 @@ function fromRecord(record: UserSettingsRecordInput): UserSettings {
         : DEFAULT_SETTINGS.diagramHidden,
     accentColorId: sanitizeAccentColorId(record.accentColorId),
     fretboardColorId: sanitizeFretboardColorId(record.fretboardColorId),
+    tunerMicCutoff: sanitizeMicCutoff(
+      record.tunerMicCutoff,
+      DEFAULT_TUNER_MIC_CUTOFF,
+    ),
+    humMicCutoff: sanitizeMicCutoff(record.humMicCutoff, DEFAULT_HUM_MIC_CUTOFF),
     selectedKey: sanitizeSelectedKey(record.selectedKey),
     selectedChord: sanitizeSelectedChord(record.selectedChord),
     builtProgression: sanitizeBuiltProgression(record.builtProgression),
@@ -486,6 +517,18 @@ export async function setFretboardColorId(
 ): Promise<UserSettings> {
   return saveUserSettings({
     fretboardColorId: sanitizeFretboardColorId(value),
+  })
+}
+
+export async function setTunerMicCutoff(value: number): Promise<UserSettings> {
+  return saveUserSettings({
+    tunerMicCutoff: sanitizeMicCutoff(value, DEFAULT_TUNER_MIC_CUTOFF),
+  })
+}
+
+export async function setHumMicCutoff(value: number): Promise<UserSettings> {
+  return saveUserSettings({
+    humMicCutoff: sanitizeMicCutoff(value, DEFAULT_HUM_MIC_CUTOFF),
   })
 }
 

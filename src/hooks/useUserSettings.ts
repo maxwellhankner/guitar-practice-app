@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ChordPresetId, ScaleSelection } from '../components/Fretboard'
 import {
   DEFAULT_HORIZONTAL_SPLIT,
@@ -7,6 +7,8 @@ import {
   fetchUserSettings,
   setAccentColorId,
   setFretboardColorId,
+  setTunerMicCutoff,
+  setHumMicCutoff,
   setChordKnown,
   setDiagramLayout,
   setDisplayNotes,
@@ -28,12 +30,34 @@ import {
 } from '../db/userSettingsRepository'
 import { DEFAULT_ACCENT_COLOR_ID } from '../theme/accentColors'
 import { DEFAULT_FRETBOARD_COLOR_ID } from '../theme/fretboardColors'
+import {
+  clampMicCutoff,
+  DEFAULT_HUM_MIC_CUTOFF,
+  DEFAULT_TUNER_MIC_CUTOFF,
+} from '../audio/pitchDetect'
 import { useAccentTheme } from './useAccentTheme'
 import { useFretboardTheme } from './useFretboardTheme'
 import { useDevSettingsSync } from './useDevSettingsSync'
 
 export function useUserSettings() {
   const [settings, setSettings] = useState<UserSettings | null>(null)
+  const micSaveGen = useRef({ tuner: 0, hum: 0 })
+  const micSaveTimer = useRef<{ tuner: number | null; hum: number | null }>({
+    tuner: null,
+    hum: null,
+  })
+
+  useEffect(() => {
+    const timers = micSaveTimer.current
+    return () => {
+      if (timers.tuner != null) {
+        window.clearTimeout(timers.tuner)
+      }
+      if (timers.hum != null) {
+        window.clearTimeout(timers.hum)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -149,6 +173,30 @@ export function useUserSettings() {
     setSettings(next)
   }, [])
 
+  const queueMicCutoff = useCallback(
+    (kind: 'tuner' | 'hum', value: number) => {
+      const fallback =
+        kind === 'tuner' ? DEFAULT_TUNER_MIC_CUTOFF : DEFAULT_HUM_MIC_CUTOFF
+      const cutoff = clampMicCutoff(value, fallback)
+      const field = kind === 'tuner' ? 'tunerMicCutoff' : 'humMicCutoff'
+      const gen = ++micSaveGen.current[kind]
+      setSettings((prev) => (prev != null ? { ...prev, [field]: cutoff } : prev))
+      const pending = micSaveTimer.current[kind]
+      if (pending != null) {
+        window.clearTimeout(pending)
+      }
+      micSaveTimer.current[kind] = window.setTimeout(() => {
+        const save = kind === 'tuner' ? setTunerMicCutoff : setHumMicCutoff
+        void save(cutoff).then((next) => {
+          if (micSaveGen.current[kind] === gen) {
+            setSettings(next)
+          }
+        })
+      }, 180)
+    },
+    [],
+  )
+
   const setPracticeSelectionState = useCallback(
     async (partial: PracticeSelection) => {
       setSettings((prev) => (prev != null ? { ...prev, ...partial } : prev))
@@ -177,6 +225,8 @@ export function useUserSettings() {
     diagramHidden: settings?.diagramHidden ?? false,
     accentColorId: settings?.accentColorId ?? DEFAULT_ACCENT_COLOR_ID,
     fretboardColorId: settings?.fretboardColorId ?? DEFAULT_FRETBOARD_COLOR_ID,
+    tunerMicCutoff: settings?.tunerMicCutoff ?? DEFAULT_TUNER_MIC_CUTOFF,
+    humMicCutoff: settings?.humMicCutoff ?? DEFAULT_HUM_MIC_CUTOFF,
     selectedKey: settings?.selectedKey ?? null,
     selectedChord: settings?.selectedChord ?? null,
     builtProgression: settings?.builtProgression ?? null,
@@ -194,6 +244,8 @@ export function useUserSettings() {
     setDiagramHidden: setDiagramHiddenState,
     setAccentColorId: setAccentColorIdState,
     setFretboardColorId: setFretboardColorIdState,
+    setTunerMicCutoff: (value: number) => queueMicCutoff('tuner', value),
+    setHumMicCutoff: (value: number) => queueMicCutoff('hum', value),
     setPracticeSelection: setPracticeSelectionState,
   }
 }

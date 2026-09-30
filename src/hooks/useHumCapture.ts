@@ -2,11 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import {
   AUDIBLE_MAX_HZ,
   AUDIBLE_MIN_HZ,
+  activeMicGate,
+  DEFAULT_HUM_MIC_CUTOFF,
   detectFrequency,
   midiFromFrequency,
   pitchFromFrequency,
-  TUNER_RMS_GATE_DESKTOP,
-  TUNER_RMS_GATE_MOBILE,
   type DetectedPitch,
 } from '../audio/pitchDetect'
 import { type HummedNote } from '../audio/humPlacement'
@@ -34,13 +34,6 @@ const FLUSH_MS = 80
 /** Drop samples older than this so a long hum stays light. */
 const MAX_TRACE_MS = 30000
 
-function isMobileLikeDevice(): boolean {
-  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
-    return false
-  }
-  return window.matchMedia('(pointer: coarse)').matches
-}
-
 function noteFromPitch(pitch: DetectedPitch): HummedNote {
   return {
     noteName: pitch.noteName,
@@ -49,7 +42,7 @@ function noteFromPitch(pitch: DetectedPitch): HummedNote {
   }
 }
 
-export function useHumCapture() {
+export function useHumCapture(micCutoff: number = DEFAULT_HUM_MIC_CUTOFF) {
   const [status, setStatus] = useState<HumStatus>('idle')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [liveNote, setLiveNote] = useState<HummedNote | null>(null)
@@ -60,6 +53,8 @@ export function useHumCapture() {
 
   const notesRef = useRef(notes)
   notesRef.current = notes
+  const cutoffRef = useRef(micCutoff)
+  cutoffRef.current = micCutoff
   const traceRef = useRef<PitchPoint[]>([])
   const soundRef = useRef<SoundTrace>(createSoundTrace())
   const marksRef = useRef<ChartMark[]>([])
@@ -147,10 +142,6 @@ export function useHumCapture() {
         await context.resume()
       }
 
-      const minRms = isMobileLikeDevice()
-        ? TUNER_RMS_GATE_MOBILE
-        : Math.min(TUNER_RMS_GATE_DESKTOP, 0.012)
-
       const source = context.createMediaStreamSource(stream)
       const analyser = context.createAnalyser()
       analyser.fftSize = 4096
@@ -184,7 +175,7 @@ export function useHumCapture() {
           current.context.sampleRate,
           AUDIBLE_MIN_HZ,
           AUDIBLE_MAX_HZ,
-          minRms,
+          activeMicGate(cutoffRef.current, DEFAULT_HUM_MIC_CUTOFF),
         )
 
         if (frequency > 0) {

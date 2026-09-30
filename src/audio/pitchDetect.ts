@@ -32,10 +32,52 @@ const A4_HZ = 440
 export const AUDIBLE_MIN_HZ = 70
 export const AUDIBLE_MAX_HZ = 1500
 
-/** Volume gate: below this RMS, treat input as silence. */
-export const TUNER_RMS_GATE_MOBILE = 0.008
-/** Laptop mics tend to pick up more room noise — require a stronger signal. */
-export const TUNER_RMS_GATE_DESKTOP = 0.02
+/**
+ * Main mic cutoffs. These are the desktop gates.
+ * Mobile gates are a fraction of them, because phone mics sit quieter
+ * and laptop mics pick up more room noise.
+ */
+export const DEFAULT_TUNER_MIC_CUTOFF = 0.02
+export const DEFAULT_HUM_MIC_CUTOFF = 0.02
+
+/**
+ * Shared phone fraction for Hum and Tuner.
+ * Mobile gate = desktop cutoff × this. At the 0.02 default, mobile is 0.008.
+ */
+export const MIC_MOBILE_SCALE = 0.008 / 0.02
+
+export const MIC_CUTOFF_MIN = 0.002
+export const MIC_CUTOFF_MAX = 0.06
+
+export function clampMicCutoff(value: number, fallback: number): number {
+  if (!Number.isFinite(value)) {
+    return fallback
+  }
+  return Math.min(MIC_CUTOFF_MAX, Math.max(MIC_CUTOFF_MIN, value))
+}
+
+/** Touch-first devices use the quieter mobile gate. */
+export function isMobileLikeDevice(): boolean {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+    return false
+  }
+  return window.matchMedia('(pointer: coarse)').matches
+}
+
+/** Desktop is the saved cutoff. Mobile is that value times `MIC_MOBILE_SCALE`. */
+export function micGates(
+  main: number,
+  fallback: number,
+): { desktop: number; mobile: number } {
+  const desktop = clampMicCutoff(main, fallback)
+  return { desktop, mobile: desktop * MIC_MOBILE_SCALE }
+}
+
+/** Gate for the device that is actually listening. */
+export function activeMicGate(main: number, fallback: number): number {
+  const gates = micGates(main, fallback)
+  return isMobileLikeDevice() ? gates.mobile : gates.desktop
+}
 
 const YIN_THRESHOLD = 0.15
 
@@ -60,7 +102,7 @@ export function detectFrequency(
   sampleRate: number,
   minHz: number = AUDIBLE_MIN_HZ,
   maxHz: number = AUDIBLE_MAX_HZ,
-  minRms: number = TUNER_RMS_GATE_MOBILE,
+  minRms: number = DEFAULT_TUNER_MIC_CUTOFF * MIC_MOBILE_SCALE,
 ): number {
   const size = buffer.length
   if (size < 64 || sampleRate <= 0) {

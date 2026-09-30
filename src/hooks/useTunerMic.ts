@@ -2,11 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import {
   AUDIBLE_MAX_HZ,
   AUDIBLE_MIN_HZ,
+  activeMicGate,
   centsOffTarget,
+  DEFAULT_TUNER_MIC_CUTOFF,
   detectFrequency,
   pitchFromFrequency,
-  TUNER_RMS_GATE_DESKTOP,
-  TUNER_RMS_GATE_MOBILE,
   type DetectedPitch,
 } from '../audio/pitchDetect'
 
@@ -31,14 +31,6 @@ export type TunerReading = {
   cents: number
 }
 
-/** Touch-first devices (phones/tablets); fine-pointer desktops use the stricter gate. */
-function isMobileLikeDevice(): boolean {
-  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
-    return false
-  }
-  return window.matchMedia('(pointer: coarse)').matches
-}
-
 function chromaticTarget(pitch: DetectedPitch): TunerTarget {
   return {
     id: `${pitch.noteName}${pitch.octave}`,
@@ -49,10 +41,12 @@ function chromaticTarget(pitch: DetectedPitch): TunerTarget {
   }
 }
 
-export function useTunerMic() {
+export function useTunerMic(micCutoff: number = DEFAULT_TUNER_MIC_CUTOFF) {
   const [status, setStatus] = useState<TunerStatus>('idle')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [reading, setReading] = useState<TunerReading | null>(null)
+  const cutoffRef = useRef(micCutoff)
+  cutoffRef.current = micCutoff
 
   const audioRef = useRef<{
     stream: MediaStream
@@ -107,10 +101,6 @@ export function useTunerMic() {
       if (context.state === 'suspended') {
         await context.resume()
       }
-
-      const minRms = isMobileLikeDevice()
-        ? TUNER_RMS_GATE_MOBILE
-        : TUNER_RMS_GATE_DESKTOP
 
       const source = context.createMediaStreamSource(stream)
       const analyser = context.createAnalyser()
@@ -202,7 +192,7 @@ export function useTunerMic() {
           current.context.sampleRate,
           AUDIBLE_MIN_HZ,
           AUDIBLE_MAX_HZ,
-          minRms,
+          activeMicGate(cutoffRef.current, DEFAULT_TUNER_MIC_CUTOFF),
         )
 
         if (frequency > 0) {

@@ -194,6 +194,67 @@
   border-radius: 999px;
 }
 
+.settings-panel__cutoffs {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.settings-panel__cutoff {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.settings-panel__cutoff-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  width: 100%;
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--options-text-label);
+}
+
+.settings-panel__cutoff-title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.settings-panel__cutoff-row label,
+.settings-panel__cutoff-row span {
+  color: inherit;
+  font: inherit;
+}
+
+.settings-panel__cutoff-reset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+  cursor: pointer;
+}
+
+.settings-panel__cutoff-reset:disabled {
+  opacity: 0.4;
+  cursor: default;
+  text-decoration: none;
+}
+
+.settings-panel__cutoff input[type='range'] {
+  width: 100%;
+  margin: 0;
+  accent-color: var(--accent-line);
+  cursor: pointer;
+}
+
 @media (hover: hover) and (pointer: fine) {
   .settings-panel__row-btn:hover,
   .settings-panel__chip:hover,
