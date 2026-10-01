@@ -162,7 +162,7 @@
       "fretCount": 7,
       "scaleSelection": "pentatonic",
       "diagramLayout": "horizontal",
-      "horizontalSplitRatio": 0.5686210031418727,
+      "horizontalSplitRatio": 0.6480213179447926,
       "verticalSplitRatio": 0.598089599609375,
       "fretboardOrientation": "landscape",
       "panelsSwapped": false,
@@ -211,7 +211,7 @@
         "F",
         "Fm"
       ],
-      "selectedKey": "Em",
+      "selectedKey": "D",
       "selectedChord": null,
       "builtProgression": null,
       "selectedSongId": null,
