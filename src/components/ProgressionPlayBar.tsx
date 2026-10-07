@@ -1,4 +1,4 @@
-import { useEffect, useId, useState, type ReactNode } from 'react'
+import { useId, useState, type ReactNode } from 'react'
 import {
   Metronome,
   Pause,
@@ -96,19 +96,15 @@ export function ProgressionPlayBar({
   onCycleSound,
 }: ProgressionPlayBarProps) {
   const bpmId = useId()
-  const [draft, setDraft] = useState(String(bpm))
-
-  useEffect(() => {
-    setDraft(String(bpm))
-  }, [bpm])
+  /** null means the field is showing the committed BPM. */
+  const [draft, setDraft] = useState<string | null>(null)
 
   const commitBpm = (raw: string) => {
     const parsed = Number(raw)
-    if (!Number.isFinite(parsed)) {
-      setDraft(String(bpm))
-      return
+    if (Number.isFinite(parsed)) {
+      onBpm(parsed)
     }
-    onBpm(parsed)
+    setDraft(null)
   }
 
   const holdLabel =
@@ -169,9 +165,10 @@ export function ProgressionPlayBar({
             min={PLAYBACK_BPM_MIN}
             max={PLAYBACK_BPM_MAX}
             step={1}
-            value={draft}
+            value={draft ?? String(bpm)}
             aria-label="BPM"
             title={holdLabel}
+            onFocus={() => setDraft(String(bpm))}
             onChange={(event) => {
               const raw = event.target.value
               setDraft(raw)
@@ -185,7 +182,7 @@ export function ProgressionPlayBar({
                 onBpm(parsed)
               }
             }}
-            onBlur={() => commitBpm(draft)}
+            onBlur={() => commitBpm(draft ?? String(bpm))}
             onKeyDown={(event) => {
               if (event.key === 'Enter') {
                 event.currentTarget.blur()

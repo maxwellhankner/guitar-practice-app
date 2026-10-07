@@ -221,11 +221,17 @@ export function HomePage() {
   } = panel
 
   const builtProgressionRef = useRef(builtProgression)
-  builtProgressionRef.current = builtProgression
   const playbackMutedRef = useRef(false)
   const [chordSound, setChordSound] = useState<ChordSoundId>(1)
   const chordSoundRef = useRef(chordSound)
-  chordSoundRef.current = chordSound
+
+  useEffect(() => {
+    builtProgressionRef.current = builtProgression
+  }, [builtProgression])
+
+  useEffect(() => {
+    chordSoundRef.current = chordSound
+  }, [chordSound])
   const showPlaybackStep = (index: number) => {
     const chordId = builtProgressionRef.current?.[index]
     if (chordId == null) {
@@ -244,9 +250,8 @@ export function HomePage() {
     showPlaybackStep,
     playMetronomeClick,
   )
-  playbackMutedRef.current = player.muted
-
   useEffect(() => {
+    playbackMutedRef.current = player.muted
     if (player.muted) {
       stopChordStrum()
     }

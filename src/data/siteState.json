@@ -3,12 +3,12 @@
     "settingsVersion": 3,
     "filterPlayableOnly": false,
     "displayNotes": false,
-    "fretCount": 5,
+    "fretCount": 7,
     "scaleSelection": null,
-    "diagramLayout": "vertical",
-    "horizontalSplitRatio": 0.5,
+    "diagramLayout": "horizontal",
+    "horizontalSplitRatio": 0.5717444883836902,
     "verticalSplitRatio": 0.598089599609375,
-    "fretboardOrientation": "portrait",
+    "fretboardOrientation": "landscape",
     "panelsSwapped": false,
     "diagramHidden": false,
     "accentColorId": "gold",
@@ -55,13 +55,12 @@
       "F",
       "Fm"
     ],
-    "selectedKey": "G",
+    "selectedKey": null,
     "selectedChord": null,
-    "builtProgression": [
-      "G",
-      "D",
-      "Em",
-      "C"
-    ]
+    "builtProgression": null,
+    "selectedSongId": null,
+    "fretboardColorId": "walnut",
+    "tunerMicCutoff": 0.006,
+    "humMicCutoff": 0.008
   }
 }

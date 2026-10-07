@@ -29,13 +29,16 @@ export function useProgressionPlayer(
   onBeat: (accent: boolean) => void,
 ) {
   const onStepRef = useRef(onStep)
-  onStepRef.current = onStep
   const onBeatRef = useRef(onBeat)
-  onBeatRef.current = onBeat
   const lengthRef = useRef(length)
-  lengthRef.current = length
   const barsRef = useRef(barsPerChord)
-  barsRef.current = barsPerChord
+
+  useEffect(() => {
+    onStepRef.current = onStep
+    onBeatRef.current = onBeat
+    lengthRef.current = length
+    barsRef.current = barsPerChord
+  }, [onStep, onBeat, length, barsPerChord])
 
   const [playing, setPlaying] = useState(false)
   const [step, setStep] = useState(0)
@@ -72,6 +75,8 @@ export function useProgressionPlayer(
     onBeatRef.current(accent)
   }, [])
 
+  const scheduleNextBeatRef = useRef<() => void>(() => {})
+
   const scheduleNextBeat = useCallback(() => {
     clearTimer()
     if (!playingRef.current || lengthRef.current < 1) {
@@ -102,9 +107,13 @@ export function useProgressionPlayer(
         beatRef.current = nextBeat
         emitClick(nextBeat % BEATS_PER_BAR === 0)
       }
-      scheduleNextBeat()
+      scheduleNextBeatRef.current()
     }, ms)
   }, [beatsInChord, clearTimer, emitClick])
+
+  useEffect(() => {
+    scheduleNextBeatRef.current = scheduleNextBeat
+  }, [scheduleNextBeat])
 
   useEffect(() => clearTimer, [clearTimer])
 
