@@ -199,7 +199,7 @@ export function SettingsPage() {
                 />
                 <MicCutoffSlider
                   id="hum-mic-cutoff"
-                  label="Hum"
+                  label="Jam"
                   value={humMicCutoff}
                   defaultValue={DEFAULT_HUM_MIC_CUTOFF}
                   onChange={setHumMicCutoff}

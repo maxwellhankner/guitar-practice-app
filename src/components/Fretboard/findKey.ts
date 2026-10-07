@@ -1,11 +1,17 @@
 import {
+  chordIdsForPitchClasses,
   parseChordPresetId,
   type ChordPresetId,
   type ChordQuality,
   type RootName,
 } from './chords'
 import { degreeForRootInKey, diatonicRootNamesInKey } from './progressionBuilder'
-import { KEY_MAJOR_IDS, KEY_MINOR_IDS, type KeyId } from './keys'
+import {
+  KEY_MAJOR_IDS,
+  KEY_MINOR_IDS,
+  scalePitchClassesForKey,
+  type KeyId,
+} from './keys'
 
 const ALL_KEY_IDS = [...KEY_MAJOR_IDS, ...KEY_MINOR_IDS] as const
 
@@ -406,6 +412,64 @@ function scoreKeyForChords(
     lastTonic,
     tonalityRatio,
   }
+}
+
+/** Rank keys by how many selected notes sit in the major or natural-minor scale. */
+export function rankKeysForNotes(
+  pitchClasses: readonly number[],
+): KeyMatchRank[] {
+  const notes = [...new Set(pitchClasses)]
+  if (notes.length === 0) {
+    return []
+  }
+  return ALL_KEY_IDS.map((keyId) => {
+    const scale = new Set(scalePitchClassesForKey(keyId, 'full'))
+    const inScale = notes.filter((pc) => scale.has(pc)).length
+    const fit = inScale / notes.length
+    const tonic = rootPc(tonicRootName(keyId))
+    const score =
+      fit < 1 ? Math.round(fit * 60) : notes.includes(tonic) ? 90 : 72
+    return { keyId, score }
+  }).sort((a, b) => b.score - a.score)
+}
+
+/**
+ * Chord buttons drive the usual progression score. Fretboard notes add any
+ * chord they complete, and pull down keys whose scale does not contain them.
+ */
+export function rankKeysForChordAndNoteSelection(
+  chordIds: readonly ChordPresetId[],
+  pitchClasses: readonly number[],
+): KeyMatchRank[] {
+  const notes = [...new Set(pitchClasses)]
+  const merged: ChordPresetId[] = []
+  for (const id of [
+    ...chordIds,
+    ...(notes.length >= 2 ? chordIdsForPitchClasses(notes) : []),
+  ]) {
+    if (!merged.includes(id)) {
+      merged.push(id)
+    }
+  }
+  if (merged.length === 0) {
+    return rankKeysForNotes(notes)
+  }
+  const ranked = rankKeysForChords(merged)
+  if (notes.length === 0) {
+    return ranked
+  }
+  return ranked
+    .map((rank, index) => {
+      const scale = new Set(scalePitchClassesForKey(rank.keyId, 'full'))
+      const inScale = notes.filter((pc) => scale.has(pc)).length
+      return {
+        index,
+        keyId: rank.keyId,
+        score: Math.round(rank.score * (inScale / notes.length)),
+      }
+    })
+    .sort((a, b) => b.score - a.score || a.index - b.index)
+    .map(({ keyId, score }) => ({ keyId, score }))
 }
 
 /** Rank all keys for a chord selection (best match first). */

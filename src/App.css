@@ -1276,13 +1276,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1rem 1.5rem 1.25rem;
+  padding: 0;
   background: var(--card-bg);
-  overflow-x: auto;
-  overflow-y: hidden;
-  overscroll-behavior: none;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  overflow: hidden;
 }
 
 .app-page__diagram::-webkit-scrollbar {
@@ -1299,11 +1295,13 @@
 }
 
 .app-page__diagram-stage {
+  width: 100%;
   height: 100%;
+  min-width: 0;
+  min-height: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
 }
 
 .app-page__diagram--progression {
@@ -1811,6 +1809,87 @@
 
 .diagram-strum-pattern__icon--up {
   color: color-mix(in srgb, var(--heading) 70%, var(--muted));
+}
+
+.diagram-strum-pattern__bar--active,
+.diagram-strum-pattern__bar--active .diagram-strum-pattern__icon--up {
+  color: var(--accent-line);
+}
+
+.diagram-play {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-top: 0.15rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--card-border);
+}
+
+.diagram-play__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.diagram-play__group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.diagram-play__btn {
+  width: 2.35rem;
+  padding-inline: 0;
+  flex: 0 0 auto;
+}
+
+.diagram-play__btn--on {
+  border-color: var(--accent-line);
+  color: var(--accent-line);
+  box-shadow: inset 0 0 0 1px var(--accent-line);
+}
+
+.diagram-play__position {
+  min-width: 2.6rem;
+  color: var(--muted);
+  font-size: var(--options-text-btn-sm);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.diagram-play__bpm {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--options-text-btn-sm);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.diagram-play__bpm-input {
+  width: 3.4rem;
+  margin: 0;
+  padding: 0.3rem 0.35rem;
+  border: 1px solid var(--card-border);
+  border-radius: 0.375rem;
+  background: var(--card-bg);
+  color: var(--heading);
+  font: inherit;
+  font-size: var(--options-text-btn-sm);
+  font-weight: 600;
+  text-align: center;
+  color-scheme: dark;
+  box-sizing: border-box;
+}
+
+.diagram-play__bpm-input:focus-visible {
+  outline: none;
+  border-color: var(--accent-line);
+  box-shadow: inset 0 0 0 1px var(--accent-line);
 }
 
 .diagram-song-seeds {
@@ -2813,11 +2892,9 @@
   }
 
   .app-page__diagram {
-    padding: 0.75rem 0.75rem 1rem;
-    align-items: stretch;
-    overflow-x: hidden;
-    overflow-y: auto;
-    overscroll-behavior: none;
+    padding: 0;
+    align-items: center;
+    overflow: hidden;
   }
 
   .app-page__diagram-wrap,
@@ -2877,11 +2954,11 @@
   }
 
   .app-page__diagram {
-    padding-bottom: 1rem;
+    padding: 0;
   }
 
   .app-page--panels-swapped:not(.app-page--diagram-hidden) .app-page__diagram {
-    padding-bottom: 1rem;
+    padding: 0;
   }
 
   .app-page--panels-swapped:not(.app-page--diagram-hidden) .app-page__options {

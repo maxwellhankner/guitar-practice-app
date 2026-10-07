@@ -5,6 +5,8 @@ import { noteAtFret } from './tuning'
 import styles from './Fretboard.module.css'
 
 const STRINGS = 6
+const BASE_CELL_W = 40
+const BASE_INNER_H = 92
 
 type BarreSegment = {
   fret: number
@@ -382,6 +384,7 @@ function layoutGeometry(
   scalePattern: FretboardScalePattern | null,
   caption?: string,
   markers?: readonly FretboardMarker[],
+  sizing?: { cellW: number; innerH: number },
 ) {
   /** Open-string note names + open/scale rings (merged column). */
   const markerW = 24
@@ -389,10 +392,10 @@ function layoutGeometry(
   const stringStartX = markerW
   const leadIn = 12
   const gridLeft = markerW + leadIn
-  const cellW = 40
+  const cellW = sizing?.cellW ?? BASE_CELL_W
   const rightPad = 12
   const boardTopPad = 18
-  const innerH = 92
+  const innerH = sizing?.innerH ?? BASE_INNER_H
   /** Room below the string area for fret number labels (gap above viewBox bottom). */
   const bottomPad = 30
   const captionPad =

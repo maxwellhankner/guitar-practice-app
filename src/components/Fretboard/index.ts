@@ -131,6 +131,7 @@ export {
 } from './playability'
 export {
   rankKeysForChords,
+  rankKeysForChordAndNoteSelection,
   findKeyMatchBrightness,
   type KeyMatchRank,
 } from './findKey'

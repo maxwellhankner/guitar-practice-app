@@ -64,10 +64,10 @@
 }
 
 :global(.app-page--split) :global(.app-page__diagram-stage--single) .wrapFit .svg {
+  width: 100%;
+  height: auto;
   max-width: 100%;
   max-height: 100%;
-  width: auto;
-  height: auto;
 }
 
 :global(.app-page--split) :global(.app-page__diagram-stage--single) .wrapPortrait.wrapFit {
@@ -91,7 +91,7 @@
 
 :global(.app-page:not(.app-page--split)) :global(.app-page__diagram-stage--single) .wrapFit .svg {
   width: 100%;
-  height: 100%;
+  height: auto;
   max-width: 100%;
   max-height: 100%;
 }

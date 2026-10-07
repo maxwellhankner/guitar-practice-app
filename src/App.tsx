@@ -21,11 +21,14 @@ export default function App() {
       <div className="app-shell">
         <div className="app-shell__page">
           <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/tuner" element={<TunerPage />} />
-            <Route path="/vocalizer" element={<VocalizerPage />} />
+            <Route path="/" element={<Navigate to="/tune" replace />} />
+            <Route path="/learn" element={<HomePage />} />
+            <Route path="/tune" element={<TunerPage />} />
+            <Route path="/tuner" element={<Navigate to="/tune" replace />} />
+            <Route path="/jam" element={<VocalizerPage />} />
+            <Route path="/vocalizer" element={<Navigate to="/jam" replace />} />
             <Route path="/settings" element={<SettingsPage />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<Navigate to="/tune" replace />} />
           </Routes>
         </div>
         <MobileChinNav />

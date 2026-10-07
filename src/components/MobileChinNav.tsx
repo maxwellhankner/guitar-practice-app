@@ -1,14 +1,15 @@
 import { NavLink } from 'react-router-dom'
-import { BookOpen, Guitar, Mic, Settings } from 'lucide-react'
+import { BookOpen, Mic, Settings } from 'lucide-react'
+import { StratHeadstockIcon } from './StratHeadstockIcon'
 
 const ITEMS = [
-  { to: '/', label: 'Learn', icon: BookOpen, end: true },
-  { to: '/vocalizer', label: 'Hum', icon: Mic, end: false },
-  { to: '/tuner', label: 'Tune', icon: Guitar, end: false },
+  { to: '/tune', label: 'Tune', icon: StratHeadstockIcon, end: false },
+  { to: '/learn', label: 'Learn', icon: BookOpen, end: false },
+  { to: '/jam', label: 'Jam', icon: Mic, end: false },
   { to: '/settings', label: 'Settings', icon: Settings, end: false },
 ] as const
 
-/** Main menu: Learn, Hum, Tune, Settings. */
+/** Main menu: Tune, Learn, Jam, Settings. */
 export function MobileChinNav() {
   return (
     <nav className="mobile-chin" aria-label="Main">

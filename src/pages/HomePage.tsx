@@ -11,9 +11,18 @@ import {
   Share2,
   Trash2,
 } from 'lucide-react'
+import {
+  nextChordSound,
+  playChordStrum,
+  stopChordStrum,
+  type ChordSoundId,
+} from '../audio/chordStrum'
+import { playMetronomeClick } from '../audio/metronome'
 import { ChordPlayabilityCell } from '../components/ChordPlayabilityCell'
 import { DiagramDivider } from '../components/DiagramDivider'
+import { ProgressionPlayBar } from '../components/ProgressionPlayBar'
 import { Tooltip, type TooltipPlacement } from '../components/Tooltip'
+import { useProgressionPlayer } from '../hooks/useProgressionPlayer'
 import {
   CHORD_PRESETS,
   ROOT_NAMES,
@@ -32,7 +41,7 @@ import {
   isChordKnown,
   isKeyPlayable,
   isProgressionPlayableInKey,
-  rankKeysForChords,
+  rankKeysForChordAndNoteSelection,
   findKeyMatchBrightness,
   romanLabelForChordInKey,
   romanLabelForProgressionStep,
@@ -149,6 +158,9 @@ export function HomePage() {
   const [findKeyMode, setFindKeyMode] = useState(false)
   const [findKeyChords, setFindKeyChords] = useState<ChordPresetId[]>([])
   const [findChordMode, setFindChordMode] = useState(false)
+  const [findChordPickedId, setFindChordPickedId] = useState<ChordPresetId | null>(
+    null,
+  )
   const [findChordPositions, setFindChordPositions] = useState<
     { stringIndex: number; fret: number }[]
   >([])
@@ -207,6 +219,48 @@ export function HomePage() {
     selectedSongId: savedSelectedSongId,
     setPracticeSelection,
   } = panel
+
+  const builtProgressionRef = useRef(builtProgression)
+  builtProgressionRef.current = builtProgression
+  const playbackMutedRef = useRef(false)
+  const [chordSound, setChordSound] = useState<ChordSoundId>(1)
+  const chordSoundRef = useRef(chordSound)
+  chordSoundRef.current = chordSound
+  const showPlaybackStep = (index: number) => {
+    const chordId = builtProgressionRef.current?.[index]
+    if (chordId == null) {
+      return
+    }
+    setSelectedProgressionStep(index)
+    if (!playbackMutedRef.current) {
+      playChordStrum(chordId, chordSoundRef.current)
+    }
+  }
+  const barsPerChord =
+    selectedSongId != null ? SONGS[selectedSongId].strumBarsPerChord : 1
+  const player = useProgressionPlayer(
+    builtProgression?.length ?? 0,
+    barsPerChord,
+    showPlaybackStep,
+    playMetronomeClick,
+  )
+  playbackMutedRef.current = player.muted
+
+  useEffect(() => {
+    if (player.muted) {
+      stopChordStrum()
+    }
+  }, [player.muted])
+
+  const wasPlayingRef = useRef(false)
+  useEffect(() => {
+    if (wasPlayingRef.current && !player.playing) {
+      stopChordStrum()
+    }
+    wasPlayingRef.current = player.playing
+  }, [player.playing])
+
+  useEffect(() => () => stopChordStrum(), [])
 
   useEffect(() => {
     return () => {
@@ -344,6 +398,7 @@ export function HomePage() {
   }, [selection, activeKey, builtProgression])
 
   const clearSelectedKey = () => {
+    player.pause()
     setBuiltProgression(null)
     setSelectedSongId(null)
     setSelectedProgressionStep(null)
@@ -434,11 +489,18 @@ export function HomePage() {
       : undefined
 
   const findKeyRanks = useMemo(() => {
-    if (!findKeyMode || findKeyChords.length === 0) {
+    if (!findKeyMode) {
       return null
     }
-    return rankKeysForChords(findKeyChords)
-  }, [findKeyMode, findKeyChords])
+    if (findKeyChords.length === 0 && findChordPositions.length === 0) {
+      return null
+    }
+    const pitchClasses = findChordPositions.map(
+      (position) =>
+        (OPEN_STRING_PITCH_CLASS[position.stringIndex]! + position.fret) % 12,
+    )
+    return rankKeysForChordAndNoteSelection(findKeyChords, pitchClasses)
+  }, [findKeyMode, findKeyChords, findChordPositions])
 
   const findKeyScoreById = useMemo(() => {
     if (findKeyRanks == null) {
@@ -540,15 +602,17 @@ export function HomePage() {
     if (activeKey == null) {
       return
     }
+    player.pause()
     setSelectedSongId(null)
     setBuiltProgression(seedProgressionFromPreset(activeKey, progressionId))
     setSelectedProgressionStep(null)
   }
 
   const seedFromSong = (songId: SongId) => {
-    if (findKeyMode) {
+    if (findKeyMode || findChordMode) {
       return
     }
+    player.pause()
     const song = SONGS[songId]
     const keyId = activeKey ?? song.defaultKey
     if (activeKey == null) {
@@ -572,6 +636,7 @@ export function HomePage() {
         setFindKeyMode(false)
         setFindKeyChords([])
         setFindChordMode(false)
+        setFindChordPickedId(null)
         setFindChordPositions([])
       }
       return !on
@@ -579,14 +644,22 @@ export function HomePage() {
   }
 
   const toggleFindKeyMode = () => {
+    const turningOn = !findKeyMode
+    if (turningOn && selectedKey != null) {
+      clearSelectedKey()
+    }
     setFindKeyMode((on) => {
       if (!on) {
         setEditKnownChordsMode(false)
         setFindChordMode(false)
+        setFindChordPickedId(null)
         setFindChordPositions([])
+        void setDiagramHidden(false)
       }
       if (on) {
         setFindKeyChords([])
+        setFindChordPickedId(null)
+        setFindChordPositions([])
       } else if (selection?.kind === 'chord') {
         setFindKeyChords([selection.id])
         setSelection(null)
@@ -604,26 +677,57 @@ export function HomePage() {
         setFindKeyChords([])
         setEditKnownChordsMode(false)
         void setDiagramHidden(false)
+        player.pause()
+        setSelection(null)
+        setSelectedProgressionStep(null)
+        setFindChordPickedId(null)
+        setFindChordPositions([])
       } else {
+        setFindChordPickedId(null)
         setFindChordPositions([])
       }
       return !on
     })
   }
 
-  const toggleFindChordPosition = (position: {
+  const fingeringPositions = (id: ChordPresetId) => {
+    const positions: { stringIndex: number; fret: number }[] = []
+    resolveChord(id).strings.forEach((state, stringIndex) => {
+      if (typeof state === 'number') {
+        positions.push({ stringIndex, fret: state })
+      }
+    })
+    return positions
+  }
+
+  const toggleFindBoardPosition = (position: {
     stringIndex: number
     fret: number
   }) => {
+    const seedId =
+      findChordPositions.length === 0
+        ? findChordMode
+          ? findChordPickedId
+          : findKeyMode
+            ? (findKeyChords[findKeyChords.length - 1] ?? null)
+            : null
+        : null
+    if (seedId != null) {
+      setFindChordPickedId(null)
+    }
     setFindChordPositions((current) => {
-      const index = current.findIndex(
+      const base =
+        current.length === 0 && seedId != null
+          ? fingeringPositions(seedId)
+          : current
+      const index = base.findIndex(
         (item) =>
           item.stringIndex === position.stringIndex && item.fret === position.fret,
       )
       if (index < 0) {
-        return [...current, position]
+        return [...base, position]
       }
-      return current.filter((_, itemIndex) => itemIndex !== index)
+      return base.filter((_, itemIndex) => itemIndex !== index)
     })
   }
 
@@ -690,6 +794,97 @@ export function HomePage() {
     return names.length > 0 ? names.join(' · ') : 'Fretboard'
   }, [findChordMatches, findChordPitchClasses])
 
+  const exploreChordId = useMemo((): ChordPresetId | null => {
+    if (findChordMode) {
+      if (findChordPickedId != null) {
+        return findChordPickedId
+      }
+      return findChordMatches.length === 1 ? findChordMatches[0]! : null
+    }
+    if (findKeyMode) {
+      const picked = findKeyChords[findKeyChords.length - 1]
+      if (picked != null) {
+        return picked
+      }
+      return findChordMatches.length === 1 ? findChordMatches[0]! : null
+    }
+    return null
+  }, [
+    findChordMode,
+    findChordPickedId,
+    findChordMatches,
+    findKeyMode,
+    findKeyChords,
+  ])
+
+  const exploreLeadKey = useMemo(() => {
+    if (!findKeyMode || findKeyRanks == null) {
+      return null
+    }
+    return (
+      findKeyRanks.find((rank) => findKeyMatchBrightness(rank.score) != null) ??
+      null
+    )
+  }, [findKeyMode, findKeyRanks])
+
+  const exploreScale = useMemo(() => {
+    if (exploreLeadKey == null) {
+      return null
+    }
+    return scalePatternForKey(
+      exploreLeadKey.keyId,
+      scaleSelection ?? 'full',
+      fretCount,
+    )
+  }, [exploreLeadKey, scaleSelection, fretCount])
+
+  const exploreMarkers = useMemo(() => {
+    const covered = new Set<string>()
+    if (exploreChordId != null) {
+      resolveChord(exploreChordId).strings.forEach((state, stringIndex) => {
+        if (typeof state === 'number') {
+          covered.add(`${stringIndex}:${state}`)
+        }
+      })
+    }
+    return findChordPositions
+      .filter((position) => !covered.has(`${position.stringIndex}:${position.fret}`))
+      .map((position) => ({
+        stringIndex: position.stringIndex,
+        fret: position.fret,
+        label: noteAtFret(position.stringIndex, position.fret),
+      }))
+  }, [exploreChordId, findChordPositions])
+
+  const exploreTitle = useMemo(() => {
+    if (findChordMode) {
+      if (findChordPickedId != null) {
+        return CHORD_PRESETS[findChordPickedId].name ?? findChordPickedId
+      }
+      return findChordTitle
+    }
+    const chordName =
+      exploreChordId != null
+        ? (CHORD_PRESETS[exploreChordId].name ?? exploreChordId)
+        : null
+    const keyName = exploreScale?.name ?? null
+    if (chordName != null && keyName != null && chordName !== keyName) {
+      return `${chordName} · ${keyName}`
+    }
+    return keyName ?? chordName ?? findChordTitle
+  }, [
+    findChordMode,
+    findChordPickedId,
+    findChordTitle,
+    exploreChordId,
+    exploreScale,
+  ])
+
+  const pickFindChord = (id: ChordPresetId) => {
+    setFindChordPositions([])
+    setFindChordPickedId((current) => (current === id ? null : id))
+  }
+
   const toggleFindKeyChord = (chordId: ChordPresetId) => {
     setFindKeyChords((cur) => {
       const index = cur.indexOf(chordId)
@@ -705,10 +900,19 @@ export function HomePage() {
       clearSelectedKey()
       return
     }
+    player.pause()
+    const noteMatches = chordIdsForPitchClasses(
+      findChordPositions.map(
+        (position) =>
+          (OPEN_STRING_PITCH_CLASS[position.stringIndex]! + position.fret) % 12,
+      ),
+    )
     const progressionFromFindKey =
       findKeyChords.length > 0
         ? findKeyChords.slice(0, MAX_PROGRESSION_STEPS)
-        : null
+        : noteMatches.length === 1
+          ? noteMatches
+          : null
     const transposedProgression =
       progressionFromFindKey ??
       (selectedKey != null &&
@@ -718,6 +922,9 @@ export function HomePage() {
         : null)
     setFindKeyMode(false)
     setFindKeyChords([])
+    setFindChordMode(false)
+    setFindChordPickedId(null)
+    setFindChordPositions([])
     setSelection(null)
     setSelectedProgressionStep(null)
     setSelectedKey(keyId)
@@ -730,6 +937,7 @@ export function HomePage() {
   }
 
   const clearBuiltProgression = () => {
+    player.pause()
     setBuiltProgression(null)
     setSelectedSongId(null)
     setSelectedProgressionStep(null)
@@ -738,6 +946,7 @@ export function HomePage() {
   }
 
   const handleKeyRowChordClick = (chordId: ChordPresetId) => {
+    player.pause()
     detachSongAssociation()
 
     const current = builtProgression
@@ -774,6 +983,7 @@ export function HomePage() {
     stepIndex: number,
     chordId: ChordPresetId,
   ) => {
+    player.pause()
     setBuiltProgression((cur) => {
       if (cur == null) {
         return cur
@@ -908,6 +1118,7 @@ export function HomePage() {
     clearProgressionReorder()
 
     if (active && overIndex !== fromIndex) {
+      player.pause()
       setBuiltProgression((cur) =>
         cur == null ? cur : swapProgressionSteps(cur, fromIndex, overIndex),
       )
@@ -930,6 +1141,10 @@ export function HomePage() {
     stepIndex: number,
     chordId: ChordPresetId,
   ) => {
+    if (player.playing) {
+      player.play(stepIndex)
+      return
+    }
     if (selectedProgressionStep === stepIndex) {
       setSelectedProgressionStep(null)
       setSelection(null)
@@ -940,6 +1155,7 @@ export function HomePage() {
   }
 
   const handleDeleteStep = (stepIndex: number) => {
+    player.pause()
     const deletedId = builtProgression?.[stepIndex]
     const willBeEmpty = builtProgression?.length === 1
 
@@ -1042,7 +1258,7 @@ export function HomePage() {
       filterPlayableOnly &&
       !unresolved &&
       !isSongPlayableInKey(keyId, songId, knownChords)
-    const disabled = unresolved || blocked || findKeyMode
+    const disabled = unresolved || blocked || findKeyMode || findChordMode
     const blockedReason = findKeyMode
       ? 'Unavailable while finding a key'
       : songDisabledReason(keyId, songId)
@@ -1259,13 +1475,14 @@ export function HomePage() {
         : undefined
     const findKeyBrightness =
       findKeyScore != null ? findKeyMatchBrightness(findKeyScore) : null
+    const hasFindKeyInput =
+      findKeyChords.length > 0 || findChordPositions.length > 0
     const disabled =
       playableBlocked ||
-      (inFindKeyFlow &&
-        (findKeyChords.length === 0 || findKeyBrightness == null))
+      (inFindKeyFlow && (!hasFindKeyInput || findKeyBrightness == null))
     const keyTitle =
-      inFindKeyFlow && findKeyChords.length === 0
-        ? 'Select chords below to find matching keys'
+      inFindKeyFlow && !hasFindKeyInput
+        ? 'Select chords or fretboard notes to find matching keys'
         : inFindKeyFlow && findKeyScore != null
           ? `${def.name} — ${findKeyScore}% match`
           : inFindKeyFlow && findKeyBrightness == null
@@ -1311,7 +1528,14 @@ export function HomePage() {
               selected: findKeyChords.includes(id),
               onSelect: () => toggleFindKeyChord(id),
             }
-          : undefined,
+          : findChordMode
+            ? {
+                selected:
+                  findChordPickedId === id ||
+                  (findChordPickedId == null && findChordMatches.includes(id)),
+                onSelect: () => pickFindChord(id),
+              }
+            : undefined,
       )
 
     return (
@@ -1487,32 +1711,17 @@ export function HomePage() {
       >
         <div className="app-page__inner">
           <div className="diagram-controls">
-            <div
-              className={[
-                'diagram-field',
-                findChordMode ? 'diagram-field--locked' : '',
-              ]
-                .filter(Boolean)
-                .join(' ')}
-              inert={findChordMode ? true : undefined}
-            >
+            <div className="diagram-field">
               <div className="diagram-field__label-row">
                 <p className="diagram-label" id={`${baseId}-key-label`}>
                   {selectedKey != null ? 'Key' : 'Keys'}
                 </p>
-                <div
-                  className={
-                    selectedKey == null
-                      ? 'diagram-field__label-action'
-                      : 'diagram-field__label-action diagram-field__label-action--reserved'
-                  }
-                >
+                <div className="diagram-field__label-action">
                   <Tooltip
-                    disabled={selectedKey != null}
                     label={
                       findKeyMode
-                        ? 'Multiselect chords to find matching keys'
-                        : 'Turn on to multiselect chords and find keys'
+                        ? 'Click chords or fretboard notes to find matching keys'
+                        : 'Turn on to find a key from chords or fretboard notes'
                     }
                   >
                     <button
@@ -1524,9 +1733,6 @@ export function HomePage() {
                       }
                       aria-pressed={findKeyMode}
                       aria-label="Find key from selected chords"
-                      aria-hidden={selectedKey != null}
-                      tabIndex={selectedKey == null ? undefined : -1}
-                      disabled={selectedKey != null}
                       onClick={toggleFindKeyMode}
                     >
                       <Search size={12} aria-hidden />
@@ -1620,8 +1826,8 @@ export function HomePage() {
                   <Tooltip
                     label={
                       findChordMode
-                        ? 'Click notes on the fretboard to identify a chord'
-                        : 'Turn on to identify a chord from fretboard notes'
+                        ? 'Click chords or fretboard notes to identify a chord'
+                        : 'Turn on to identify a chord from chords or fretboard notes'
                     }
                   >
                     <button
@@ -1641,10 +1847,7 @@ export function HomePage() {
                   </Tooltip>
                 </div>
               </div>
-              <div
-                className={findChordMode ? 'diagram-field--locked' : undefined}
-                inert={findChordMode ? true : undefined}
-              >
+              <div>
               {activeKey != null && diatonicSlots != null ? (
                 <div className="diagram-chords-build">
                   <div
@@ -1672,8 +1875,15 @@ export function HomePage() {
                                   roman: slot.roman,
                                   selectable: true,
                                   inProgression,
+                                  selected: findChordMode
+                                    ? findChordPickedId === slot.chordId ||
+                                      (findChordPickedId == null &&
+                                        findChordMatches.includes(slot.chordId))
+                                    : undefined,
                                   onSelect: () =>
-                                    handleKeyRowChordClick(slot.chordId!),
+                                    findChordMode
+                                      ? pickFindChord(slot.chordId!)
+                                      : handleKeyRowChordClick(slot.chordId!),
                                 })}
                                 {renderRoman(
                                   slot.chordId,
@@ -1767,7 +1977,14 @@ export function HomePage() {
                                 return (
                                   <div
                                     key={`strum-chord-${stepIndex}-${chordId}`}
-                                    className="diagram-strum-pattern__bar"
+                                    className={[
+                                      'diagram-strum-pattern__bar',
+                                      selectedProgressionStep === stepIndex
+                                        ? 'diagram-strum-pattern__bar--active'
+                                        : '',
+                                    ]
+                                      .filter(Boolean)
+                                      .join(' ')}
                                     aria-hidden
                                   >
                                     {strokes.map((stroke, strokeIndex) =>
@@ -1875,11 +2092,14 @@ export function HomePage() {
                                   ]
                                     .filter(Boolean)
                                     .join(' ')}
-                                  onPointerDown={(event) =>
-                                    handleProgressionReorderPointerDown(
-                                      event,
-                                      stepIndex,
-                                    )
+                                  onPointerDown={
+                                    findChordMode
+                                      ? undefined
+                                      : (event) =>
+                                          handleProgressionReorderPointerDown(
+                                            event,
+                                            stepIndex,
+                                          )
                                   }
                                   onPointerMove={
                                     handleProgressionReorderPointerMove
@@ -1902,12 +2122,18 @@ export function HomePage() {
                                         : undefined,
                                     inProgression: true,
                                     selectable: true,
-                                    selected: stepSelected,
+                                    selected: findChordMode
+                                      ? findChordPickedId === chordId ||
+                                        (findChordPickedId == null &&
+                                          findChordMatches.includes(chordId))
+                                      : stepSelected,
                                     onSelect: () =>
-                                      toggleProgressionStepSelection(
-                                        stepIndex,
-                                        chordId,
-                                      ),
+                                      findChordMode
+                                        ? pickFindChord(chordId)
+                                        : toggleProgressionStepSelection(
+                                            stepIndex,
+                                            chordId,
+                                          ),
                                     titleSuffix: songLocked
                                       ? stepSelected
                                         ? 'click to deselect'
@@ -2007,6 +2233,54 @@ export function HomePage() {
                           })}
                           </div>
                         </div>
+                        <ProgressionPlayBar
+                          playing={player.playing}
+                          step={selectedProgressionStep ?? player.step}
+                          length={builtProgression?.length ?? 0}
+                          bpm={player.bpm}
+                          muted={player.muted}
+                          loop={player.loop}
+                          metronome={player.metronome}
+                          chordSound={chordSound}
+                          barsPerChord={barsPerChord}
+                          onPlay={() =>
+                            player.play(selectedProgressionStep ?? player.step)
+                          }
+                          onPause={() => {
+                            player.pause()
+                            stopChordStrum()
+                          }}
+                          onToStart={player.toStart}
+                          onBack={player.backOne}
+                          onForward={player.forwardOne}
+                          onBpm={player.setBpm}
+                          onToggleMuted={() => {
+                            const next = !player.muted
+                            playbackMutedRef.current = next
+                            if (next) {
+                              stopChordStrum()
+                            }
+                            player.toggleMuted()
+                          }}
+                          onToggleLoop={player.toggleLoop}
+                          onToggleMetronome={player.toggleMetronome}
+                          onCycleSound={() => {
+                            const next = nextChordSound(chordSoundRef.current)
+                            chordSoundRef.current = next
+                            setChordSound(next)
+                            if (playbackMutedRef.current) {
+                              return
+                            }
+                            const index = selectedProgressionStep ?? player.step
+                            const chordId = builtProgressionRef.current?.[index]
+                            if (
+                              chordId != null &&
+                              (player.playing || selectedProgressionStep != null)
+                            ) {
+                              playChordStrum(chordId, next)
+                            }
+                          }}
+                        />
                       </>
                     ) : null}
                   </div>
@@ -2058,7 +2332,7 @@ export function HomePage() {
           <section
             className={[
               'app-page__diagram',
-              hasBuiltProgression && !findChordMode
+              hasBuiltProgression && !findChordMode && !findKeyMode
                 ? 'app-page__diagram--progression'
                 : '',
               diagramLayoutVertical
@@ -2070,22 +2344,19 @@ export function HomePage() {
             aria-label="Fretboard preview"
           >
             <div className="app-page__diagram-wrap">
-              {findChordMode ? (
+              {findKeyMode || findChordMode ? (
                 <div className="app-page__diagram-stage app-page__diagram-stage--single">
                   <Fretboard
-                    chord={null}
-                    title={findChordTitle}
-                    markers={findChordPositions.map((position) => ({
-                      stringIndex: position.stringIndex,
-                      fret: position.fret,
-                      label: noteAtFret(position.stringIndex, position.fret),
-                    }))}
+                    chord={exploreChordId}
+                    title={exploreTitle}
+                    markers={exploreMarkers}
                     hintPositions={findChordHints}
+                    scalePattern={exploreScale}
                     fretCount={fretCount}
                     displayNotes={displayNotes}
                     orientation={fretboardOrientation}
                     fitContainer
-                    onPositionClick={toggleFindChordPosition}
+                    onPositionClick={toggleFindBoardPosition}
                   />
                 </div>
               ) : hasBuiltProgression && activeKey != null ? (
@@ -2156,6 +2427,11 @@ export function HomePage() {
                     startFret={startFret}
                     displayNotes={displayNotes}
                     orientation={fretboardOrientation}
+                    title={
+                      boardSelection?.kind === 'chord' || activeKey != null
+                        ? undefined
+                        : 'Fretboard'
+                    }
                     fitContainer
                   />
                 </div>
